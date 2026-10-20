@@ -1,0 +1,42 @@
+<?php
+
+namespace App\Http\Controllers\Public;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Public\BrowseScholarshipsRequest;
+use App\Models\AcademicTerm;
+use App\Services\ScholarshipCatalog;
+use Illuminate\Http\RedirectResponse;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class ScholarshipController extends Controller
+{
+    public function apply(string $slug, ScholarshipCatalog $catalog): RedirectResponse
+    {
+        $item = $catalog->visible()->where('slug', $slug)->firstOrFail();
+
+        return to_route('scholarships.show', $item->slug);
+    }
+
+    public function index(BrowseScholarshipsRequest $request, ScholarshipCatalog $catalog): Response
+    {
+        $filters = array_fill_keys(['q', 'location', 'type', 'availability', 'existing', 'term', 'currency', 'amount_min', 'amount_max', 'opens_from', 'opens_to', 'deadline_from', 'deadline_to'], '');
+        foreach ($filters as $key => $value) {
+            $filters[$key] = (string) ($request->validated($key) ?? '');
+        }
+
+        return Inertia::render('public/Scholarships', ['filters' => $filters,
+            'scholarships' => $catalog->browse($filters)->with(['provider:id,organization_name', 'locations', 'academicTerm'])->orderByDesc('published_at')->orderByDesc('id')->paginate(12)->withQueryString()->through($catalog->data(...)),
+            'types' => $catalog->visible()->select('scholarship_type')->distinct()->orderBy('scholarship_type')->pluck('scholarship_type'),
+            'terms' => AcademicTerm::query()->whereIn('id', $catalog->visible()->select('academic_term_id'))->orderByDesc('academic_year')->orderBy('semester')->get()->map(fn ($term): array => ['id' => $term->id, 'label' => $term->academic_year.' · '.$term->semester])]);
+    }
+
+    public function show(string $slug, ScholarshipCatalog $catalog): Response
+    {
+        $item = $catalog->visible()->where('slug', $slug)->with(['provider:id,organization_name', 'locations', 'requirements', 'academicTerm'])->firstOrFail();
+
+        return Inertia::render('public/ScholarshipDetails', ['scholarship' => [...$catalog->data($item), 'description' => $item->description,
+            'eligibility_rules' => $item->eligibility_rules, 'requirements' => $item->requirements->map(fn ($requirement): array => $requirement->only('id', 'name', 'description', 'required', 'requirement_stage', 'allowed_mime_types', 'max_size_kb'))]]);
+    }
+}
