@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\AwardStatus;
+use App\Enums\ScholarshipStatus;
 use App\Enums\UserRole;
 use Database\Factories\ScholarshipAwardFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -56,13 +57,15 @@ class ScholarshipAward extends Model
     {
         return $query->active()->whereNotNull('public_listing_consented_at')->whereNotNull('published_at')->whereNotNull('public_name')
             ->whereHas('application', fn (Builder $query) => $query->whereNull('deleted_at')
-                ->whereHas('scholarship', fn (Builder $query) => $query->whereNull('deleted_at')
+                ->whereHas('scholarship', fn (Builder $query) => $query->whereNull('deleted_at')->where('status', ScholarshipStatus::Published)->whereNotNull('published_at')
                     ->whereHas('provider', fn (Builder $query) => $query->where('verification_status', 'approved')->whereHas('user', fn (Builder $query) => $query->where('role', UserRole::Provider)))));
     }
 
     public function canBePubliclyListed(): bool
     {
         return $this->isCurrentlyActive() && ! $this->application->trashed() && ! $this->application->scholarship->trashed()
+            && $this->application->scholarship->status === ScholarshipStatus::Published
+            && $this->application->scholarship->published_at !== null
             && $this->application->scholarship->provider->verification_status->value === 'approved'
             && $this->application->scholarship->provider->user?->role === UserRole::Provider
             && $this->public_listing_consented_at !== null;

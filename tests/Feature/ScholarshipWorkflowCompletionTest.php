@@ -234,6 +234,7 @@ class ScholarshipWorkflowCompletionTest extends TestCase
         $report = ExternalApplicantCount::firstOrFail();
         $this->assertSame(2, $report->reported_count);
         $this->assertSame('pending', $report->status);
+        $this->get('/provider/applicant-counts/'.$program->id)->assertInertia(fn (Assert $page) => $page->where('reports.data.0.import_summary', ['source_rows' => 4, 'unique_emails' => 3, 'duplicate_rows' => 1, 'internal_matches' => 1, 'external_count' => 2]));
         $this->assertSame(1, app(ApplicantCounts::class)->summary($program)['public_count']);
         $this->assertDatabaseCount('applications', 1);
         $this->assertStringNotContainsString('external@example.test', json_encode($report->toArray()));

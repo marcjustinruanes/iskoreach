@@ -45,9 +45,13 @@ class AccountController extends Controller
                 'retained' => $profile->scholarships()->onlyTrashed()->count(),
                 'submitted' => $this->submittedApplications($profile)->count(),
             ],
-            'recentScholarships' => $profile->scholarships()->latest('updated_at')->orderByDesc('id')->limit(5)->get()
+            'recentScholarships' => $profile->scholarships()->withCount(['applications as submitted_count' => fn ($query) => $query->whereNotNull('submitted_at')->whereIn('status', ApplicationStatus::countedValues())->whereHas('student', fn ($student) => $student->where('role', UserRole::Student))])->latest('updated_at')->orderByDesc('id')->limit(5)->get()
                 ->map(fn ($scholarship): array => ['id' => $scholarship->id, 'title' => $scholarship->title, 'status' => $scholarship->status->value,
-                    'updated_at' => $scholarship->updated_at->toIso8601String(), 'counts_url' => route('provider.applicant-counts.show', $scholarship)]),
+                    'submitted_count' => $scholarship->submitted_count, 'deadline_at' => $scholarship->deadline_at?->toIso8601String(), 'updated_at' => $scholarship->updated_at->toIso8601String(), 'counts_url' => route('provider.applicant-counts.show', $scholarship)]),
+            'reviewSummary' => $this->submittedApplications($profile)->whereNull('deleted_at')->selectRaw('status, COUNT(*) AS total')->groupBy('status')->pluck('total', 'status')->map(fn ($count): int => (int) $count),
+            'recentSubmissions' => $this->submittedApplications($profile)->whereNull('deleted_at')->with(['student:id,name', 'scholarship:id,title'])->latest('submitted_at')->orderByDesc('id')->limit(6)->get()
+                ->map(fn ($item): array => ['id' => $item->id, 'student' => $item->student->name, 'scholarship' => $item->scholarship->title,
+                    'status' => $item->status->value, 'submitted_at' => $item->submitted_at->toIso8601String(), 'url' => route('provider.applications.show', $item)]),
             'applicationActivity' => $this->submittedApplications($profile)->with('scholarship:id,title,deleted_at')
                 ->selectRaw('scholarship_id, status, COUNT(*) AS total, MAX(submitted_at) AS last_submitted_at')
                 ->groupBy('scholarship_id', 'status')->orderByDesc('last_submitted_at')->orderBy('scholarship_id')->orderBy('status')->limit(5)->get()

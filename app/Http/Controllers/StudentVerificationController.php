@@ -27,6 +27,7 @@ class StudentVerificationController extends Controller
         $path = $request->file('photo')->store('profile-photos/'.$request->user()->id, 'documents');
         $previousPath = null;
         try {
+            Storage::disk('profile_pictures')->put($path, Storage::disk('documents')->get($path));
             DB::transaction(function () use ($request, $setup, $path, &$previousPath): void {
                 $user = User::lockForUpdate()->findOrFail($request->user()->id);
                 $previousPath = $user->studentProfile->photo_path;
@@ -35,6 +36,7 @@ class StudentVerificationController extends Controller
             });
         } catch (\Throwable $error) {
             Storage::disk('documents')->delete($path);
+            Storage::disk('profile_pictures')->delete($path);
             throw $error;
         }
 
@@ -116,7 +118,7 @@ class StudentVerificationController extends Controller
         $data = $verification->snapshot;
         unset($data['photo_path'],$data['documents']);
 
-        return Inertia::render('admin/StudentVerification', ['verification' => ['id' => $verification->id, 'name' => $verification->user->name, 'status' => $verification->status, 'reason' => $verification->reason, 'snapshot' => $data, 'photo_url' => route('admin.student-verifications.file', [$verification, 'photo']), 'documents' => collect($verification->snapshot['documents'])->map(fn ($id, $kind): array => ['kind' => $kind, 'url' => route('admin.student-verifications.file', [$verification, $kind])])->values()]]);
+        return Inertia::render('admin/StudentVerification', ['verification' => ['id' => $verification->id, 'name' => $verification->user->name, 'status' => $verification->status, 'reason' => $verification->reason, 'snapshot' => $data, 'photo_url' => ! empty($verification->snapshot['photo_path']) ? route('admin.student-verifications.file', [$verification, 'photo']) : null, 'documents' => collect($verification->snapshot['documents'])->map(fn ($id, $kind): array => ['kind' => $kind, 'url' => route('admin.student-verifications.file', [$verification, $kind])])->values()]]);
     }
 
     public function review(Request $request, StudentVerification $verification, StudentAccountSetup $setup): RedirectResponse
@@ -155,6 +157,9 @@ class StudentVerificationController extends Controller
 
     private function retirePhoto(?string $path): void
     {
+        if ($path) {
+            Storage::disk('profile_pictures')->delete($path);
+        }
         if ($path && ! StudentVerification::where('snapshot->photo_path', $path)->exists()) {
             Storage::disk('documents')->delete($path);
         }

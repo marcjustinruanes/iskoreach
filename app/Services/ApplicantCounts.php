@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\ApplicationStatus;
 use App\Enums\UserRole;
+use App\Models\ActivityLog;
 use App\Models\ExternalApplicantCount;
 use App\Models\Scholarship;
 
@@ -55,13 +56,17 @@ class ApplicantCounts
 
     public function reportData(ExternalApplicantCount $report): array
     {
+        $log = ActivityLog::where('subject_type', ExternalApplicantCount::class)->where('subject_id', $report->id)->where('action', 'external_count.reported')->first();
+        $import = ($log?->changes['method'] ?? null) === 'csv_import' ? ($log->changes['import_summary'] ?? null) : null;
+        $summary = is_array($import) ? collect($import)->only(['source_rows', 'unique_emails', 'duplicate_rows', 'internal_matches', 'external_count'])->all() : null;
+
         return [
             'id' => $report->id, 'reported_count' => $report->reported_count, 'corrected_count' => $report->corrected_count,
             'source_label' => $report->source_label, 'source_as_of' => $report->source_as_of->toDateString(),
             'reporter' => $report->reporter?->name ?? 'Unavailable', 'status' => $report->status,
             'reviewer' => $report->reviewer?->name, 'reviewed_at' => $report->reviewed_at?->toIso8601String(),
             'reason' => $report->reason, 'correction_of_id' => $report->correction_of_id,
-            'created_at' => $report->created_at->toIso8601String(),
+            'created_at' => $report->created_at->toIso8601String(), 'import_summary' => $summary,
         ];
     }
 }

@@ -28,6 +28,7 @@ class StudentAccountEnhancementsTest extends TestCase
     {
         parent::setUp();
         Storage::fake('documents');
+        Storage::fake('profile_pictures', ['url' => '/profile-pictures']);
     }
 
     private function candidate(): User
@@ -42,6 +43,19 @@ class StudentAccountEnhancementsTest extends TestCase
         return $user->fresh();
     }
 
+    public function test_photo_policy_can_be_configured_without_automatically_granting_a_badge(): void
+    {
+        $user = $this->candidate();
+        $user->studentProfile->forceFill(['photo_path' => null])->save();
+        $this->get('/student/profile')->assertInertia(fn (Assert $page) => $page->where('accountSetup.verification.eligible', false));
+        config(['student-verification.require_photo' => false]);
+        $this->get('/student/profile')->assertInertia(fn (Assert $page) => $page->where('accountSetup.verification.eligible', true)->where('accountSetup.completed', 4));
+        $this->post('/student/verification', ['confirmed' => true])->assertSessionHasNoErrors();
+        $item = StudentVerification::firstOrFail();
+        $this->assertSame('pending', $item->status);
+        $this->actingAs(User::factory()->create(['role' => UserRole::Admin]))->get('/admin/student-verifications/'.$item->id)->assertInertia(fn (Assert $page) => $page->where('verification.photo_url', null));
+    }
+
     public function test_ordinary_setup_is_independent_of_optional_verification_and_progress_uses_saved_fields(): void
     {
         $user = StudentProfile::factory()->create(collect($this->studentRegistrationData())->only(StudentRegistration::FIELDS)->all())->user;
@@ -51,6 +65,27 @@ class StudentAccountEnhancementsTest extends TestCase
         $this->get('/student/scholarships')->assertOk();
     }
 
+    public function test_current_photos_are_publishable_repeatably_without_publishing_private_evidence(): void
+    {
+        $user = $this->candidate();
+        $path = $user->studentProfile->photo_path;
+        Storage::disk('profile_pictures')->delete($path);
+        $this->artisan('profiles:publish-pictures')->assertSuccessful();
+        $this->artisan('profiles:publish-pictures')->assertSuccessful();
+        Storage::disk('profile_pictures')->assertExists($path);
+        $this->assertCount(1, Storage::disk('profile_pictures')->allFiles());
+        Storage::disk('documents')->delete($path);
+        $this->get('/student/profile')->assertInertia(fn (Assert $page) => $page->where('accountSetup.photo_url', '/profile-pictures/'.$path));
+    }
+
+    public function test_email_code_page_is_available_with_student_navigation_and_preserves_validation_redirects(): void
+    {
+        $user = StudentProfile::factory()->create()->user;
+        $user->forceFill(['email_verified_at' => null])->save();
+        $this->actingAs($user)->get('/student/email-code')->assertInertia(fn (Assert $page) => $page->component('EmailCode')->where('auth.user.role', 'student')->where('verified', false));
+        $this->from('/student/email-code')->post('/student/email-code/verify', ['code' => 'wrong'])->assertRedirect('/student/email-code')->assertSessionHasErrors('code');
+    }
+
     public function test_photo_validation_private_access_and_confirmed_removal(): void
     {
         $user = StudentProfile::factory()->create()->user;
@@ -58,12 +93,14 @@ class StudentAccountEnhancementsTest extends TestCase
         $this->post('/student/profile/photo', ['photo' => UploadedFile::fake()->image('good.png', 100, 100)])->assertSessionHasNoErrors();
         $path = $user->studentProfile->fresh()->photo_path;
         Storage::disk('documents')->assertExists($path);
+        Storage::disk('profile_pictures')->assertExists($path);
         $this->get('/student/profile/photo')->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
         $this->actingAs(StudentProfile::factory()->create()->user)->get('/student/profile/photo')->assertNotFound();
         $this->actingAs($user)->delete('/student/profile/photo', ['confirmed' => false])->assertSessionHasErrors('confirmed');
         $this->delete('/student/profile/photo', ['confirmed' => true])->assertSessionHasNoErrors();
         $this->assertNull($user->studentProfile->fresh()->photo_path);
         Storage::disk('documents')->assertMissing($path);
+        Storage::disk('profile_pictures')->assertMissing($path);
     }
 
     public function test_verification_requires_authorized_review_supports_rejection_reapplication_and_revocation(): void
@@ -132,7 +169,7 @@ class StudentAccountEnhancementsTest extends TestCase
         $other = StudentProfile::factory()->create()->user;
         $other->forceFill(['email_verified_at' => null])->save();
         $this->actingAs($other)->post('/student/email-code/verify', ['code' => $code])->assertSessionHasErrors('code');
-        $this->actingAs($user)->post('/student/email-code/verify', ['code' => $code])->assertRedirect('/dashboard');
+        $this->actingAs($user)->post('/student/email-code/verify', ['code' => $code])->assertRedirect(route('student.profile').'#verification');
         $this->assertTrue($user->fresh()->hasVerifiedEmail());
         $this->assertNull($user->fresh()->email_code_hash);
         $this->assertArrayNotHasKey('email_code_hash', $user->fresh()->toArray());

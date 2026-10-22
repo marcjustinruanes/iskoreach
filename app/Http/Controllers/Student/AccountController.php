@@ -7,10 +7,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Student\UpdateStudentProfileRequest;
 use App\Models\Application;
 use App\Models\Renewal;
+use App\Models\Scholarship;
 use App\Models\StudentProfile;
 use App\Models\User;
+use App\Services\AccountNotifications;
 use App\Services\PrivateDocuments;
 use App\Services\RenewalWorkflow;
+use App\Services\ScholarshipCatalog;
 use App\Services\StudentAccountSetup;
 use App\Services\StudentRegistration;
 use Carbon\Carbon;
@@ -34,13 +37,17 @@ class AccountController extends Controller
         $counts = (clone $applications)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
 
         return Inertia::render('student/Dashboard', [
+            'discoverScholarships' => app(ScholarshipCatalog::class)->recommendations($request->user())
+                ->map(fn ($item): array => [...app(ScholarshipCatalog::class)->data($item), 'show_url' => route('student.scholarships.show', $item->slug)]),
+            'recentUpdates' => app(AccountNotifications::class)->query($request->user())->latest('created_at')->orderByDesc('id')->limit(4)->get()
+                ->map(fn ($notice): array => app(AccountNotifications::class)->row($request->user(), $notice)),
             'accountSetup' => app(StudentAccountSetup::class)->data($request->user()),
             'profile' => $profile->only(array_merge(['id'], StudentRegistration::FIELDS, ['region_name', 'province_name', 'city_name', 'barangay_name'])),
-            'nextActions' => Application::where('student_id', $request->user()->id)->whereIn('status', ['not_started', 'requirements_pending', 'submitted', 'under_review', 'waitlisted'])->with('scholarship.requirements')->latest('updated_at')->limit(12)->get()->map(function (Application $item): array {
+            'nextActions' => Application::where('student_id', $request->user()->id)->whereIn('status', ['not_started', 'requirements_pending', 'submitted', 'under_review', 'waitlisted'])->with('scholarship.requirements')->orderBy(Scholarship::select('deadline_at')->whereColumn('scholarships.id', 'applications.scholarship_id'))->orderBy('id')->lazy(100)->map(function (Application $item): array {
                 $checklist = app(PrivateDocuments::class)->checklist($item);
 
-                return ['title' => $item->scholarship->title, 'missing' => collect($checklist)->where('required', true)->where('complete', false)->count(), 'rejected' => collect($checklist)->filter(fn ($row): bool => ($row['attachment']['review_status'] ?? null) === 'rejected')->count(), 'deadline' => $item->scholarship->deadline_at?->toIso8601String(), 'url' => route('student.applications.show', $item)];
-            })->filter(fn ($row): bool => $row['missing'] > 0 || $row['rejected'] > 0 || ($row['deadline'] && Carbon::parse($row['deadline'])->between(now(), now()->addDays(14))))->take(5)->values(),
+                return ['title' => $item->scholarship->title, 'missing' => collect($checklist)->where('required', true)->where('complete', false)->count(), 'pending_review' => $item->submitted_at ? collect($checklist)->filter(fn ($row): bool => ($row['attachment']['review_status'] ?? null) === 'pending')->count() : 0, 'rejected' => collect($checklist)->filter(fn ($row): bool => ($row['attachment']['review_status'] ?? null) === 'rejected')->count(), 'deadline' => $item->scholarship->deadline_at?->toIso8601String(), 'url' => route('student.applications.show', $item)];
+            })->filter(fn ($row): bool => $row['missing'] > 0 || $row['rejected'] > 0 || $row['pending_review'] > 0 || ($row['deadline'] && Carbon::parse($row['deadline'])->between(now(), now()->addDays(14))))->take(5)->collect()->values(),
             'applicationSummary' => ['total' => (int) $counts->sum(), ...collect(ApplicationStatus::countedValues())
                 ->mapWithKeys(fn (string $status): array => [$status => (int) ($counts[$status] ?? 0)])->all()],
             'recentApplications' => (clone $applications)->with('scholarship.provider')->latest('submitted_at')->orderByDesc('id')->limit(5)->get()

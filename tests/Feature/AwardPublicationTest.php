@@ -119,9 +119,29 @@ class AwardPublicationTest extends TestCase
         $this->assertDatabaseHas('activity_logs', ['action' => 'award.unpublish']);
     }
 
+    public function test_nonpublic_scholarships_hide_existing_passers_and_block_publication_without_changing_awards(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        foreach (['closed', 'archived', 'draft', 'missing_publication'] as $status) {
+            $award = $this->award();
+            $award->forceFill(['public_listing_consented_at' => now(), 'published_at' => now(), 'published_by' => $admin->id, 'public_name' => 'Consented active scholar'])->save();
+            $this->get('/passers')->assertInertia(fn (Assert $page) => $page->where('passers.total', 1));
+            $award->application->scholarship->forceFill($status === 'missing_publication' ? ['published_at' => null] : ['status' => $status])->save();
+            $this->get('/passers')->assertInertia(fn (Assert $page) => $page->where('passers.total', 0));
+            $this->get('/')->assertInertia(fn (Assert $page) => $page->where('publicStats.passers', 0));
+            $this->actingAs($admin)->patch('/admin/awards/'.$award->id.'/publication', $this->decision())->assertSessionHasErrors('action');
+            $this->actingAs($award->application->student)->get('/student/awards')->assertInertia(fn (Assert $page) => $page->where('awards.data.0.published', false));
+            $this->assertSame('active', $award->fresh()->status->value);
+            $this->assertNotNull($award->fresh()->public_listing_consented_at);
+            $this->assertSame(0, $award->fresh()->publication_version);
+            auth()->logout();
+        }
+    }
+
     private function award(): ScholarshipAward
     {
         $award = ScholarshipAward::factory()->create();
+        $award->application->scholarship->forceFill(['status' => 'published', 'published_at' => now()])->save();
         $award->application->scholarship->provider->forceFill(['verification_status' => 'approved'])->save();
 
         return $award;

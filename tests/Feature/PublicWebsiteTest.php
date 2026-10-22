@@ -43,6 +43,8 @@ class PublicWebsiteTest extends TestCase
         Scholarship::factory()->create(['provider_id' => $provider->id, 'status' => 'archived', 'published_at' => now()]);
         Scholarship::factory()->create(['status' => 'published', 'published_at' => now()]);
         $award = ScholarshipAward::factory()->create();
+        $award->application->update(['scholarship_id' => $visible->first()->id]);
+        $award->refresh();
         $award->application->scholarship->provider->forceFill(['verification_status' => 'approved'])->save();
         $award->forceFill(['public_listing_consented_at' => now(), 'published_at' => now(), 'public_name' => 'Consenting scholar'])->save();
         // Factory defaults are not treated as evidence of active eligibility.

@@ -43,7 +43,7 @@ class ExternalApplicantImportController extends Controller
         } finally {
             fclose($handle);
         }
-        DB::transaction(function () use ($request, $scholarship, $data, $identities): void {
+        DB::transaction(function () use ($request, $scholarship, $data, $identities, $rows): void {
             ProviderProfile::whereKey($scholarship->provider_id)->lockForUpdate()->firstOrFail();
             Gate::authorize('reportExternalCount', $scholarship->fresh());
             $program = Scholarship::whereKey($scholarship->id)->lockForUpdate()->firstOrFail();
@@ -65,7 +65,7 @@ class ExternalApplicantImportController extends Controller
             $report->forceFill(['scholarship_id' => $program->id, 'reported_by' => $request->user()->id, 'reported_count' => $count, 'source_label' => $data['source_label'],
                 'source_as_of' => $data['source_as_of'], 'duplicates_excluded' => true, 'submission_token' => $data['submission_token'], 'status' => 'pending'])->save();
             $request->user()->activityLogs()->create(['action' => 'external_count.reported', 'subject_type' => ExternalApplicantCount::class, 'subject_id' => $report->id,
-                'changes' => ['scholarship_id' => $program->id, 'reported_count' => $count, 'source_as_of' => $data['source_as_of'], 'method' => 'csv_import'], 'occurred_at' => now()]);
+                'changes' => ['scholarship_id' => $program->id, 'reported_count' => $count, 'source_as_of' => $data['source_as_of'], 'method' => 'csv_import', 'import_summary' => ['source_rows' => $rows, 'unique_emails' => count($identities), 'duplicate_rows' => $rows - count($identities), 'internal_matches' => count($identities) - count($external), 'external_count' => $count]], 'occurred_at' => now()]);
         });
 
         return back()->with('status', 'CSV count imported for administrator verification. Duplicate email addresses and matching internal applicants were excluded. The uploaded email list was not retained.');

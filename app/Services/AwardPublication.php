@@ -22,7 +22,7 @@ class AwardPublication
             }
             $action = $consent ? ($data['consent'] ? 'consent_given' : 'consent_withdrawn') : $data['action'];
             if ($action === 'publish' && ! $locked->canBePubliclyListed()) {
-                throw ValidationException::withMessages(['action' => 'Publication requires an active confirmed award, student consent, current records, and an approved provider.']);
+                throw ValidationException::withMessages(['action' => 'Publication requires an active confirmed award, student consent, current records, a published scholarship, and an approved provider.']);
             }
             if ($action === 'consent_given') {
                 if (! $locked->isCurrentlyActive()) {

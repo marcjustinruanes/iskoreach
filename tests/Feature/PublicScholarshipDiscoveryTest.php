@@ -77,7 +77,7 @@ class PublicScholarshipDiscoveryTest extends TestCase
         $provider = ProviderProfile::factory()->create(['verification_status' => 'approved']);
         Scholarship::factory()->count(14)->create(['provider_id' => $provider->id, 'status' => 'published', 'published_at' => now()]);
         $this->get('/scholarships?q=a')->assertOk();
-        $this->get('/scholarships?type=Merit')->assertInertia(fn (Assert $page) => $page->where('scholarships.total', 14)->has('scholarships.data', 12)->where('scholarships.next_page_url', fn ($url) => str_contains($url, 'type=Merit')));
+        $this->get('/scholarships?type=Merit')->assertInertia(fn (Assert $page) => $page->where('scholarships.total', 14)->has('scholarships.data', 6)->where('scholarships.next_page_url', fn ($url) => str_contains($url, 'type=Merit')));
         foreach (['amount_min' => '-1', 'currency' => 'INVALID', 'opens_from' => '2026-02-30', 'availability' => 'draft'] as $field => $value) {
             $this->get('/scholarships?'.http_build_query([$field => $value]))->assertSessionHasErrors($field);
         }

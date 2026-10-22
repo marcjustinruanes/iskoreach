@@ -74,6 +74,6 @@ class EmailCodeController extends Controller
             throw ValidationException::withMessages(['code' => 'This code is invalid, expired, or has reached its attempt limit. Request a new code when available.']);
         }
 
-        return to_route('dashboard')->with('status','Email verified successfully.');
+        return redirect()->to(route('student.profile').'#verification')->with('status', 'Email verified successfully.');
     }
 }

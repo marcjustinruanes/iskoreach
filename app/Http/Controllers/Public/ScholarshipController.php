@@ -33,7 +33,7 @@ class ScholarshipController extends Controller
         return Inertia::render('public/Scholarships', ['filters' => $filters,
             'studentWorkspace' => $workspace,
             'browseUrl' => route($workspace ? 'student.scholarships.index' : 'scholarships.index'),
-            'scholarships' => $catalog->browse($filters)->with(['provider:id,organization_name', 'locations', 'academicTerm'])->orderByDesc('published_at')->orderByDesc('id')->paginate(12)->withQueryString()->through(fn ($item): array => $this->scholarshipData($catalog, $item, $workspace)),
+            'scholarships' => $catalog->browse($filters)->with(['provider:id,organization_name', 'locations', 'academicTerm'])->orderByDesc('published_at')->orderByDesc('id')->paginate(6)->withQueryString()->through(fn ($item): array => $this->scholarshipData($catalog, $item, $workspace)),
             'types' => $catalog->visible()->select('scholarship_type')->distinct()->orderBy('scholarship_type')->pluck('scholarship_type'),
             'terms' => AcademicTerm::query()->whereIn('id', $catalog->visible()->select('academic_term_id'))->orderByDesc('academic_year')->orderBy('semester')->get()->map(fn ($term): array => ['id' => $term->id, 'label' => $term->academic_year.' · '.$term->semester])]);
     }

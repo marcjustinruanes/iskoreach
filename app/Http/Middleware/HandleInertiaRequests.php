@@ -8,6 +8,7 @@ use App\Models\ProviderProfile;
 use App\Notifications\ProviderVerificationDecision;
 use App\Services\AccountNotifications;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -19,7 +20,10 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'auth' => fn () => [
-                'user' => $request->user()?->only('id', 'name', 'email', 'role'),
+                'user' => $request->user() ? [
+                    ...$request->user()->only('id', 'name', 'email', 'role'),
+                    'photo_url' => ($path = $request->user()->studentProfile?->photo_path) && Storage::disk('profile_pictures')->exists($path) ? Storage::disk('profile_pictures')->url($path) : null,
+                ] : null,
                 'provider_status' => $request->user()?->role === UserRole::Provider
                     ? $request->user()->providerProfile?->verification_status->value : null,
             ],

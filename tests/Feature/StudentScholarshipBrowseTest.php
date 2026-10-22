@@ -35,10 +35,11 @@ class StudentScholarshipBrowseTest extends TestCase
         $this->actingAs($student)->get('/student/scholarships?q=catalog')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('public/Scholarships')->where('studentWorkspace', true)
             ->where('browseUrl', route('student.scholarships.index'))->where('filters.q', 'catalog')
-            ->where('scholarships.total', 13)->has('scholarships.data', 12)
+            ->where('scholarships.total', 13)->has('scholarships.data', 6)
             ->where('scholarships.data.0.show_url', fn (string $url): bool => str_contains($url, '/student/scholarships/'))
             ->where('scholarships.next_page_url', fn (string $url): bool => str_contains($url, '/student/scholarships?') && str_contains($url, 'q=catalog') && str_contains($url, 'page=2')));
-        $this->get('/student/scholarships?page=2&q=catalog')->assertInertia(fn (Assert $page) => $page->has('scholarships.data', 1));
+        $this->get('/student/scholarships?page=2&q=catalog')->assertInertia(fn (Assert $page) => $page->has('scholarships.data', 6)->where('scholarships.current_page', 2));
+        $this->get('/student/scholarships?page=3&q=catalog')->assertInertia(fn (Assert $page) => $page->has('scholarships.data', 1)->where('scholarships.last_page', 3)->where('scholarships.links.3.active', true));
         $this->get('/student/scholarships?q=unpublished')->assertInertia(fn (Assert $page) => $page->where('scholarships.total', 0));
     }
 

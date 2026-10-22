@@ -12,6 +12,7 @@ use App\Models\ProviderProfile;
 use App\Models\Renewal;
 use App\Models\Scholarship;
 use App\Models\ScholarshipAward;
+use App\Models\StudentVerification;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
@@ -34,6 +35,7 @@ class DashboardController extends Controller
 
         return Inertia::render('admin/Dashboard', [
             'summary' => [
+                'pending_student_verifications' => StudentVerification::where('status', 'pending')->whereHas('user', fn ($query) => $query->where('role', UserRole::Student))->count(),
                 'applications' => Application::withTrashed()->whereNotNull('submitted_at')->whereIn('status', ['submitted', 'under_review', 'accepted', 'rejected', 'waitlisted'])->whereHas('student', fn ($query) => $query->where('role', UserRole::Student))->count(),
                 'active_awards' => ScholarshipAward::query()->active()->count(),
                 'pending_renewals' => Renewal::query()->where('status', 'submitted')->count(),
@@ -48,6 +50,12 @@ class DashboardController extends Controller
                 'missing_provider_profiles' => $providerCount - (clone $providers)->count(),
                 'students_last_30_days' => User::query()->where('role', UserRole::Student)->where('created_at', '>=', now()->subDays(30))->count(),
                 'providers_last_30_days' => User::query()->where('role', UserRole::Provider)->where('created_at', '>=', now()->subDays(30))->count(),
+            ],
+            'reviewQueues' => [
+                'providers' => (clone $providers)->where('verification_status', 'pending')->oldest('created_at')->orderBy('id')->limit(3)->get()
+                    ->map(fn ($item): array => ['id' => $item->id, 'label' => $item->organization_name ?: 'Organization details incomplete', 'created_at' => $item->created_at->toIso8601String(), 'url' => route('admin.providers.show', $item)]),
+                'students' => StudentVerification::where('status', 'pending')->whereHas('user', fn ($query) => $query->where('role', UserRole::Student))->with('user:id,name')->oldest('created_at')->orderBy('id')->limit(3)->get()
+                    ->map(fn ($item): array => ['id' => $item->id, 'label' => $item->user->name, 'created_at' => $item->created_at->toIso8601String(), 'url' => route('admin.student-verifications.show', $item)]),
             ],
             'recentProviders' => (clone $providers)->latest('created_at')->orderByDesc('id')->limit(5)->get()
                 ->map(fn (ProviderProfile $profile): array => [

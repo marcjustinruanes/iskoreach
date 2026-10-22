@@ -3,8 +3,11 @@
 namespace App\Services;
 
 use App\Models\Scholarship;
+use App\Models\ScholarshipAward;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 class ScholarshipCatalog
 {
@@ -22,7 +25,7 @@ class ScholarshipCatalog
                 $query->where($column, $filters[$key]);
             }
         }
-        $query->when($filters['q'] !== '', fn ($query) => $query->where(fn ($query) => $query->whereLike('title', '%'.$filters['q'].'%')->orWhereHas('provider', fn ($query) => $query->whereLike('organization_name', '%'.$filters['q'].'%'))))
+        $query->when($filters['q'] !== '', fn ($query) => $query->where(fn ($query) => $query->whereLike('title', '%'.$filters['q'].'%')->orWhereLike('description', '%'.$filters['q'].'%')->orWhereHas('provider', fn ($query) => $query->whereLike('organization_name', '%'.$filters['q'].'%'))))
             ->when($filters['existing'] !== '', fn ($query) => $query->where('accepts_existing_scholars', $filters['existing'] === 'yes'));
         app(ScholarshipLocationSearch::class)->apply($query, $filters['location']);
         foreach (['amount_min' => '>=', 'amount_max' => '<='] as $field => $operator) {
@@ -47,6 +50,24 @@ class ScholarshipCatalog
         }
 
         return $query;
+    }
+
+    /** @return Collection<int, Scholarship> */
+    public function recommendations(User $student, int $limit = 3): Collection
+    {
+        $hasAward = ScholarshipAward::active()->whereHas('application', fn ($query) => $query->where('student_id', $student->id))->exists();
+
+        return $this->visible()->where('status', 'published')->where('opens_at', '<=', now())->where('deadline_at', '>', now())
+            ->whereDoesntHave('applications', fn ($query) => $query->where('student_id', $student->id))
+            ->with(['provider:id,organization_name', 'locations', 'academicTerm'])->orderBy('deadline_at')->orderBy('id')->lazy(100)
+            ->filter(function (Scholarship $program) use ($student, $hasAward): bool {
+                $declarations = app(ScholarshipNotices::class)->declarations($student, $program);
+                if (($hasAward || count($declarations) > 0) && ! $program->accepts_existing_scholars) {
+                    return false;
+                }
+
+                return ! $program->require_verified_declarations || collect($declarations)->every(fn ($row): bool => $row['verification'] === 'verified');
+            })->take($limit)->collect()->values();
     }
 
     public function data(Scholarship $item): array

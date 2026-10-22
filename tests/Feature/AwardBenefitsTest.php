@@ -282,6 +282,7 @@ class AwardBenefitsTest extends TestCase
     public function test_public_filters_use_only_current_approved_consented_publications_and_philippine_year(): void
     {
         $award = $this->award();
+        $award->application->scholarship->forceFill(['status' => 'published', 'published_at' => now()])->save();
         $award->forceFill(['public_listing_consented_at' => now(), 'published_at' => CarbonImmutable::parse('2025-12-31 17:00:00', 'UTC'), 'public_name' => 'Public Scholar'])->save();
         $this->get('/passers?year=2026&q=Public')->assertInertia(fn (Assert $page) => $page->where('passers.total', 1)->missing('passers.data.0.school')->missing('passers.data.0.email'));
         $this->get('/passers?year=2025')->assertInertia(fn (Assert $page) => $page->where('passers.total', 0));
