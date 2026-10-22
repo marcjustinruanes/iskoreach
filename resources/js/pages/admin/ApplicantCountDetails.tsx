@@ -1,3 +1,4 @@
+import ExternalCountWorkflow from '../../components/ExternalCountWorkflow';
 import { Link, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
@@ -15,7 +16,7 @@ export default function ApplicantCountDetails({ scholarship, summary, reports, a
     const [review, setReview] = useState<{ report: ExternalCountReport; decision: Decision } | null>(null);
     return <AdminLayout title="Applicant count details" description={scholarship.title + (scholarship.provider ? ' · ' + scholarship.provider : '')}>
         <div className="mb-6 flex flex-wrap gap-3">{adminNavigation && <Link href={adminNavigation.counts} className={buttonStyles('outline')}>Back to applicant counts</Link>}<Link href={scholarship.record_url} className={buttonStyles('outline')}>Scholarship information</Link></div>
-        <ApplicantCountBreakdown summary={summary} /><ExternalCountHistory reports={reports} actions={report => <div className="flex flex-wrap gap-3">{report.status === 'pending' && <><Button onClick={() => setReview({ report, decision: 'approve' })}>Verify report</Button><Button variant="danger" onClick={() => setReview({ report, decision: 'reject' })}>Reject report</Button></>}{report.id === summary.latest_approved_id && <><Button variant="outline" onClick={() => setReview({ report, decision: 'correct' })}>Record correction</Button>{summary.needs_reverification && <Button onClick={() => setReview({ report, decision: 'reverify' })}>Re-verify count</Button>}</>}</div>} />
+        <ApplicantCountBreakdown summary={summary} /><ExternalCountWorkflow administrator /><ExternalCountHistory reports={reports} actions={report => <div className="flex flex-wrap gap-3">{report.status === 'pending' && <><Button onClick={() => setReview({ report, decision: 'approve' })}>Verify report</Button><Button variant="danger" onClick={() => setReview({ report, decision: 'reject' })}>Reject report</Button></>}{report.id === summary.latest_approved_id && <><Button variant="outline" onClick={() => setReview({ report, decision: 'correct' })}>Record correction</Button>{summary.needs_reverification && <Button onClick={() => setReview({ report, decision: 'reverify' })}>Re-verify count</Button>}</>}</div>} />
         {review && <ReviewDialog key={review.report.id + ':' + review.decision} report={review.report} decision={review.decision} summary={summary} reloadUrl={scholarship.show_url} onClose={() => setReview(null)} />}
     </AdminLayout>;
 }

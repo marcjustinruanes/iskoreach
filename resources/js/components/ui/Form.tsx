@@ -29,8 +29,8 @@ export function Notice({ children }: { children: ReactNode }) {
 
 export function Section({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
     return <section className="rounded-lg border border-neutral-200 bg-white p-5 sm:p-6">
-        <h2 className="text-lg font-semibold leading-7 tracking-tight text-civic-ink">{title}</h2>
+        <div className="border-b border-civic-panel-strong pb-4"><h2 className="text-lg font-semibold leading-7 tracking-tight text-civic-ink">{title}</h2>
         {description && <p className="mt-2 max-w-prose text-sm leading-6 text-civic-muted">{description}</p>}
-        <div className="mt-6">{children}</div>
+        </div><div className="mt-5">{children}</div>
     </section>;
 }

@@ -1,14 +1,33 @@
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from '@headlessui/react';
-import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from '@inertiajs/react';
 import type { Paginated } from '../../types';
 import type { Key, ReactNode } from 'react';
 import { EmptyState, focusRing } from './DesignSystem';
 
-export function Pagination({ page, label }: { page: Pick<Paginated<unknown>, 'current_page' | 'last_page' | 'prev_page_url' | 'next_page_url' | 'total'>; label: string }) {
+type PaginationData = Pick<Paginated<unknown>, 'current_page' | 'last_page' | 'prev_page_url' | 'next_page_url' | 'total' | 'first_page_url' | 'last_page_url' | 'from' | 'to' | 'links'>;
+
+export function Pagination({ page, label, preserveScroll = true }: { page: PaginationData; label: string; preserveScroll?: boolean }) {
     if (page.last_page <= 1) return null;
-    return <nav aria-label={label} className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-neutral-200 pt-4 text-sm"><span className="text-civic-muted">Page {page.current_page} of {page.last_page} <span className="mx-1" aria-hidden="true">/</span> {page.total.toLocaleString()} records</span><div className="flex gap-3">{page.prev_page_url && <Link href={page.prev_page_url} preserveScroll className={'inline-flex min-h-11 items-center rounded-lg border border-neutral-200 bg-white px-3 font-semibold hover:bg-civic-panel text-civic-teal ' + focusRing}>Previous</Link>}{page.next_page_url && <Link href={page.next_page_url} preserveScroll className={'inline-flex min-h-11 items-center rounded-lg border border-neutral-200 bg-white px-3 font-semibold hover:bg-civic-panel text-civic-teal ' + focusRing}>Next</Link>}</div></nav>;
+    const current = page.current_page;
+    const numbers = page.last_page <= 5 ? Array.from({ length: page.last_page }, (_, index) => index + 1)
+        : [...new Set([1, current - 1, current, current + 1, page.last_page])].filter(number => number >= 1 && number <= page.last_page).sort((left, right) => left - right);
+    const urlFor = (number: number) => page.links?.find(link => Number(link.label) === number)?.url
+        ?? (number === 1 ? page.first_page_url : number === page.last_page ? page.last_page_url : null);
+    const control = 'inline-flex min-h-11 min-w-10 items-center justify-center gap-1 rounded-lg border border-neutral-200 bg-white px-2 text-sm font-semibold text-civic-navy hover:bg-civic-panel ' + focusRing;
+    return <nav aria-label={label} className="mt-6 flex flex-col gap-3 border-t border-civic-blue-gray pt-4 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
+        <p aria-live="polite" className="text-xs leading-5 text-civic-muted">{page.from != null && page.to != null ? <>Showing <strong className="font-semibold text-civic-navy">{page.from.toLocaleString()}-{page.to.toLocaleString()}</strong> of {page.total.toLocaleString()} records</> : <>{page.total.toLocaleString()} records</>}<span className="ml-2">Page {current} of {page.last_page}</span></p>
+        <div className="flex flex-wrap items-center gap-1">
+            {page.prev_page_url ? <Link aria-label="Previous page" href={page.prev_page_url} preserveScroll={preserveScroll} className={control}><ChevronLeft aria-hidden="true" className="size-4"/><span className="hidden sm:inline">Previous</span></Link> : <button type="button" aria-label="Previous page" disabled className={control+' cursor-not-allowed opacity-40'}><ChevronLeft aria-hidden="true" className="size-4"/><span className="hidden sm:inline">Previous</span></button>}
+            {numbers.map((number, index) => {
+                const url = urlFor(number);
+                const mobile = Math.abs(number-current) > 1 ? 'hidden sm:inline-flex ' : 'inline-flex ';
+                return <span key={number} className={mobile+'items-center gap-1'}>{index > 0 && number - numbers[index-1] > 1 && <span aria-hidden="true" className="hidden px-1 text-civic-muted sm:inline">...</span>}{number === current ? <span aria-current="page" aria-label={'Page '+number+', current page'} className="inline-flex min-h-11 min-w-10 items-center justify-center rounded-lg bg-civic-navy px-2 text-sm font-bold text-white">{number}</span> : url ? <Link aria-label={'Go to page '+number} href={url} preserveScroll={preserveScroll} className={control}>{number}</Link> : null}</span>;
+            })}
+            {page.next_page_url ? <Link aria-label="Next page" href={page.next_page_url} preserveScroll={preserveScroll} className={control}><span className="hidden sm:inline">Next</span><ChevronRight aria-hidden="true" className="size-4"/></Link> : <button type="button" aria-label="Next page" disabled className={control+' cursor-not-allowed opacity-40'}><span className="hidden sm:inline">Next</span><ChevronRight aria-hidden="true" className="size-4"/></button>}
+        </div>
+    </nav>;
 }
 
 export function Tabs({ items, selectedIndex, onChange }: { items: { id: string; label: string; content: ReactNode }[]; selectedIndex?: number; onChange?: (index: number) => void }) {

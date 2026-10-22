@@ -88,3 +88,60 @@
 
 /* A visible focus boundary on the dark role navigation. */
 nav[aria-label="Student navigation"] a:focus-visible, nav[aria-label="Provider navigation"] a:focus-visible, nav[aria-label="Administrative navigation"] a:focus-visible { outline-color: #fbad23; }
+
+/* Desktop collapse preserves a usable icon rail; mobile drawers keep full labels. */
+@media (min-width: 1024px) {
+    .workspace-sidebar[data-collapsed=true] { width: 5rem; }
+    .workspace-sidebar[data-collapsed=true] .brand-wordmark,
+    .workspace-sidebar[data-collapsed=true] nav > div > p,
+    .workspace-sidebar[data-collapsed=true] nav a > span,
+    .workspace-sidebar[data-collapsed=true] [data-sidebar-footer] > span { display: none; }
+    .workspace-sidebar[data-collapsed=true] [data-sidebar-brand],
+    .workspace-sidebar[data-collapsed=true] nav a,
+    .workspace-sidebar[data-collapsed=true] [data-sidebar-footer] { justify-content: center; gap: 0; padding-inline: 0; }
+}
+
+@media (min-width: 1024px) {
+    .workspace-sidebar[data-collapsed=true] .sidebar-account-copy { display: none; }
+    .workspace-sidebar[data-collapsed=true] .sidebar-account-identity,
+    .workspace-sidebar[data-collapsed=true] .sidebar-sign-out { justify-content: center; gap: 0; padding-inline: 0; }
+}
+.sidebar-sign-out:focus-visible { outline-color: #fca5a5; }
+
+/* Dashboard data visuals use the same accessible labels as their linked lists. */
+.dashboard-discovery label { color: #fff; }
+.dashboard-discovery input::placeholder { color: #566e87; }
+.dashboard-distribution { appearance: none; border: 0; background: #edf2f5; }
+.dashboard-distribution::-webkit-progress-bar { background: #edf2f5; }
+.dashboard-distribution::-webkit-progress-value { background: currentColor; }
+.dashboard-distribution::-moz-progress-bar { background: currentColor; }
+
+.profile-page-fields fieldset { border: 0; padding-top: 0; }
+.profile-page-fields legend { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+@media (min-width: 640px) {
+    .profile-page-fields #academic, .profile-page-fields #address { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1rem; }
+    .profile-page-fields #academic > *, .profile-page-fields #address > * { margin-block: 0; }
+    .profile-page-fields #academic > .grid,
+    .profile-page-fields #academic > div:has(input[name=course]),
+    .profile-page-fields #address > div:has(input[name=street_address]),
+    .profile-page-fields #address > [role=alert],
+    .profile-page-fields #address > p { grid-column: 1 / -1; }
+}
+
+/* Shared section hierarchy and compact navigation. */
+.civic-card > h2:first-child,
+.civic-card > h3:first-child {
+    border-bottom: 1px solid var(--color-civic-panel-strong, #dce3e9);
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+}
+.sidebar-navigation :is(a, button):focus-visible { outline-color: #fbad23; }
+@media (min-width: 1024px) {
+    .workspace-sidebar[data-collapsed=true] .sidebar-nav-copy { display: none; }
+    .workspace-sidebar[data-collapsed=true] .sidebar-navigation button {
+        justify-content: center;
+        gap: 0;
+        padding-inline: 0;
+    }
+}

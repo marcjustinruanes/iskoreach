@@ -9,12 +9,12 @@ export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'outl
 const variants: Record<ButtonVariant, string> = {
     primary: 'bg-civic-navy text-white hover:bg-civic-navy-soft',
     secondary: 'bg-civic-gold text-civic-navy hover:bg-civic-gold-soft',
-    ghost: 'text-civic-muted hover:bg-civic-panel',
+    ghost: 'text-civic-navy hover:bg-civic-panel',
     danger: 'bg-civic-danger text-white hover:bg-red-950',
     outline: 'border border-civic-border bg-white text-civic-ink hover:bg-civic-panel',
 };
 export function buttonStyles(variant: ButtonVariant = 'primary', size: 'sm' | 'md' | 'lg' = 'md') {
-    return ['inline-flex items-center justify-center gap-2 rounded-lg text-sm font-semibold leading-5 disabled:cursor-not-allowed disabled:opacity-50', focusRing, motion, variants[variant], size === 'lg' ? 'min-h-12 px-6 py-3.5' : size === 'sm' ? 'min-h-11 px-3 py-2' : 'min-h-11 px-5 py-3'].join(' ');
+    return ['inline-flex items-center justify-center gap-2 rounded-lg text-sm font-semibold leading-5 active:translate-y-px motion-reduce:active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50', focusRing, motion, variants[variant], size === 'lg' ? 'min-h-12 px-6 py-3.5' : size === 'sm' ? 'min-h-11 px-3 py-2' : 'min-h-11 px-5 py-3'].join(' ');
 }
 export function Button({ variant = 'primary', size = 'md', loading = false, children, className = '', disabled, type = 'button', ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant; size?: 'sm' | 'md' | 'lg'; loading?: boolean }) {
     return <button {...props} type={type} disabled={disabled || loading} aria-busy={loading || undefined} className={buttonStyles(variant, size) + ' ' + className}>
@@ -29,7 +29,7 @@ export function Input({ label, error, hint, id, className = '', ...props }: Inpu
     </div>;
 }
 export function Card({ className = '', ...props }: HTMLAttributes<HTMLDivElement>) {
-    return <div {...props} className={'rounded-lg border border-neutral-200 bg-white p-5 sm:p-6 ' + className} />;
+    return <div {...props} className={'civic-card rounded-lg border border-civic-panel-strong bg-white p-5 sm:p-6 ' + className} />;
 }
 export type BadgeTone = 'neutral' | 'blue' | 'indigo' | 'green' | 'amber' | 'red' | 'purple';
 export const badgeColors: Record<BadgeTone, string> = {

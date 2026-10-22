@@ -2,6 +2,7 @@ export type UserRole = 'student' | 'provider' | 'admin';
 export type ProviderVerificationStatus = 'pending' | 'approved' | 'rejected';
 
 export interface User {
+    photo_url?: string | null;
     id: number;
     name: string;
     email: string;
@@ -64,6 +65,11 @@ export interface Paginated<T> {
     data: T[];
     current_page: number;
     last_page: number;
+    first_page_url?: string;
+    last_page_url?: string;
+    from?: number | null;
+    to?: number | null;
+    links?: { url: string | null; label: string; active: boolean }[];
     prev_page_url: string | null;
     next_page_url: string | null;
     total: number;
@@ -71,11 +77,12 @@ export interface Paginated<T> {
 
 export interface AdminDashboardProps extends SharedProps {
     summary: {
-        applications: number; active_awards: number; pending_renewals: number; pending_releases: number;
+        pending_student_verifications: number; applications: number; active_awards: number; pending_renewals: number; pending_releases: number;
         scholarships: number; published_scholarships: number;
         students: number; providers: number; pending: number; approved: number; rejected: number;
         missing_provider_profiles: number; students_last_30_days: number; providers_last_30_days: number;
     };
+    reviewQueues: { providers: { id: number; label: string; created_at: string; url: string }[]; students: { id: number; label: string; created_at: string; url: string }[] };
     recentProviders: { id: number; organization_name: string | null; verification_status: ProviderVerificationStatus; created_at: string }[];
     recentActivity: { id: number; actor: string; action: string; reference: string; occurred_at: string }[];
     updatedAt: string;
@@ -105,6 +112,7 @@ export interface ApplicantCountSummary {
     latest_approved_id: number | null; review_token: string;
 }
 export interface ExternalCountReport {
+    import_summary?: {source_rows:number;unique_emails:number;duplicate_rows:number;internal_matches:number;external_count:number} | null;
     id: number; reported_count: number; corrected_count: number | null; source_label: string; source_as_of: string;
     reporter: string; status: 'pending' | 'approved' | 'rejected'; reviewer: string | null; reviewed_at: string | null;
     reason: string | null; correction_of_id: number | null; created_at: string; review_url?: string;

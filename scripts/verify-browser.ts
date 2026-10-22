@@ -155,7 +155,7 @@ try {
         const capture = await command('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
         await writeFile(join(screenshotDirectory, 'register-mobile.png'), Buffer.from(capture.data as string, 'base64'));
     }
-    if (process.env.QA_SYSTEM_UI_CHECK === 'true' || process.env.QA_ACCOUNT_ENHANCEMENTS_CHECK === 'true' || process.env.QA_STUDENT_CATALOG_CHECK === 'true' || process.env.QA_LOGOUT_CHECK === 'true' || process.env.QA_STUDENT_REGISTRATION_CHECK === 'true' || process.env.QA_WORKFLOW_COMPLETION_CHECK === 'true' || process.env.QA_INPUT_VALIDATION_CHECK === 'true' || process.env.QA_ACADEMIC_TERMS_CHECK === 'true' || process.env.QA_PUBLIC_SITE_CHECK === 'true' || process.env.QA_LOGIN_REDIRECT_CHECK === 'true' || process.env.QA_STUDENT_STAGE1_CHECK === 'true' || process.env.QA_LOCATION_CHECK === 'true' || process.env.QA_HIDDEN_SCROLLBARS_CHECK === 'true' || process.env.QA_PROVIDER_UX_CHECK === 'true' || process.env.QA_BENEFITS_CHECK === 'true' || process.env.QA_RENEWALS_CHECK === 'true' || process.env.QA_CHAT_CHECK === 'true' || process.env.QA_NOTIFICATIONS_CHECK === 'true' || process.env.QA_PRIVATE_DOCUMENTS_CHECK === 'true' || process.env.QA_APPLICATION_WORKFLOW_CHECK === 'true' || process.env.QA_SCHOLARSHIP_MANAGEMENT_CHECK === 'true' || process.env.QA_PROVIDER_STAGE2_CHECK === 'true' || process.env.QA_AUTH_CHECK === 'true' || process.env.QA_SCHOLARSHIP_READONLY_CHECK === 'true' || process.env.QA_APPLICANT_COUNTS_CHECK === 'true' || process.env.QA_AWARD_STAGE6_CHECK === 'true' || process.env.QA_ADMIN_LAYOUT_CHECK === 'true' || process.env.QA_SIDEBAR_MOTION_CHECK === 'true' || process.env.QA_PROVIDER_STAGE1_CHECK === 'true') {
+    if (process.env.QA_AUDIT_CORRECTION_CHECK === 'true' || process.env.QA_PROFILE_PAGES_CHECK === 'true' || process.env.QA_PAGINATION_CHECK === 'true' || process.env.QA_DASHBOARD_REDESIGN_CHECK === 'true' || process.env.QA_SIDEBAR_RAIL_CHECK === 'true' || process.env.QA_DEMO_PROVIDERS_CHECK === 'true' || process.env.QA_SYSTEM_UI_CHECK === 'true' || process.env.QA_ACCOUNT_ENHANCEMENTS_CHECK === 'true' || process.env.QA_STUDENT_CATALOG_CHECK === 'true' || process.env.QA_LOGOUT_CHECK === 'true' || process.env.QA_STUDENT_REGISTRATION_CHECK === 'true' || process.env.QA_WORKFLOW_COMPLETION_CHECK === 'true' || process.env.QA_INPUT_VALIDATION_CHECK === 'true' || process.env.QA_ACADEMIC_TERMS_CHECK === 'true' || process.env.QA_PUBLIC_SITE_CHECK === 'true' || process.env.QA_LOGIN_REDIRECT_CHECK === 'true' || process.env.QA_STUDENT_STAGE1_CHECK === 'true' || process.env.QA_LOCATION_CHECK === 'true' || process.env.QA_HIDDEN_SCROLLBARS_CHECK === 'true' || process.env.QA_PROVIDER_UX_CHECK === 'true' || process.env.QA_BENEFITS_CHECK === 'true' || process.env.QA_RENEWALS_CHECK === 'true' || process.env.QA_CHAT_CHECK === 'true' || process.env.QA_NOTIFICATIONS_CHECK === 'true' || process.env.QA_PRIVATE_DOCUMENTS_CHECK === 'true' || process.env.QA_APPLICATION_WORKFLOW_CHECK === 'true' || process.env.QA_SCHOLARSHIP_MANAGEMENT_CHECK === 'true' || process.env.QA_PROVIDER_STAGE2_CHECK === 'true' || process.env.QA_AUTH_CHECK === 'true' || process.env.QA_SCHOLARSHIP_READONLY_CHECK === 'true' || process.env.QA_APPLICANT_COUNTS_CHECK === 'true' || process.env.QA_AWARD_STAGE6_CHECK === 'true' || process.env.QA_ADMIN_LAYOUT_CHECK === 'true' || process.env.QA_SIDEBAR_MOTION_CHECK === 'true' || process.env.QA_PROVIDER_STAGE1_CHECK === 'true') {
         const fill = async (selector: string, value: string) => {
             await evaluate('document.querySelector(' + JSON.stringify(selector) + ').focus()');
             await command('Input.insertText', { text: value });
@@ -177,16 +177,20 @@ try {
             await evaluate("document.querySelector('form').requestSubmit()");
             await waitFor('document.querySelector(\'h1\')?.textContent === ' + JSON.stringify(heading));
         };
+        const openSignOut = async () => {
+            const visibleButton = "[...document.querySelectorAll('button')].find(button=>(button.getAttribute('aria-label')==='Sign out' || button.textContent.trim()==='Log out') && button.getBoundingClientRect().width>0)";
+            if (!await evaluate('Boolean('+visibleButton+')')) {
+                await evaluate("[...document.querySelectorAll('button')].find(button=>/^Open .*navigation$/.test(button.getAttribute('aria-label')||'')).click()");
+                await waitFor("document.querySelector('[role=dialog] button[aria-label=\"Sign out\"]') !== null");
+            }
+            await evaluate(visibleButton+'.click()');
+        };
         const logout = async () => {
             if (await evaluate("document.querySelector('header a[href=\"/dashboard\"]') !== null")) {
                 await evaluate("document.querySelector('header a[href=\"/dashboard\"]').click()");
-                await waitFor("[...document.querySelectorAll('button')].some(button => button.textContent.includes('Account menu'))");
+                await waitFor("document.querySelector('button[aria-label=\"Sign out\"]') !== null");
             }
-            if (!await evaluate("[...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Log out')")) {
-                await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.includes('Account menu')).click()");
-                await waitFor("[...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Log out')");
-            }
-            await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Log out').click()");
+            await openSignOut();
             await waitFor("document.querySelector('[role=dialog]')?.textContent.includes('Would you like to sign out?')");
             for (const width of [320, 768, 1440]) {
                 await command('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 768 });
@@ -202,14 +206,294 @@ try {
             await evaluate("[...document.querySelectorAll('[role=dialog] button')].find(button => button.textContent.trim() === 'Stay signed in').click()");
             await waitFor("document.querySelector('[role=dialog]') === null");
             assert.equal(await evaluate('location.pathname'), beforeCancel, 'Cancelling sign out keeps the session and page');
-            await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.includes('Account menu')).click()");
-            await waitFor("[...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Log out')");
-            await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Log out').click()");
+            await openSignOut();
             await waitFor("document.querySelector('[role=dialog]')?.textContent.includes('Would you like to sign out?')");
             await evaluate("[...document.querySelectorAll('[role=dialog] button')].find(button => button.textContent.trim() === 'Yes, sign out').click()");
             await waitFor("document.querySelector('h1')?.textContent.includes('Find scholarships.')");
         };
-        if (process.env.QA_SYSTEM_UI_CHECK === 'true') {
+        if (process.env.QA_AUDIT_CORRECTION_CHECK === 'true') {
+            assert.ok(process.env.QA_REGISTRATION_DB?.includes('iskoreach-registration-'));
+            const applicationId = await new Promise<number>((resolve, reject) => {
+                const php = spawn('php', [], { windowsHide:true, env:{...process.env,DB_CONNECTION:'sqlite',DB_DATABASE:process.env.QA_REGISTRATION_DB,DB_URL:'',APP_URL:appUrl,DOCUMENT_STORAGE_ROOT:process.env.QA_REGISTRATION_DB+'-documents'},stdio:['pipe','pipe','pipe'] });
+                let output=''; let error=''; php.stdout.on('data',chunk=>output+=chunk); php.stderr.on('data',chunk=>error+=chunk);
+                php.on('close',code=>code===0?resolve(Number(output.trim())):reject(new Error(error)));
+                php.stdin.end(`<?php
+require 'vendor/autoload.php'; $app=require 'bootstrap/app.php'; $app->make(Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap();
+if(config('database.default')!=='sqlite'||!str_contains(config('database.connections.sqlite.database'),'iskoreach-registration-'))throw new RuntimeException('Isolated database required.');
+$student=App\\Models\\User::where('email','logout-student@iskoreach.test')->firstOrFail();
+$provider=App\\Models\\User::where('email','logout-provider@iskoreach.test')->firstOrFail();
+$program=App\\Models\\Scholarship::factory()->create(['provider_id'=>$provider->providerProfile->id,'title'=>'QA document correction browser check','status'=>'published','published_at'=>now()]);
+$rule=App\\Models\\ScholarshipRequirement::factory()->create(['scholarship_id'=>$program->id,'name'=>'Current COR','requirement_stage'=>'application','allowed_mime_types'=>['image/png'],'max_size_kb'=>1024]);
+$item=App\\Models\\Application::factory()->create(['scholarship_id'=>$program->id,'student_id'=>$student->id,'status'=>'under_review']);
+$source=app(App\\Services\\PrivateDocuments::class)->upload($student,Illuminate\\Http\\UploadedFile::fake()->image('unclear.png'),'Enrollment proof');
+$attachment=App\\Models\\ApplicationDocument::create(['application_id'=>$item->id,'scholarship_requirement_id'=>$rule->id,'student_document_id'=>$source->id,'version'=>1,'checklist_completed_at'=>now(),'requirement_snapshot'=>$rule->toArray()]);
+$attachment->forceFill(['submitted_at'=>now(),'review_status'=>'rejected','review_notes'=>'Please upload a clear current COR'])->save(); echo $item->id;`);
+            });
+            assert.ok(applicationId>0);
+            await login('logout-student','Your student account');
+            await command('Page.navigate',{url:appUrl+'/student/applications/'+applicationId});
+            await waitFor("document.querySelector('h1')?.textContent === 'Application details' && document.body.textContent.includes('Please upload a clear current COR')");
+            assert.equal(await evaluate("document.body.textContent.includes('Document review and corrections') && document.body.textContent.includes('Resubmit correction')"),true);
+            for(const width of [320,768,1440]) {
+                await command('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:1,mobile:width<768});
+                assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'),true);
+                await screenshot('audit-document-correction-'+width);
+            }
+            const png=await evaluate("(()=>{const canvas=document.createElement('canvas');canvas.width=128;canvas.height=128;canvas.getContext('2d').fillRect(0,0,128,128);return canvas.toDataURL('image/png').split(',')[1]})()") as string;
+            const file=join(profile,'corrected-cor.png'); await writeFile(file,Buffer.from(png,'base64'));
+            const document=await command('DOM.getDocument'); const node=await command('DOM.querySelector',{nodeId:(document.root as {nodeId:number}).nodeId,selector:'main input[type=file]'});
+            await command('DOM.setFileInputFiles',{nodeId:node.nodeId,files:[file]});
+            await evaluate("document.querySelector('main input[type=file]').closest('form').querySelector('input[type=checkbox]').click()");
+            await evaluate("document.querySelector('main input[type=file]').closest('form').requestSubmit()");
+            await waitFor("document.body.textContent.includes('Document uploaded and attached to this application.') && document.body.textContent.includes('corrected-cor.png')");
+            assert.equal(await evaluate("document.body.textContent.includes('Under review') && !document.body.textContent.includes('Resubmit correction')"),true);
+            await logout();
+            await login('logout-student','Your student account');
+            await command('Page.navigate',{url:appUrl+'/student/email-code'});
+            await waitFor("document.querySelector('h1')?.textContent === 'Verify your email with a code'");
+            assert.equal(await evaluate("Boolean(document.querySelector('#student-sidebar')) && !document.querySelector('nav[aria-label=\"Public navigation\"]')"),true);
+            assert.equal(await evaluate("Boolean(document.querySelector('main a[href=\"/student/profile#verification\"]'))"),true);
+            await logout();
+            console.log('PASS: rejected-document feedback and real correction upload from application details, pending-review status, mobile/tablet/desktop layouts and student email-code workspace routing.');
+        } else if (process.env.QA_PROFILE_PAGES_CHECK === 'true') {
+            await login('logout-student','Your student account');
+            const go=async(path:string)=>{await command('Page.navigate',{url:appUrl+path});await waitFor("document.querySelector('h1')?.textContent==='My Profile'");};
+            const setValue=async(selector:string,value:string)=>{await evaluate(`(() => {const field=document.querySelector(${JSON.stringify(selector)});Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(field,${JSON.stringify(value)});field.dispatchEvent(new Event('input',{bubbles:true}));})()`);};
+            const profilePage=async(label:string)=>{await evaluate(`[...document.querySelectorAll('nav[aria-label="Profile pages"] button')].find(button=>button.textContent.includes(${JSON.stringify(label)})).click()`);await waitFor(`document.querySelector('nav[aria-label="Profile pages"] [aria-current=page]').textContent.includes(${JSON.stringify(label)})`);};
+            const responsive=async(name:string)=>{for(const width of [320,768,1440]){await command('Emulation.setDeviceMetricsOverride',{width,height:1000,deviceScaleFactor:1,mobile:width<768});assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'),true,name+' fits '+width);await screenshot(name+'-'+width);}};
+            await go('/student/profile#personal');
+            assert.equal(await evaluate("document.querySelector('input[name=first_name]').getBoundingClientRect().height>0 && document.querySelector('input[name=school]')===null"),true,'Only one profile section is shown');
+            const contact=await evaluate("document.querySelector('input[name=contact_number]').value") as string;
+            await setValue('input[name=contact_number]','+');
+            await profilePage('Academic');
+            const school='QA Profile Pages '+Date.now();
+            await setValue('input[name=school]',school);
+            await profilePage('Personal');
+            assert.equal(await evaluate("document.querySelector('input[name=contact_number]').value"),'+','Edits survive profile pagination');
+            await profilePage('Academic');
+            assert.equal(await evaluate("document.querySelector('input[name=school]').value"),school);
+            await evaluate("document.querySelector('form[aria-label=\"Student profile\"]').requestSubmit()");
+            await waitFor("document.querySelector('nav[aria-label=\"Profile pages\"] [aria-current=page]').textContent.includes('Personal') && document.querySelector('input[name=contact_number][aria-invalid=true]')!==null");
+            await setValue('input[name=contact_number]',contact);
+            await evaluate("document.querySelector('form[aria-label=\"Student profile\"]').requestSubmit()");
+            await waitFor("document.body.textContent.includes('Your profile has been saved.')");
+            await go('/student/profile#academic');
+            await waitFor("document.querySelector('input[name=school]')!==null");
+            assert.equal(await evaluate("document.querySelector('input[name=school]').value"),school,'Saved edits persist in the database');
+            for(const label of ['Personal','Academic','Address','Verification']){await profilePage(label);await responsive('profile-page-'+label.toLowerCase());}
+            const image=await evaluate("(()=>{const canvas=document.createElement('canvas');canvas.width=128;canvas.height=128;canvas.getContext('2d').fillRect(0,0,128,128);return canvas.toDataURL('image/png').split(',')[1];})()") as string;
+            const photoPath=join(profile,'profile-pages-picture.png');await writeFile(photoPath,Buffer.from(image,'base64'));
+            const root=await command('DOM.getDocument');const node=await command('DOM.querySelector',{nodeId:(root.root as {nodeId:number}).nodeId,selector:'input[name=photo]'});await command('DOM.setFileInputFiles',{nodeId:node.nodeId,files:[photoPath]});
+            await waitFor("document.querySelector('#verification img')?.src.startsWith('blob:')");
+            await profilePage('Address');await profilePage('Verification');
+            assert.equal(await evaluate("document.querySelector('#verification img').src.startsWith('blob:')"),true,'Picture preview survives pagination');
+            await evaluate("[...document.querySelectorAll('#verification button')].find(button=>button.textContent==='Save picture').click()");
+            await waitFor("document.body.textContent.includes('Profile picture saved.')");
+            await evaluate("[...document.querySelectorAll('#verification button')].find(button=>button.textContent==='Remove picture').click()");
+            await waitFor("document.querySelector('[role=dialog]')?.textContent.includes('Remove profile picture?')");
+            assert.equal(await evaluate("[...document.querySelectorAll('[role=dialog] button')].find(button=>button.textContent==='Confirm removal').classList.contains('bg-civic-danger')"),true,'Destructive confirmation uses red');
+            await evaluate("[...document.querySelectorAll('[role=dialog] button')].find(button=>button.textContent==='Confirm removal').click()");
+            await waitFor("!document.querySelector('#verification img')");
+            await command('Page.navigate',{url:appUrl+'/student/scholarships/qa-card-alignment-long-title'});
+            await waitFor("document.querySelector('h1')?.textContent.includes('Accessible learning materials')");
+            await responsive('scholarship-detail-sections');
+            await evaluate("[...document.querySelectorAll('[role=tab]')].find(tab=>tab.textContent.startsWith('Renewal')).click()");
+            await waitFor("document.querySelector('[role=tab][aria-selected=true]')?.textContent.startsWith('Renewal')");
+            assert.equal(await evaluate("[...document.querySelectorAll('[role=tabpanel]')].filter(panel=>panel.getBoundingClientRect().height>0).some(panel=>panel.textContent.includes('QA Renewal Grades'))"),true);
+            await command('Network.emulateNetworkConditions',{offline:true,latency:0,downloadThroughput:0,uploadThroughput:0});await waitFor('navigator.onLine===false');
+            await evaluate("[...document.querySelectorAll('button')].find(button=>button.textContent==='Prepare application').click()");
+            await waitFor("[...document.querySelectorAll('[role=alert]')].some(item=>item.textContent.includes('offline'))");
+            await command('Network.emulateNetworkConditions',{offline:false,latency:0,downloadThroughput:-1,uploadThroughput:-1});await waitFor('navigator.onLine===true');
+            await evaluate("[...document.querySelectorAll('button')].find(button=>button.textContent==='Prepare application').click()");
+            await waitFor("location.pathname.startsWith('/student/applications/') && document.querySelector('h1')?.textContent==='Application details'");
+            await command('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
+            await logout();
+            console.log('PASS: four profile pages, retained edits/files, saved database updates, automatic error-page selection, private photo upload/removal, deep links, semantic button colors, scholarship document tabs, application creation/offline feedback and 320/768/1440px layouts.');
+        } else if (process.env.QA_PAGINATION_CHECK === 'true') {
+            await login('logout-student','Your student account');
+            assert.equal(await evaluate("document.querySelector('[data-sidebar-summary]')===null"),true,'Workspace banner removed');
+            await command('Page.navigate',{url:appUrl+'/student/scholarships?q=QA'});
+            await waitFor("document.querySelector('nav[aria-label=\"Scholarship result pages\"] [aria-current=page]') !== null");
+            assert.equal(await evaluate("document.querySelectorAll('[data-scholarship-card]').length"),6);
+            const nav='nav[aria-label="Scholarship result pages"]';
+            assert.equal(await evaluate(`document.querySelector('${nav} button[aria-label="Previous page"]').disabled`),true);
+            for(const width of [320,768,1440]) {await command('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:1,mobile:width<768});assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'),true,'Pagination fits '+width);await screenshot('pagination-scholarships-'+width);}
+            await evaluate(`document.querySelector('${nav} a[aria-label="Go to page 2"]').click()`);
+            await waitFor("new URLSearchParams(location.search).get('page')==='2' && document.querySelector('nav[aria-label=\"Scholarship result pages\"] [aria-current=page]')?.textContent==='2'");
+            assert.equal(await evaluate("new URLSearchParams(location.search).get('q')"),'QA','Search survives page change');
+            assert.equal(await evaluate("document.querySelectorAll('[data-scholarship-card]').length<=6"),true);
+            assert.equal(await evaluate(`document.querySelector('${nav} button[aria-label="Next page"]').disabled`),true,'Last-page next is disabled');
+            await evaluate(`document.querySelector('${nav} a[aria-label="Go to page 1"]').click()`);
+            await waitFor("document.querySelector('nav[aria-label=\"Scholarship result pages\"] [aria-current=page]')?.textContent==='1'");
+            await logout();
+            await login('logout-provider','Your provider account');
+            assert.equal(await evaluate("document.querySelector('[data-sidebar-summary]')===null"),true);
+            await logout();
+            await login('logout-admin','Dashboard');
+            assert.equal(await evaluate("document.querySelector('[data-sidebar-summary]')===null"),true);
+            await command('Page.navigate',{url:appUrl+'/admin/users?role=student'});
+            await waitFor("document.querySelector('nav[aria-label=\"Account list pages\"]')!==null || document.querySelector('main a[aria-label=\"Go to page 2\"]')!==null");
+            await evaluate("document.querySelector('main a[aria-label=\"Go to page 2\"]').click()");
+            await waitFor("new URLSearchParams(location.search).get('page')==='2'");
+            assert.equal(await evaluate("new URLSearchParams(location.search).get('role')"),'student','Role filter survives pagination');
+            await command('Page.navigate',{url:appUrl+'/admin/users?q=logout-provider'});
+            await waitFor("[...document.querySelectorAll('main a')].some(link=>/\\/admin\\/users\\/\\d+$/.test(new URL(link.href).pathname))");
+            const account=await evaluate("[...document.querySelectorAll('main a')].find(link=>/\\/admin\\/users\\/\\d+$/.test(new URL(link.href).pathname)).href") as string;
+            await command('Page.navigate',{url:account+'?source=pagination-check'});
+            await waitFor("document.querySelector('nav[aria-label=\"Account activity pages\"] a[aria-label=\"Go to page 2\"]')!==null");
+            const activity='nav[aria-label="Account activity pages"]';
+            const href=await evaluate(`document.querySelector('${activity} a[aria-label="Go to page 2"]').href`) as string;
+            assert.equal(new URL(href).searchParams.get('activity_page'),'2');
+            assert.equal(new URL(href).searchParams.get('source'),'pagination-check');
+            await evaluate(`document.querySelector('${activity} a[aria-label="Go to page 2"]').click()`);
+            await waitFor("new URLSearchParams(location.search).get('activity_page')==='2' && document.querySelector('nav[aria-label=\"Account activity pages\"] [aria-current=page]')?.textContent==='2'");
+            await logout();
+            console.log('PASS: numbered pages, current-page indicators, disabled boundaries, six scholarships per page, preserved search/role filters, custom activity_page URLs, mobile layouts and removed workspace banners.');
+        } else if (process.env.QA_DASHBOARD_REDESIGN_CHECK === 'true') {
+            for (const [role,heading] of [['student','Your student account'],['provider','Your provider account'],['admin','Dashboard']]) {
+                await command('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
+                await login('logout-'+role,heading);
+                for (const width of [320,375,768,1024,1440,1920]) {
+                    await command('Emulation.setDeviceMetricsOverride',{width,height:1000,deviceScaleFactor:1,mobile:width<768});
+                    await delay(250);
+                    assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'),true,role+' dashboard fits '+width);
+                    assert.equal(await evaluate("[...document.querySelectorAll('main input:not([type=hidden])')].every(input=>input.labels.length>0)"),true,'Dashboard inputs have labels');
+                    await screenshot(role+'-dashboard-redesign-'+width);
+                }
+                const destinations=await evaluate("[...new Set([...document.querySelectorAll('main a[href]')].map(link=>link.href))]") as string[];
+                for (const href of destinations) {
+                    assert.equal(new URL(href).origin,new URL(appUrl).origin,'Dashboard action stays in IskoReach');
+                    const status=await evaluate('fetch('+JSON.stringify(href)+",{cache:'no-store'}).then(response=>response.status)");
+                    assert.equal(status,200,role+' action opens: '+new URL(href).pathname);
+                }
+                if (await evaluate("document.querySelector('button[aria-pressed]') !== null")) {
+                    await evaluate("[...document.querySelectorAll('button[aria-pressed]')].find(button=>button.textContent==='Percentages').click()");
+                    await waitFor("[...document.querySelectorAll('button[aria-pressed=true]')].some(button=>button.textContent==='Percentages')");
+                    assert.equal(await evaluate("[...document.querySelectorAll('main .dashboard-distribution')].every(progress=>progress.previousElementSibling.lastElementChild.textContent===Math.round(progress.value/progress.max*100)+'%')"),true,'Chart percentages use the actual recorded counts');
+                    await evaluate("[...document.querySelectorAll('button[aria-pressed]')].find(button=>button.textContent==='Counts').click()");
+                }
+                if(role==='student') {
+                    await fill('main input[name=q]','QA Education');
+                    await command('Network.emulateNetworkConditions',{offline:true,latency:0,downloadThroughput:0,uploadThroughput:0});
+                    await waitFor('navigator.onLine===false');
+                    await evaluate("document.querySelector('main form').requestSubmit()");
+                    await waitFor("[...document.querySelectorAll('[role=alert]')].some(item=>item.textContent.includes('offline'))");
+                    await command('Network.emulateNetworkConditions',{offline:false,latency:0,downloadThroughput:-1,uploadThroughput:-1});
+                    await waitFor('navigator.onLine===true');
+                    await evaluate("document.querySelector('main form').requestSubmit()");
+                    await waitFor("location.pathname==='/student/scholarships' && location.search.includes('QA')");
+                }
+                if(role==='provider') {
+                    await command('Page.navigate',{url:appUrl+'/provider/workspace'});
+                    await waitFor("document.querySelector('h1')?.textContent==='Provider workspace'");
+                    for(const width of [320,768,1440]) {await command('Emulation.setDeviceMetricsOverride',{width,height:1000,deviceScaleFactor:1,mobile:width<768});assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'),true);await screenshot('provider-workbench-'+width);}
+                }
+                await logout();
+                console.log('PASS: '+role+' dashboard responsive composition, real data rendering, all quick-action destinations and interactions.');
+            }
+        } else if (process.env.QA_SIDEBAR_RAIL_CHECK === 'true') {
+            for (const [role, heading] of [['student','Your student account'],['provider','Your provider account'],['admin','Dashboard']]) {
+                await command('Emulation.setDeviceMetricsOverride',{width:1440,height:600,deviceScaleFactor:1,mobile:false});
+                await login('logout-'+role,heading);
+                const selector='#'+role+'-sidebar';
+                if(await evaluate("document.querySelector('button[aria-label=\"Expand sidebar\"]') !== null")) await evaluate("document.querySelector('button[aria-label=\"Expand sidebar\"]').click()");
+                await waitFor(`getComputedStyle(document.querySelector('${selector}')).width === '240px'`);
+                assert.equal(await evaluate("document.querySelector('header button[aria-label=\"Sign out\"]') === null"),true,'No sign out in the top header');
+                const groupButtons=await evaluate(`document.querySelectorAll('${selector} nav button[aria-expanded]').length`) as number;
+                assert.ok(groupButtons >= 3, 'Related tools use expandable groups');
+                await evaluate(`[...document.querySelectorAll('${selector} nav button[aria-expanded=false]')].forEach(button=>button.click())`);
+                await waitFor(`[...document.querySelectorAll('${selector} nav button[aria-expanded]')].every(button=>button.getAttribute('aria-expanded')==='true')`);
+                const footerBefore=await evaluate(`document.querySelector('${selector} [data-sidebar-account]').getBoundingClientRect().top`);
+                assert.equal(await evaluate(`(() => { const scroll=document.querySelector('${selector} [data-sidebar-scroll]'); scroll.scrollTop=scroll.scrollHeight; return scroll.scrollTop>0; })()`),true,'Navigation scrolls independently');
+                assert.equal(await evaluate(`document.querySelector('${selector} [data-sidebar-account]').getBoundingClientRect().top`),footerBefore,'Account footer does not scroll away');
+                assert.equal(await evaluate(`(() => { const box=document.querySelector('${selector} .sidebar-sign-out').getBoundingClientRect(); return box.top>=0 && box.bottom<=innerHeight; })()`),true,'Sign out remains fully visible');
+                await evaluate("document.querySelector('button[aria-label=\"Collapse sidebar\"]').focus()");
+                await command('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',text:'\r',unmodifiedText:'\r',windowsVirtualKeyCode:13});
+                await command('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
+                await waitFor(`getComputedStyle(document.querySelector('${selector}')).width === '80px'`);
+                assert.equal(await evaluate(`document.querySelector('${selector}').inert`),false,'Collapsed icons remain interactive');
+                assert.equal(await evaluate(`getComputedStyle(document.querySelector('${selector} .brand-wordmark')).display`),'none');
+                assert.equal(await evaluate(`document.querySelector('${selector} img').getBoundingClientRect().width > 0`),true,'Logo remains visible');
+                assert.equal(await evaluate(`[...document.querySelectorAll('${selector} nav a')].filter(link=>link.getBoundingClientRect().width>0).every(link=>link.getAttribute('aria-label') && link.title && link.querySelector('svg').getBoundingClientRect().width > 0 && getComputedStyle(link.querySelector('span')).display === 'none')`),true,'Icons have names and tooltips while words are hidden');
+                assert.equal(await evaluate("document.documentElement.scrollWidth <= innerWidth"),true);
+                await screenshot(role+'-icon-rail');
+                await evaluate(`document.querySelector('${selector} nav button[aria-expanded]').click()`);
+                await waitFor(`getComputedStyle(document.querySelector('${selector}')).width === '240px' && document.querySelector('${selector} nav button[aria-expanded]').getAttribute('aria-expanded') === 'true'`);
+                const groupedTarget = await evaluate(`document.getElementById(document.querySelector('${selector} nav button[aria-expanded]').getAttribute('aria-controls')).querySelector('a').pathname`);
+                await evaluate(`document.getElementById(document.querySelector('${selector} nav button[aria-expanded]').getAttribute('aria-controls')).querySelector('a').click()`);
+                await waitFor('location.pathname === '+JSON.stringify(groupedTarget));
+                await delay(400);
+                await waitFor(`document.querySelector('${selector} nav a[aria-current=page]') !== null`);
+                await command('Page.reload');
+                await delay(700);
+                await delay(700);
+                await waitFor(`document.querySelector('${selector} nav a[aria-current=page]')?.getBoundingClientRect().width > 0`);
+                await evaluate("document.querySelector('button[aria-label=\"Collapse sidebar\"]').click()");
+                await waitFor(`getComputedStyle(document.querySelector('${selector}')).width === '80px'`);
+                const next=await evaluate(`document.querySelectorAll('${selector} nav a')[1].getAttribute('href')`) as string;
+                await evaluate(`document.querySelectorAll('${selector} nav a')[1].click()`);
+                await waitFor('location.pathname === '+JSON.stringify(new URL(next,appUrl).pathname));
+                await command('Page.reload');
+                await delay(700);
+                await waitFor(`document.querySelector('${selector}[data-collapsed=true]') !== null && getComputedStyle(document.querySelector('${selector}')).width === '80px'`);
+                await command('Emulation.setDeviceMetricsOverride',{width:375,height:600,deviceScaleFactor:1,mobile:true});
+                await evaluate(`document.querySelector('button[aria-label="Open ${role} navigation"]').click()`);
+                await waitFor("document.querySelector('[role=dialog]') !== null");
+                assert.equal(await evaluate("[...document.querySelectorAll('[role=dialog] nav a')].every(link=>getComputedStyle(link.querySelector('span')).display !== 'none')"),true,'Mobile drawer keeps readable labels');
+                const mobileFooter=await evaluate("document.querySelector('[role=dialog] [data-sidebar-account]').getBoundingClientRect().top");
+                await evaluate("document.querySelector('[role=dialog] nav').parentElement.parentElement.scrollTop=10000");
+                assert.equal(await evaluate("document.querySelector('[role=dialog] [data-sidebar-account]').getBoundingClientRect().top"),mobileFooter,'Mobile account footer stays pinned');
+                assert.equal(await evaluate("document.querySelector('[role=dialog] button[aria-label=\"Sign out\"]').getBoundingClientRect().bottom<=innerHeight"),true);
+                await command('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+                await command('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+                await waitFor("document.querySelector('[role=dialog]') === null");
+                await command('Emulation.setDeviceMetricsOverride',{width:1440,height:600,deviceScaleFactor:1,mobile:false});
+                await evaluate("document.querySelector('button[aria-label=\"Expand sidebar\"]').click()");
+                await waitFor(`getComputedStyle(document.querySelector('${selector}')).width === '240px'`);
+                assert.notEqual(await evaluate(`getComputedStyle(document.querySelector('${selector} .brand-wordmark')).display`),'none');
+                await logout();
+            }
+            console.log('PASS: pinned account/sign-out footers on short desktop/mobile viewports; confirmation/cancel/offline/actual logout; all three sidebars retain an accessible 80px logo/icon rail, keyboard toggle, working links, persisted state, full mobile labels, and 240px expansion.');
+        } else if (process.env.QA_DEMO_PROVIDERS_CHECK === 'true') {
+            const credentialsPath = join(process.cwd(), 'storage', 'app', 'private', 'demo-provider-credentials.json');
+            const credentials = JSON.parse(await readFile(credentialsPath, 'utf8')) as Record<string, {provider:string;password:string}>;
+            assert.equal(Object.keys(credentials).length, 5);
+            const owned: number[] = [];
+            for (const [email, credential] of Object.entries(credentials)) {
+                await command('Page.navigate', {url:appUrl+'/login'});
+                await waitFor("document.querySelector('input[name=email]') !== null");
+                await fill('input[name=email]', email);
+                await fill('input[name=password]', credential.password);
+                await evaluate("document.querySelector('form').requestSubmit()");
+                await waitFor("document.querySelector('h1')?.textContent === 'Your provider account'");
+                await command('Page.navigate', {url:appUrl+'/provider/dashboard'});
+                await waitFor("document.querySelector('h1')?.textContent === 'Your provider account' && Boolean(JSON.parse(document.querySelector('#app').dataset.page).props.profile)");
+                const props = await evaluate("JSON.parse(document.querySelector('#app').dataset.page).props") as {profile:{organization_name:string};summary:{scholarships:number};recentScholarships:{id:number}[]};
+                assert.equal(props.profile.organization_name, credential.provider);
+                assert.equal(props.summary.scholarships, 2);
+                const id=props.recentScholarships[0].id;
+                const ownStatus=await evaluate(`fetch('/provider/scholarships/${id}/edit',{cache:'no-store'}).then(response=>response.status)`);
+                assert.equal(ownStatus,200,'Provider can manage an owned scholarship');
+                if (owned.length) {
+                    const forbidden=await evaluate(`fetch('/provider/scholarships/${owned[0]}/edit',{cache:'no-store'}).then(response=>response.status)`);
+                    assert.equal(forbidden,403,'Another provider scholarship remains private');
+                }
+                owned.push(id);
+                await logout();
+                console.log('PASS: actual local login and own dashboard for '+email);
+            }
+            for (const [availability,total] of [['open',6],['upcoming',2],['closed',2]] as const) {
+                await command('Page.navigate', {url:appUrl+'/scholarships?q=%5BDEMO%5D&availability='+availability});
+                await waitFor("document.querySelector('h1')?.textContent === 'Find a scholarship' && Boolean(JSON.parse(document.querySelector('#app').dataset.page).props.scholarships)");
+                const data=await evaluate("JSON.parse(document.querySelector('#app').dataset.page)") as {props:{scholarships:{total:number;data:{show_url:string;title:string}[]}}};
+                assert.equal(data.props.scholarships.total,total,'Actual demo '+availability+' records');
+                for (const item of data.props.scholarships.data) {
+                    const status=await evaluate('fetch('+JSON.stringify(item.show_url)+').then(response=>response.status)');
+                    assert.equal(status,200,'Actual demo scholarship detail opens');
+                }
+            }
+            console.log('PASS: live database has 6 open, 2 upcoming, and 2 closed demo listings; details load from saved records.');
+        } else if (process.env.QA_SYSTEM_UI_CHECK === 'true') {
             let checked = 0;
             const inspect = async (path: string) => {
                 await command('Page.navigate', { url: appUrl + path });
@@ -256,11 +540,13 @@ try {
             await waitFor("document.querySelector('h1')?.textContent === 'Find a scholarship'"); assert.equal(await evaluate('location.pathname'),'/student/scholarships');
             await go('/student/profile','My Profile');
             await accountSizes('student-account-profile');
+            await evaluate("[...document.querySelectorAll('nav[aria-label=\"Profile pages\"] button')].find(button=>button.textContent.includes('Academic')).click()");
             await setValue('input[name=school]','Enhanced QA University');
             await evaluate("document.querySelector('form[aria-label=\"Student profile\"]').requestSubmit()");
             await waitFor("document.body.textContent.includes('Your profile has been saved.')");
             const picture = await evaluate("(() => { const canvas=document.createElement('canvas');canvas.width=128;canvas.height=128;const ctx=canvas.getContext('2d');ctx.fillStyle='#123563';ctx.fillRect(0,0,128,128);return canvas.toDataURL('image/png').split(',')[1]; })()") as string;
             const path=join(profile,'account-proof.png'); await writeFile(path,Buffer.from(picture,'base64'));
+            await evaluate("[...document.querySelectorAll('nav[aria-label=\"Profile pages\"] button')].find(button=>button.textContent.includes('Verification')).click()");
             await uploadFile('input[name=photo]',path); await waitFor("document.body.textContent.includes('Profile picture saved.')");
             for (const kind of ['student_id','enrollment']) { await uploadFile('#verification-'+kind,path); await waitFor("document.querySelector('#verification-'+"+JSON.stringify(kind)+").closest('form').textContent.includes('Uploaded:')"); }
             await waitFor("[...document.querySelectorAll('#verification button')].every(button=>button.getAttribute('aria-busy')!=='true')");
@@ -281,7 +567,7 @@ try {
             await waitFor("document.body.textContent.includes('Student verification decision saved.')");
             await logout(); await login(accountPrefix+'-student','Your student account');
             assert.equal(await evaluate("document.body.textContent.includes('verified')"),true);
-            await go('/student/profile','My Profile'); await waitFor("document.body.textContent.includes('Verified student')");
+            await go('/student/profile','My Profile'); await waitFor("document.body.textContent.includes('Verified student')"); await evaluate("[...document.querySelectorAll('nav[aria-label=\"Profile pages\"] button')].find(button=>button.textContent.includes('Verification')).click()");
             await evaluate("[...document.querySelectorAll('button')].find(button=>button.textContent==='Remove picture').click()");
             await waitFor("document.querySelector('[role=dialog]')!==null"); await evaluate("[...document.querySelectorAll('[role=dialog] button')].find(button=>button.textContent==='Confirm removal').click()");
             await waitFor("document.body.textContent.includes('revoked')");
@@ -306,6 +592,23 @@ try {
             assert.equal(await evaluate('location.pathname'), '/student/scholarships');
             assert.equal(await evaluate("document.querySelector('#student-sidebar a[aria-current=page]').getAttribute('href')"), '/student/scholarships');
             assert.equal(await evaluate("document.querySelector('nav[aria-label=\"Main navigation\"]') === null"), true);
+            for (const width of [320,768,1280,1440]) {
+                await command('Emulation.setDeviceMetricsOverride',{width,height:1000,deviceScaleFactor:1,mobile:width<768});
+                await delay(250);
+                assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'),true,'Scholarship cards fit '+width);
+                assert.equal(await evaluate(`(() => {
+                    const cards=[...document.querySelectorAll('[data-scholarship-card]')];
+                    if(!cards.length)return false;
+                    for(const card of cards) {
+                        const peers=cards.filter(other=>Math.abs(other.getBoundingClientRect().top-card.getBoundingClientRect().top)<1);
+                        for(const selector of ['h2','h2 + p','[data-scholarship-field="benefit"]','[data-scholarship-field="location"]','[data-scholarship-field="opening"]','[data-scholarship-field="deadline"]','[data-scholarship-field="applicants"]','[data-scholarship-action]']) {
+                            if(peers.some(peer=>Math.abs(peer.querySelector(selector).getBoundingClientRect().top-card.querySelector(selector).getBoundingClientRect().top)>1))return false;
+                        }
+                    }
+                    return true;
+                })()`),true,'Titles, providers, metadata and actions align within each scholarship row at '+width);
+                await screenshot('scholarship-card-alignment-'+width);
+            }
             await fill('input[name=q]', 'QA Education');
             await evaluate("document.querySelector('form[aria-label=\"Scholarship discovery filters\"]').requestSubmit()");
             await waitFor("location.search.includes('QA')");
@@ -438,7 +741,9 @@ echo Illuminate\\Support\\Facades\\URL::temporarySignedRoute('verification.verif
             await waitFor("document.querySelector('h1')?.textContent === 'Your student account'");
             await navigate('/student/profile', 'h1');
             await waitFor("document.querySelector('h1')?.textContent === 'My Profile'");
-            assert.equal(await evaluate("document.body.textContent.includes('Ana Test Browser III') && document.querySelector('input[name=school]').value === 'Browser Test University' && document.body.textContent.includes('Registration details')"), true);
+            assert.equal(await evaluate("document.querySelector('input[name=first_name]').value === 'Ana' && document.querySelector('input[name=surname]').value === 'Browser'"), true);
+            await evaluate("[...document.querySelectorAll('nav[aria-label=\"Profile pages\"] button')].find(button=>button.textContent.includes('Academic')).click()");
+            assert.equal(await evaluate("document.querySelector('input[name=school]').value === 'Browser Test University'"),true);
             await logout();
             await navigate('/register/provider', 'input[name=position]');
             assert.equal(await evaluate("document.querySelector('input[name=first_name]') !== null"), true);
@@ -940,10 +1245,10 @@ echo 'Term fixture updated.';`;
             assert.equal(await evaluate("getComputedStyle(document.getElementById('student-sidebar')).scrollbarWidth"), 'none');
             assert.equal(await evaluate("(() => { const el = document.getElementById('student-sidebar'); el.scrollTop = el.scrollHeight; return el.scrollTop > 0; })()"), true);
             await evaluate("document.querySelector('button[aria-label=\"Collapse sidebar\"]').click()");
-            await waitFor("getComputedStyle(document.getElementById('student-sidebar')).visibility === 'hidden'");
+            await waitFor("getComputedStyle(document.getElementById('student-sidebar')).width === '80px'");
             await evaluate('window.__studentStage1Reload = true');
             await command('Page.reload');
-            await waitFor("window.__studentStage1Reload !== true && document.querySelector('h1')?.textContent === 'My awards' && getComputedStyle(document.getElementById('student-sidebar')).visibility === 'hidden'");
+            await waitFor("window.__studentStage1Reload !== true && document.querySelector('h1')?.textContent === 'My awards' && getComputedStyle(document.getElementById('student-sidebar')).width === '80px'");
             await evaluate("document.querySelector('button[aria-label=\"Expand sidebar\"]').click()");
             await waitFor("getComputedStyle(document.getElementById('student-sidebar')).visibility === 'visible'");
             await command('Emulation.setDeviceMetricsOverride', { width: 320, height: 800, deviceScaleFactor: 1, mobile: true });
@@ -1086,10 +1391,10 @@ echo 'Term fixture updated.';`;
             }
             await command('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
             await evaluate("document.querySelector('button[aria-label=\"Collapse sidebar\"]').click()");
-            await waitFor("getComputedStyle(document.getElementById('provider-sidebar')).visibility === 'hidden'");
+            await waitFor("getComputedStyle(document.getElementById('provider-sidebar')).width === '80px'");
             await evaluate('window.__providerUxReload = true');
             await command('Page.reload');
-            await waitFor("window.__providerUxReload !== true && document.querySelector('h1')?.textContent === 'Provider workspace' && getComputedStyle(document.getElementById('provider-sidebar')).visibility === 'hidden'");
+            await waitFor("window.__providerUxReload !== true && document.querySelector('h1')?.textContent === 'Provider workspace' && getComputedStyle(document.getElementById('provider-sidebar')).width === '80px'");
             await evaluate("document.querySelector('button[aria-label=\"Expand sidebar\"]').click()");
             await waitFor("getComputedStyle(document.getElementById('provider-sidebar')).visibility === 'visible'");
             await command('Emulation.setDeviceMetricsOverride', { width: 320, height: 800, deviceScaleFactor: 1, mobile: true });
@@ -1859,7 +2164,7 @@ echo 'Notification fixture ready.';
             assert.equal(await evaluate("document.querySelectorAll('#provider-sidebar [aria-disabled=true]').length"), 0);
             await responsive('provider-dashboard-stage1');
             await evaluate("document.querySelector('button[aria-label=\"Collapse sidebar\"]').click()");
-            await waitFor("getComputedStyle(document.getElementById('provider-sidebar')).visibility === 'hidden'");
+            await waitFor("getComputedStyle(document.getElementById('provider-sidebar')).width === '80px'");
             await evaluate("document.querySelector('button[aria-label=\"Expand sidebar\"]').click()");
             await delay(250);
             await evaluate("document.querySelector('button[aria-label=\"Recent verification decisions\"]').click()");
@@ -1928,10 +2233,10 @@ echo 'Notification fixture ready.';
                 if (sidebarStyle) assert.deepEqual(style, sidebarStyle, role + ' sidebar matches the shared navigation design');
                 sidebarStyle = style;
                 const state = await evaluate('(async () => { const sidebar = document.getElementById(' + JSON.stringify(id) + '); const content = sidebar.nextElementSibling; getComputedStyle(sidebar).translate; document.querySelector(\'button[aria-label="Collapse sidebar"]\').click(); await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))); const animations = [...sidebar.getAnimations(), ...content.getAnimations()]; animations.forEach(animation => { animation.pause(); animation.currentTime = 100; }); const result = { animations: animations.length, x: sidebar.getBoundingClientRect().x, width: sidebar.getBoundingClientRect().width, padding: parseFloat(getComputedStyle(content).paddingLeft), inert: sidebar.inert }; animations.forEach(animation => animation.finish()); return result; })()') as { animations: number; x: number; width: number; padding: number; inert: boolean };
-                assert.ok(state.animations >= 2 && state.x < 0 && state.x > -state.width, role + ' sidebar slides between endpoints');
-                assert.ok(state.padding > 0 && state.padding < state.width, role + ' content shifts with sidebar');
-                assert.equal(state.inert, true, 'Closing navigation immediately leaves keyboard order');
-                await waitFor('getComputedStyle(document.getElementById(' + JSON.stringify(id) + ')).visibility === "hidden"');
+                assert.ok(state.animations >= 2 && state.x === 0 && state.width > 80 && state.width < 240, role + ' sidebar narrows between endpoints');
+                assert.ok(state.padding > 80 && state.padding < 240, role + ' content shifts with sidebar');
+                assert.equal(state.inert, false, 'Collapsed icon navigation stays in keyboard order');
+                await waitFor('getComputedStyle(document.getElementById(' + JSON.stringify(id) + ')).width === "80px"');
                 await screenshot(role + '-motion-collapsed');
                 await evaluate("document.querySelector('button[aria-label=\"Expand sidebar\"]').click()");
                 await delay(250);
@@ -1940,7 +2245,7 @@ echo 'Notification fixture ready.';
                 await command('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
                 assert.equal(await evaluate('getComputedStyle(document.getElementById(' + JSON.stringify(id) + ')).transitionProperty'), 'none');
                 await evaluate("document.querySelector('button[aria-label=\"Collapse sidebar\"]').click()");
-                await waitFor('getComputedStyle(document.getElementById(' + JSON.stringify(id) + ')).visibility === "hidden"');
+                await waitFor('getComputedStyle(document.getElementById(' + JSON.stringify(id) + ')).width === "80px"');
                 assert.equal(await evaluate('document.getElementById(' + JSON.stringify(id) + ').getAnimations().length'), 0);
                 await command('Emulation.setDeviceMetricsOverride', { width: 320, height: 844, deviceScaleFactor: 1, mobile: true });
                 const menuLabel = role === 'admin' ? 'Open admin navigation' : role === 'provider' ? 'Open provider navigation' : 'Open student navigation';
@@ -1983,7 +2288,7 @@ echo 'Notification fixture ready.';
             await evaluate("document.querySelector('button[aria-label=\"Collapse sidebar\"]').focus()");
             await command('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', text: '\r', unmodifiedText: '\r', windowsVirtualKeyCode: 13 });
             await command('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
-            await waitFor("getComputedStyle(document.getElementById('admin-sidebar')).visibility === 'hidden'");
+            await waitFor("getComputedStyle(document.getElementById('admin-sidebar')).width === '80px'");
             await evaluate("document.querySelector('button[aria-label=\"Expand sidebar\"]').click()");
             await waitFor("getComputedStyle(document.getElementById('admin-sidebar')).visibility === 'visible'");
             await command('Emulation.setDeviceMetricsOverride', { width: 320, height: 844, deviceScaleFactor: 1, mobile: true });
@@ -2064,7 +2369,7 @@ echo 'Notification fixture ready.';
             assert.equal(await evaluate("(() => { const sidebar = document.getElementById('admin-sidebar'); sidebar.scrollTop = 150; return sidebar.scrollTop > 0; })()"), true, 'Hidden scrollbar must preserve scrolling');
             assert.equal(await evaluate("document.querySelector('button[aria-label=\"Collapse sidebar\"] svg').classList.contains('lucide-menu')"), true, 'Sidebar uses hamburger');
             await evaluate("document.querySelector('button[aria-label=\"Collapse sidebar\"]').click()");
-            await waitFor("getComputedStyle(document.getElementById('admin-sidebar')).visibility === 'hidden'");
+            await waitFor("getComputedStyle(document.getElementById('admin-sidebar')).width === '80px'");
             await evaluate("document.querySelector('button[aria-label=\"Expand sidebar\"]').click()");
             await responsive('admin-awards');
             await click('Review listing');
@@ -2109,12 +2414,12 @@ echo 'Notification fixture ready.';
                 await evaluate("document.querySelector('button[aria-label=\"Collapse sidebar\"]').focus()");
                 await command('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', text: '\r', unmodifiedText: '\r', windowsVirtualKeyCode: 13 });
                 await command('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
-                await waitFor('getComputedStyle(document.getElementById(' + JSON.stringify(id) + ')).visibility === "hidden"');
+                await waitFor('getComputedStyle(document.getElementById(' + JSON.stringify(id) + ')).width === "80px"');
                 await screenshot(role + '-sidebar-collapsed');
                 await evaluate('window.__sidebarReloadMarker = true');
                 await command('Page.reload');
                 await waitFor('window.__sidebarReloadMarker !== true && document.querySelector(\'h1\')?.textContent === ' + JSON.stringify(heading));
-                assert.equal(await evaluate('getComputedStyle(document.getElementById(' + JSON.stringify(id) + ')).visibility'), 'hidden');
+                assert.equal(await evaluate('getComputedStyle(document.getElementById(' + JSON.stringify(id) + ')).width'), '80px');
                 await evaluate("document.querySelector('button[aria-label=\"Expand sidebar\"]').click()");
                 await waitFor('getComputedStyle(document.getElementById(' + JSON.stringify(id) + ')).visibility === "visible"');
                 await screenshot(role + '-sidebar-expanded');
