@@ -55,7 +55,7 @@ try {
             if (await evaluate(expression)) return;
             await delay(100);
         }
-        throw new Error(`Timed out: ${expression}`);
+        throw new Error(`Timed out: ${expression}; feedback: ${await evaluate("[...document.querySelectorAll('[role=alert]')].map(item=>item.textContent).join(' | ')")}`);
     };
     await command('Runtime.enable');
     await command('Network.enable');
@@ -63,21 +63,31 @@ try {
     await command('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
     await command('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
     await command('Page.navigate', { url: appUrl });
-    await waitFor("document.querySelector('h1')?.textContent.includes('Your Next')");
+    await waitFor("document.querySelector('h1')?.textContent.includes('Find scholarships.')");
     await waitFor("getComputedStyle(document.querySelector('h1')).fontSize === '48px'");
     await evaluate('document.fonts.ready.then(() => true)');
+    assert.equal(await evaluate("(() => { const style = getComputedStyle(document.querySelector('h1')); return parseFloat(style.lineHeight) >= parseFloat(style.fontSize); })()"), true, 'Hero headline lines do not overlap');
+    await waitFor("[...document.querySelectorAll('a[aria-label=\"IskoReach home\"] img')].length > 0 && [...document.querySelectorAll('a[aria-label=\"IskoReach home\"] img')].every(image => image.complete && image.naturalWidth > 0)");
+    assert.equal(await evaluate("[...document.querySelectorAll('a[aria-label=\"IskoReach home\"] img')].every(image => image.getAttribute('src') === '/images/iskoreach-logo.png')"), true, 'Shared branding uses the repository logo');
+    assert.equal(await evaluate("document.querySelector('link[rel=icon]').getAttribute('href').endsWith('/images/iskoreach-logo.png')"), true, 'Browser icon uses the shared logo');
     assert.equal(await evaluate("getComputedStyle(document.querySelector('h1')).fontFamily.includes('Plus Jakarta Sans')"), true);
     assert.equal(await evaluate("[...document.fonts].some(font => font.family.includes('Plus Jakarta Sans') && font.status === 'loaded')"), true, 'Stitch font must actually load');
-    assert.equal(await evaluate("getComputedStyle(document.querySelector('main figure')).animationName"), 'landing-reveal', 'Hero entrance animation must be available');
-    await evaluate("document.querySelector('#how-it-works').scrollIntoView()");
-    await waitFor("getComputedStyle(document.querySelector('#how-it-works')).animationName === 'landing-reveal'");
-    await delay(750);
-    assert.equal(await evaluate("getComputedStyle(document.querySelector('#how-it-works')).opacity"), '1', 'Revealed content must finish fully visible');
+    assert.equal(await evaluate("document.querySelector('h1').getAnimations().length"), 0, 'Hero remains readable without decorative motion');
     await command('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
-    await waitFor("getComputedStyle(document.querySelector('main figure')).animationName === 'none'");
-    assert.equal(await evaluate("getComputedStyle(document.querySelector('#how-it-works')).animationName"), 'none', 'Reduced motion must disable scroll reveals');
-    await evaluate('window.scrollTo(0, 0)');
+    assert.equal(await evaluate("getComputedStyle(document.querySelector('#how-it-works')).opacity"), '1');
     await command('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
+    assert.equal(await evaluate("document.querySelectorAll('[data-testid=scholarship-grid] article').length <= 3"), true, 'Preview contains at most three real programs');
+    if (process.env.QA_LANDING_PREVIEW_CHECK === 'true') {
+        assert.equal(await evaluate("document.querySelectorAll('[data-testid=scholarship-grid] article').length"), 3);
+        assert.equal(await evaluate("document.body.textContent.includes('4 published programs')"), true, 'Directory statistics come from the isolated fixture records');
+        assert.equal(await evaluate("document.querySelector('[data-testid=scholarship-grid]').textContent.includes('QA Scholarship Foundation')"), true);
+        await evaluate("document.querySelector('[data-testid=scholarship-grid] article h3 a').click()");
+        await waitFor("document.querySelector('h1')?.textContent.startsWith('QA Education Grant')");
+        await command('Page.navigate', { url: appUrl });
+        await waitFor("document.querySelector('[data-testid=scholarship-grid] article') !== null");
+    }
+    assert.equal(await evaluate("document.querySelectorAll('nav[aria-label=\"Main navigation\"] a').length"), 4, 'Primary navigation remains concise');
+    assert.equal(await evaluate("document.querySelector('footer a[href=\"/privacy\"]') !== null && document.querySelector('footer a[href=\"/terms\"]') !== null"), true);
     assert.equal(await evaluate("document.body.textContent.includes('120+') || document.body.textContent.includes('?48M+') || document.body.textContent.includes('Sample provider workspace')"), false);
     assert.equal(await evaluate("document.querySelector('form[aria-label=\"Find scholarships\"]') !== null"), true);
     const screenshotDirectory = process.env.QA_SCREENSHOT_DIR;
@@ -101,7 +111,7 @@ try {
     await command('Emulation.setDeviceMetricsOverride', { width: 320, height: 844, deviceScaleFactor: 1, mobile: true });
     await evaluate("document.querySelector('button[aria-label=\"Open navigation menu\"]').click()");
     await waitFor("document.querySelector('[role=dialog]') !== null");
-    await evaluate("document.querySelector('[role=dialog] a[href=\"/#how-it-works\"]').click()");
+    await evaluate("document.querySelector('[role=dialog] a[href=\"/#about\"]').click()");
     await waitFor("document.querySelector('[role=dialog]') === null");
     await command('Network.emulateNetworkConditions', { offline: true, latency: 0, downloadThroughput: 0, uploadThroughput: 0 });
     await waitFor('navigator.onLine === false');
@@ -110,6 +120,17 @@ try {
     await command('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
     await waitFor('navigator.onLine === true');
     await command('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
+    await evaluate("document.querySelector('button').blur(); [...document.querySelectorAll('button')].find(button => button.textContent.includes('How provider approval works')).click()");
+    await waitFor("document.querySelector('[role=dialog]') !== null");
+    await command('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+    await command('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+    await waitFor("document.querySelector('[role=dialog]') === null");
+    await evaluate("(() => { const input = document.querySelector('input[name=q]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, 'landing-browser-check'); input.dispatchEvent(new Event('input', { bubbles: true })); })()");
+    await evaluate("document.querySelector('form[aria-label=\"Find scholarships\"]').requestSubmit()");
+    await waitFor("document.querySelector('h1')?.textContent === 'Find a scholarship'");
+    assert.equal(await evaluate("new URL(location.href).searchParams.get('q')"), 'landing-browser-check', 'Landing search reaches the real directory with its filters');
+    await command('Page.navigate', { url: appUrl });
+    await waitFor("document.querySelector('h1')?.textContent.includes('Find scholarships.')");
     await evaluate('window.__inertiaNavigationCheck = true');
     await evaluate("document.querySelector('a[href$=\"/login\"]').click()");
     await waitFor("document.querySelector('h1')?.textContent === 'Log in'");
@@ -125,16 +146,16 @@ try {
     await command('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
     assert.equal(await evaluate('document.documentElement.scrollWidth <= window.innerWidth'), true, 'Mobile page should not overflow');
     await evaluate("document.querySelector('a[href$=\"/register\"]').click()");
-    await waitFor("document.querySelector('h1')?.textContent === 'Create your account'");
-    await evaluate("document.querySelector('input[value=provider]').click()");
-    await waitFor("document.querySelector('input[name=organization_name]') !== null");
+    await waitFor("document.querySelector('h1')?.textContent === 'Student registration'");
+    await evaluate("document.querySelector('a[href=\"/register/provider\"]').click()");
+    await waitFor("document.querySelector('input[name=position]') !== null");
     assert.equal(await evaluate('document.documentElement.scrollWidth <= window.innerWidth'), true, 'Provider registration should fit mobile width');
     assert.equal(await evaluate("[...document.querySelectorAll('input:not([type=hidden])')].every(input => input.labels.length > 0)"), true, 'Each registration field needs a label');
     if (screenshotDirectory) {
         const capture = await command('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
         await writeFile(join(screenshotDirectory, 'register-mobile.png'), Buffer.from(capture.data as string, 'base64'));
     }
-    if (process.env.QA_INPUT_VALIDATION_CHECK === 'true' || process.env.QA_ACADEMIC_TERMS_CHECK === 'true' || process.env.QA_PUBLIC_SITE_CHECK === 'true' || process.env.QA_LOGIN_REDIRECT_CHECK === 'true' || process.env.QA_STUDENT_STAGE1_CHECK === 'true' || process.env.QA_LOCATION_CHECK === 'true' || process.env.QA_HIDDEN_SCROLLBARS_CHECK === 'true' || process.env.QA_PROVIDER_UX_CHECK === 'true' || process.env.QA_BENEFITS_CHECK === 'true' || process.env.QA_RENEWALS_CHECK === 'true' || process.env.QA_CHAT_CHECK === 'true' || process.env.QA_NOTIFICATIONS_CHECK === 'true' || process.env.QA_PRIVATE_DOCUMENTS_CHECK === 'true' || process.env.QA_APPLICATION_WORKFLOW_CHECK === 'true' || process.env.QA_SCHOLARSHIP_MANAGEMENT_CHECK === 'true' || process.env.QA_PROVIDER_STAGE2_CHECK === 'true' || process.env.QA_AUTH_CHECK === 'true' || process.env.QA_SCHOLARSHIP_READONLY_CHECK === 'true' || process.env.QA_APPLICANT_COUNTS_CHECK === 'true' || process.env.QA_AWARD_STAGE6_CHECK === 'true' || process.env.QA_ADMIN_LAYOUT_CHECK === 'true' || process.env.QA_SIDEBAR_MOTION_CHECK === 'true' || process.env.QA_PROVIDER_STAGE1_CHECK === 'true') {
+    if (process.env.QA_SYSTEM_UI_CHECK === 'true' || process.env.QA_ACCOUNT_ENHANCEMENTS_CHECK === 'true' || process.env.QA_STUDENT_CATALOG_CHECK === 'true' || process.env.QA_LOGOUT_CHECK === 'true' || process.env.QA_STUDENT_REGISTRATION_CHECK === 'true' || process.env.QA_WORKFLOW_COMPLETION_CHECK === 'true' || process.env.QA_INPUT_VALIDATION_CHECK === 'true' || process.env.QA_ACADEMIC_TERMS_CHECK === 'true' || process.env.QA_PUBLIC_SITE_CHECK === 'true' || process.env.QA_LOGIN_REDIRECT_CHECK === 'true' || process.env.QA_STUDENT_STAGE1_CHECK === 'true' || process.env.QA_LOCATION_CHECK === 'true' || process.env.QA_HIDDEN_SCROLLBARS_CHECK === 'true' || process.env.QA_PROVIDER_UX_CHECK === 'true' || process.env.QA_BENEFITS_CHECK === 'true' || process.env.QA_RENEWALS_CHECK === 'true' || process.env.QA_CHAT_CHECK === 'true' || process.env.QA_NOTIFICATIONS_CHECK === 'true' || process.env.QA_PRIVATE_DOCUMENTS_CHECK === 'true' || process.env.QA_APPLICATION_WORKFLOW_CHECK === 'true' || process.env.QA_SCHOLARSHIP_MANAGEMENT_CHECK === 'true' || process.env.QA_PROVIDER_STAGE2_CHECK === 'true' || process.env.QA_AUTH_CHECK === 'true' || process.env.QA_SCHOLARSHIP_READONLY_CHECK === 'true' || process.env.QA_APPLICANT_COUNTS_CHECK === 'true' || process.env.QA_AWARD_STAGE6_CHECK === 'true' || process.env.QA_ADMIN_LAYOUT_CHECK === 'true' || process.env.QA_SIDEBAR_MOTION_CHECK === 'true' || process.env.QA_PROVIDER_STAGE1_CHECK === 'true') {
         const fill = async (selector: string, value: string) => {
             await evaluate('document.querySelector(' + JSON.stringify(selector) + ').focus()');
             await command('Input.insertText', { text: value });
@@ -166,9 +187,368 @@ try {
                 await waitFor("[...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Log out')");
             }
             await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Log out').click()");
-            await waitFor("document.querySelector('h1')?.textContent.includes('Your Next')");
+            await waitFor("document.querySelector('[role=dialog]')?.textContent.includes('Would you like to sign out?')");
+            for (const width of [320, 768, 1440]) {
+                await command('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 768 });
+                assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true, 'Sign-out confirmation fits ' + width);
+            }
+            const beforeCancel = await evaluate('location.pathname');
+            await command('Network.emulateNetworkConditions', { offline: true, latency: 0, downloadThroughput: 0, uploadThroughput: 0 });
+            await waitFor('navigator.onLine === false');
+            await evaluate("[...document.querySelectorAll('[role=dialog] button')].find(button => button.textContent.trim() === 'Yes, sign out').click()");
+            await waitFor("document.querySelector('[role=dialog]').textContent.includes('You are offline')");
+            await command('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+            await waitFor('navigator.onLine === true');
+            await evaluate("[...document.querySelectorAll('[role=dialog] button')].find(button => button.textContent.trim() === 'Stay signed in').click()");
+            await waitFor("document.querySelector('[role=dialog]') === null");
+            assert.equal(await evaluate('location.pathname'), beforeCancel, 'Cancelling sign out keeps the session and page');
+            await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.includes('Account menu')).click()");
+            await waitFor("[...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Log out')");
+            await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Log out').click()");
+            await waitFor("document.querySelector('[role=dialog]')?.textContent.includes('Would you like to sign out?')");
+            await evaluate("[...document.querySelectorAll('[role=dialog] button')].find(button => button.textContent.trim() === 'Yes, sign out').click()");
+            await waitFor("document.querySelector('h1')?.textContent.includes('Find scholarships.')");
         };
-        if (process.env.QA_INPUT_VALIDATION_CHECK === 'true') {
+        if (process.env.QA_SYSTEM_UI_CHECK === 'true') {
+            let checked = 0;
+            const inspect = async (path: string) => {
+                await command('Page.navigate', { url: appUrl + path });
+                await waitFor('location.pathname === ' + JSON.stringify(path) + " && document.querySelector('main h1') !== null");
+                await evaluate('document.fonts.ready.then(() => true)');
+                assert.equal(await evaluate("/^(403|404|500|Server Error)/.test(document.querySelector('h1').textContent)"), false, path + ' renders its authorized page');
+                for (const width of [320, 768, 1440]) {
+                    await command('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 768 });
+                    await delay(80);
+                    assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true, path + ' fits ' + width);
+                    assert.equal(await evaluate("[...document.querySelectorAll('main input:not([type=hidden])')].every(input => input.labels.length > 0 || input.getAttribute('aria-label') || input.getAttribute('aria-labelledby'))"), true, path + ' inputs are labeled');
+                    if (/dashboard|profile|student-verifications$|scholarships\/create/.test(path)) await screenshot('system-' + path.slice(1).replaceAll('/', '-') + '-' + width);
+                }
+                checked++;
+                const links = await evaluate("[...document.querySelectorAll('main a[href]')].map(link=>new URL(link.href).pathname)") as string[];
+                return links.filter(href => /^\/(student\/applications\/\d+|student\/scholarships\/[^/]+|provider\/applications\/\d+|provider\/scholarships\/\d+\/edit|admin\/(providers|users|scholarships|student-verifications)\/\d+|messages\/\d+|benefits\/\d+|renewals\/\d+)$/.test(href));
+            };
+            for (const [role, heading, paths] of [
+                [process.env.QA_UI_STUDENT ?? 'logout-student', 'Your student account', ['/student/dashboard', '/student/profile', '/student/scholarships', '/student/applications', '/student/requirements', '/student/documents', '/student/awards', '/messages', '/notifications', '/renewals', '/benefits', '/declarations', '/scholarship-announcements']],
+                ['logout-provider', 'Your provider account', ['/provider/dashboard', '/provider/workspace', '/provider/profile', '/provider/scholarships', '/provider/scholarships/create', '/provider/applications', '/provider/applicant-counts', '/messages', '/notifications', '/renewals', '/benefits', '/scholarship-announcements']],
+                ['logout-admin', 'Dashboard', ['/admin/dashboard', '/admin/providers', '/admin/users', '/admin/scholarships', '/admin/student-verifications', '/admin/applicant-counts', '/admin/awards', '/admin/renewals', '/admin/releases', '/admin/academic-terms', '/admin/reports', '/admin/activity-logs', '/notifications']],
+            ] as [string, string, string[]][]) {
+                await login(role, heading);
+                const details = new Set<string>();
+                for (const path of paths) {
+                    const links = await inspect(path);
+                    for (const href of links.slice(0, 1)) details.add(href);
+                }
+                for (const path of details) await inspect(path);
+                await logout();
+                console.log('PASS: ' + role + ' authorized pages, labels, responsive layouts and sign-out confirmation.');
+            }
+            console.log('PASS: ' + checked + ' workspace pages checked at 320/768/1440px.');
+        } else if (process.env.QA_ACCOUNT_ENHANCEMENTS_CHECK === 'true') {
+            const accountPrefix=process.env.QA_ACCOUNT_PREFIX??'enhancement';
+            const accountSizes = async (name: string) => { for(const width of [320,768,1440]) { await command('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:1,mobile:width<768}); assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'),true,name+' fits '+width); await screenshot(name+'-'+width); } };
+            const go = async (path: string, heading: string) => { await command('Page.navigate',{url:appUrl+path}); await waitFor('document.querySelector("h1")?.textContent === '+JSON.stringify(heading)); };
+            const setValue = async (selector: string, value: string) => { await evaluate(`(() => { const input=document.querySelector(${JSON.stringify(selector)}); Object.getOwnPropertyDescriptor(input instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype,'value').set.call(input,${JSON.stringify(value)}); input.dispatchEvent(new Event('input',{bubbles:true})); })()`); };
+            const uploadFile = async (selector: string,path: string) => { const document=await command('DOM.getDocument'); const node=await command('DOM.querySelector',{nodeId:(document.root as {nodeId:number}).nodeId,selector}); await command('DOM.setFileInputFiles',{nodeId:node.nodeId,files:[path]}); await evaluate('document.querySelector('+JSON.stringify(selector)+').closest("form").requestSubmit()'); };
+            await login(accountPrefix+'-student','Your student account');
+            await accountSizes('student-account-dashboard');
+            assert.equal(await evaluate("document.body.textContent.includes('4/4 completed') && document.body.textContent.includes('not applied')"),true);
+            await fill('input[name=q]','QA Education'); await evaluate("document.querySelector('main form').requestSubmit()");
+            await waitFor("document.querySelector('h1')?.textContent === 'Find a scholarship'"); assert.equal(await evaluate('location.pathname'),'/student/scholarships');
+            await go('/student/profile','My Profile');
+            await accountSizes('student-account-profile');
+            await setValue('input[name=school]','Enhanced QA University');
+            await evaluate("document.querySelector('form[aria-label=\"Student profile\"]').requestSubmit()");
+            await waitFor("document.body.textContent.includes('Your profile has been saved.')");
+            const picture = await evaluate("(() => { const canvas=document.createElement('canvas');canvas.width=128;canvas.height=128;const ctx=canvas.getContext('2d');ctx.fillStyle='#123563';ctx.fillRect(0,0,128,128);return canvas.toDataURL('image/png').split(',')[1]; })()") as string;
+            const path=join(profile,'account-proof.png'); await writeFile(path,Buffer.from(picture,'base64'));
+            await uploadFile('input[name=photo]',path); await waitFor("document.body.textContent.includes('Profile picture saved.')");
+            for (const kind of ['student_id','enrollment']) { await uploadFile('#verification-'+kind,path); await waitFor("document.querySelector('#verification-'+"+JSON.stringify(kind)+").closest('form').textContent.includes('Uploaded:')"); }
+            await waitFor("[...document.querySelectorAll('#verification button')].every(button=>button.getAttribute('aria-busy')!=='true')");
+            await evaluate("document.querySelector('#verification input[type=checkbox]').click()");
+            await waitFor("![...document.querySelectorAll('#verification button')].find(button=>button.textContent==='Apply for student verification').disabled");
+            await evaluate("[...document.querySelectorAll('#verification button')].find(button=>button.textContent==='Apply for student verification').click()");
+            await waitFor("document.body.textContent.includes('Verification submitted for administrator review.')");
+            assert.equal(await evaluate("document.querySelector('main').textContent.includes('Verified student')"),false,'Checklist completion does not award a badge');
+            await logout();
+            await login(accountPrefix+'-admin','Dashboard');
+            await go('/admin/student-verifications','Student verification');
+            await evaluate("document.querySelector('main a[href*=\"/admin/student-verifications/\"]').click()");
+            await waitFor("document.querySelector('h1')?.textContent==='Review student verification'");
+            await waitFor("document.querySelector('main img').complete && document.querySelector('main img').naturalWidth>0");
+            await accountSizes('student-verification-review');
+            assert.equal(await evaluate("Promise.all([...document.querySelectorAll('main a')].filter(link=>link.textContent.includes('Download')).map(link=>fetch(link.href).then(response=>response.status))).then(statuses=>statuses.length===2&&statuses.every(status=>status===200))"),true);
+            await setValue('textarea[name=reason]','Identity and current enrollment reviewed in isolated test'); await evaluate("document.querySelector('main input[type=checkbox]').click();document.querySelector('main form').requestSubmit()");
+            await waitFor("document.body.textContent.includes('Student verification decision saved.')");
+            await logout(); await login(accountPrefix+'-student','Your student account');
+            assert.equal(await evaluate("document.body.textContent.includes('verified')"),true);
+            await go('/student/profile','My Profile'); await waitFor("document.body.textContent.includes('Verified student')");
+            await evaluate("[...document.querySelectorAll('button')].find(button=>button.textContent==='Remove picture').click()");
+            await waitFor("document.querySelector('[role=dialog]')!==null"); await evaluate("[...document.querySelectorAll('[role=dialog] button')].find(button=>button.textContent==='Confirm removal').click()");
+            await waitFor("document.body.textContent.includes('revoked')");
+            await go('/student/requirements','My scholarship requirements');
+            assert.equal(await evaluate("document.querySelectorAll('main input[type=file]').length"),2);
+            const doc = await command('DOM.getDocument');const node=await command('DOM.querySelector',{nodeId:(doc.root as {nodeId:number}).nodeId,selector:'main input[type=file]'});await command('DOM.setFileInputFiles',{nodeId:node.nodeId,files:[path]});
+            await evaluate("document.querySelector('main input[type=file]').closest('form').querySelector('input[type=checkbox]').click();document.querySelector('main input[type=file]').closest('form').requestSubmit()");
+            await waitFor("[...document.querySelectorAll('main span')].filter(span=>span.textContent==='Uploaded').length===1");
+            assert.equal(await evaluate("[...document.querySelectorAll('main span')].filter(span=>span.textContent==='Missing').length"),1,'Applications keep separate requirement statuses');
+            for(const width of [320,768,1440]) {await command('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:1,mobile:width<768}); assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'),true);}
+            await logout(); await login(accountPrefix+'-email','Your student account');
+            await go('/student/email-code','Verify your email with a code');
+            await fill('input[name=code]','111111');await evaluate("document.querySelector('main form').requestSubmit()");await waitFor("document.querySelector('[role=alert]')!==null");
+            await setValue('input[name=code]','548321'); await evaluate("document.querySelector('main form').requestSubmit()"); await waitFor("document.querySelector('h1')?.textContent==='Your student account'");
+            await go('/student/profile','My Profile'); await setValue('input[name=school]','Updated legacy school'); await evaluate("document.querySelector('form[aria-label=\"Student profile\"]').requestSubmit()"); await waitFor("document.body.textContent.includes('Your profile has been saved.')");
+            await logout();
+            console.log('PASS: real profile save, picture upload/removal, private verification documents, pending/admin approval/badge revocation, independent requirement uploads, dashboard search/progress and email-code error/success UI in an isolated database.');
+        } else if (process.env.QA_STUDENT_CATALOG_CHECK === 'true') {
+            await login('logout-student', 'Your student account');
+            await evaluate("document.querySelector('#student-sidebar a[href=\"/student/scholarships\"]').click()");
+            await waitFor("document.querySelector('h1')?.textContent === 'Find a scholarship'");
+            assert.equal(await evaluate('location.pathname'), '/student/scholarships');
+            assert.equal(await evaluate("document.querySelector('#student-sidebar a[aria-current=page]').getAttribute('href')"), '/student/scholarships');
+            assert.equal(await evaluate("document.querySelector('nav[aria-label=\"Main navigation\"]') === null"), true);
+            await fill('input[name=q]', 'QA Education');
+            await evaluate("document.querySelector('form[aria-label=\"Scholarship discovery filters\"]').requestSubmit()");
+            await waitFor("location.search.includes('QA')");
+            assert.equal(await evaluate('location.pathname'), '/student/scholarships');
+            await evaluate("document.querySelector('main h2 a').click()");
+            await waitFor("document.querySelector('h1')?.textContent.startsWith('QA Education Grant')");
+            assert.equal(await evaluate("location.pathname.startsWith('/student/scholarships/') && document.querySelector('#student-sidebar') !== null"), true);
+            await evaluate("[...document.querySelectorAll('main a')].find(link => link.textContent === 'Back to scholarships').click()");
+            await waitFor("document.querySelector('h1')?.textContent === 'Find a scholarship'");
+            await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Reset').click()");
+            await waitFor("location.search === ''");
+            assert.equal(await evaluate('location.pathname'), '/student/scholarships');
+            for (const width of [320, 768, 1440]) {
+                await command('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 768 });
+                assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true, 'Student catalog fits ' + width);
+            }
+            await logout();
+            console.log('PASS: student sidebar discovery, active navigation, filtering, detail/back links and reset remain in the student workspace at 320/768/1440px.');
+        } else if (process.env.QA_LOGOUT_CHECK === 'true') {
+            for (const [role, heading, dashboard] of [['logout-student', 'Your student account', '/student/dashboard'], ['logout-provider', 'Your provider account', '/provider/dashboard'], ['logout-admin', 'Dashboard', '/admin/dashboard']]) {
+                await login(role, heading);
+                await logout();
+                await command('Page.navigate', { url: appUrl + dashboard });
+                await waitFor("document.querySelector('h1')?.textContent === 'Log in'");
+            }
+            console.log('PASS: student, provider and admin menus require confirmation; cancel preserves session; offline sign-out is retryable; confirmed logout blocks authenticated routes.');
+        } else if (process.env.QA_STUDENT_REGISTRATION_CHECK === 'true') {
+            const navigate = async (path: string, selector: string) => {
+                await command('Page.navigate', { url: appUrl + path });
+                await waitFor('document.querySelector(' + JSON.stringify(selector) + ') !== null');
+            };
+            const choose = async (name: string, value: string) => {
+                await evaluate(`(() => { const el = document.querySelector('select[name="${name}"]'); el.value = ${JSON.stringify(value)}; el.dispatchEvent(new Event('change', {bubbles: true})); })()`);
+            };
+            await navigate('/register/student', 'input[name=first_name]');
+            assert.equal(await evaluate("document.querySelector('input[name=name]') === null"), true);
+            assert.equal(await evaluate("document.querySelector('input[name=organization_name]') === null"), true);
+            for (const width of [320, 768, 1440]) {
+                await command('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 768 });
+                assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true, 'Student registration fits ' + width);
+            }
+            const registrationEmail = 'registration-' + Date.now() + '@example.test';
+            const next = async (selector: string) => {
+                await evaluate("document.querySelector('form').requestSubmit()"); await waitFor('document.querySelector(' + JSON.stringify(selector) + ') !== null');
+                for (const width of [320, 768, 1440]) {
+                    await command('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 768 });
+                    assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true, 'Registration step fits ' + width);
+                    assert.equal(await evaluate("document.querySelector('.registration-navigation').getBoundingClientRect().top >= document.querySelector('.registration-step-content').getBoundingClientRect().bottom"), true, 'Navigation does not overlap fields');
+                }
+            };
+            const previous = async (selector: string) => { await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Previous').click()"); await waitFor('document.querySelector(' + JSON.stringify(selector) + ') !== null'); };
+            await evaluate("document.querySelector('form').requestSubmit()");
+            await waitFor("document.querySelector('input[name=first_name]').getAttribute('aria-invalid') === 'true'");
+            await command('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+            assert.equal(await evaluate("getComputedStyle(document.querySelector('.registration-step-content')).animationName"), 'none');
+            await command('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
+            await screenshot('registration-student-personal');
+            await fill('input[name=first_name]', 'Ana');
+            await fill('input[name=first_name]', '123');
+            assert.equal(await evaluate("document.querySelector('input[name=first_name]').value"), 'Ana', 'Name input blocks digits');
+            await evaluate("(() => { window.__originalConfirm = window.confirm; window.__leaveAsked = false; window.confirm = () => { window.__leaveAsked = true; return false; }; document.querySelector('a[href=\"/register/provider\"]').click(); })()");
+            assert.equal(await evaluate("window.__leaveAsked && location.pathname === '/register/student'"), true, 'Leaving with progress requires confirmation');
+            await evaluate('window.confirm = window.__originalConfirm');
+            await fill('input[name=surname]', 'Browser');
+            await fill('input[name=middle_name]', 'Test');
+            await choose('suffix', 'III');
+            await choose('sex', 'female');
+            await evaluate(`(() => { const el = document.querySelector('input[name=date_of_birth]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el, '2004-05-15'); el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); })()`);
+            await fill('input[name=contact_number]', 'letters');
+            assert.equal(await evaluate("document.querySelector('input[name=contact_number]').value"), '', 'Contact input blocks letters');
+            await fill('input[name=contact_number]', '09171234567');
+            await next('input[name=student_number]');
+            assert.equal(await evaluate("document.querySelectorAll('.registration-stepper .is-complete').length"), 1);
+            await previous('input[name=first_name]');
+            assert.equal(await evaluate("document.querySelector('input[name=first_name]').value"), 'Ana');
+            await next('input[name=student_number]');
+            await fill('input[name=student_number]', 'BROWSER-' + Date.now());
+            await fill('input[name=school]', 'Browser Test University');
+            await fill('input[name=college]', 'College of Science');
+            await fill('input[name=course]', 'Computer Science');
+            await choose('year_level', '2');
+            await choose('enrollment_status', 'enrolled');
+            await next('select[name=region_code]');
+            await waitFor("document.querySelector('select[name=region_code] option[value=\"040000000\"]') !== null");
+            await choose('region_code', '040000000');
+            await waitFor("document.querySelector('select[name=province_code] option[value=\"042100000\"]') !== null");
+            await choose('province_code', '042100000');
+            await waitFor("document.querySelector('select[name=city_code]').options.length > 1");
+            await choose('city_code', await evaluate("document.querySelector('select[name=city_code]').options[1].value") as string);
+            await waitFor("document.querySelector('select[name=barangay_code]').options.length > 1");
+            await choose('barangay_code', await evaluate("document.querySelector('select[name=barangay_code]').options[1].value") as string);
+            await next('input[name=email]');
+            await fill('input[name=email]', registrationEmail);
+            await fill('input[name=password]', 'temporary-test-password');
+            await fill('input[name=password_confirmation]', 'temporary-test-password');
+            await evaluate("document.querySelector('input[name=terms_accepted]').click(); document.querySelector('input[name=privacy_accepted]').click(); document.querySelector('form').requestSubmit()");
+            await waitFor("document.body.textContent.includes('Review your registration')");
+            assert.equal(await evaluate("document.querySelector('input[name=password]') === null"), true, 'Review hides password fields');
+            await evaluate("document.querySelector('button[aria-label=\"Edit Academic information\"]').click()");
+            await waitFor("document.querySelector('input[name=school]') !== null");
+            assert.equal(await evaluate("document.querySelector('input[name=school]').value"), 'Browser Test University');
+            await next('select[name=region_code]'); await next('input[name=email]');
+            await evaluate("document.querySelector('form').requestSubmit()");
+            await waitFor("document.body.textContent.includes('Review your registration')");
+            await previous('input[name=email]');
+            assert.equal(await evaluate("document.querySelector('input[name=email]').value"), registrationEmail);
+            assert.equal(await evaluate("document.querySelector('input[name=password]').value"), 'temporary-test-password');
+            await evaluate("document.querySelector('form').requestSubmit()");
+            await waitFor("document.body.textContent.includes('Review your registration')");
+            await evaluate("document.querySelector('form').requestSubmit()");
+            await waitFor("document.querySelector('h1')?.textContent === 'Verify your email'");
+            await evaluate("document.querySelector('form').requestSubmit()");
+            await waitFor("document.body.textContent.includes('Another verification link has been sent')");
+            await navigate('/student/dashboard', 'h1');
+            await waitFor("document.querySelector('h1')?.textContent === 'Verify your email'");
+            assert.ok(process.env.QA_REGISTRATION_DB?.includes('iskoreach-registration-'));
+            const getVerificationUrl = (email: string) => new Promise<string>((resolve, reject) => {
+                const php = spawn('php', [], { windowsHide: true, env: { ...process.env, DB_CONNECTION: 'sqlite', DB_DATABASE: process.env.QA_REGISTRATION_DB, DB_URL: '', APP_URL: appUrl, QA_REGISTRATION_EMAIL: email }, stdio: ['pipe', 'pipe', 'pipe'] });
+                let output = ''; let error = '';
+                php.stdout.on('data', chunk => { output += chunk; }); php.stderr.on('data', chunk => { error += chunk; });
+                php.on('close', code => code === 0 ? resolve(output.trim()) : reject(new Error(error)));
+                php.stdin.end(`<?php
+require 'vendor/autoload.php';
+$app = require 'bootstrap/app.php'; $app->make(Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap();
+if (config('database.default') !== 'sqlite' || !str_contains(config('database.connections.sqlite.database'), 'iskoreach-registration-')) { throw new RuntimeException('Disposable registration database required.'); }
+$user = App\\Models\\User::where('email', getenv('QA_REGISTRATION_EMAIL'))->firstOrFail();
+echo Illuminate\\Support\\Facades\\URL::temporarySignedRoute('verification.verify', now()->addMinutes(30), ['id' => $user->id, 'hash' => sha1($user->email)]);`);
+            });
+            await command('Page.navigate', { url: await getVerificationUrl(registrationEmail) });
+            await waitFor("document.querySelector('h1')?.textContent === 'Your student account'");
+            await navigate('/student/profile', 'h1');
+            await waitFor("document.querySelector('h1')?.textContent === 'My Profile'");
+            assert.equal(await evaluate("document.body.textContent.includes('Ana Test Browser III') && document.querySelector('input[name=school]').value === 'Browser Test University' && document.body.textContent.includes('Registration details')"), true);
+            await logout();
+            await navigate('/register/provider', 'input[name=position]');
+            assert.equal(await evaluate("document.querySelector('input[name=first_name]') !== null"), true);
+            await screenshot('registration-provider-representative');
+            const providerEmail = 'provider-browser-' + Date.now() + '@example.test';
+            await fill('input[name=first_name]', 'Provider'); await fill('input[name=surname]', 'Browser');
+            await fill('input[name=position]', 'Director'); await fill('input[name=contact_number]', '09171234567'); await fill('input[name=work_email]', providerEmail);
+            await next('input[name=organization_name]');
+            await fill('input[name=organization_name]', 'Browser Foundation'); await fill('input[name=office_address]', '123 Test Office');
+            await choose('organization_type', 'individual');
+            assert.equal(await evaluate("document.querySelector('input[name=organization_name]') === null"), true);
+            await choose('organization_type', 'foundation');
+            assert.equal(await evaluate("document.querySelector('input[name=organization_name]').value"), 'Browser Foundation');
+            await waitFor("document.querySelector('select[name=region_code] option[value=\"040000000\"]') !== null");
+            await choose('region_code', '040000000');
+            await waitFor("document.querySelector('select[name=province_code] option[value=\"042100000\"]') !== null");
+            await choose('province_code', '042100000');
+            await waitFor("document.querySelector('select[name=city_code]').options.length > 1");
+            await choose('city_code', await evaluate("document.querySelector('select[name=city_code]').options[1].value") as string);
+            await fill('input[name=organization_email]', providerEmail); await fill('input[name=organization_phone]', '09171234567');
+            await next('input[name=representative_id]');
+            await screenshot('registration-provider-documents');
+            const proofPath = join(profile, 'provider-proof.png');
+            await writeFile(proofPath, Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j9K0AAAAASUVORK5CYII=', 'base64'));
+            for (const kind of ['representative_id', 'organization_proof']) {
+                const document = await command('DOM.getDocument');
+                const node = await command('DOM.querySelector', { nodeId: (document.root as { nodeId: number }).nodeId, selector: 'input[name=' + kind + ']' });
+                await command('DOM.setFileInputFiles', { nodeId: node.nodeId, files: [proofPath] });
+            }
+            await next('input[name=email]');
+            await previous('input[name=representative_id]');
+            assert.equal(await evaluate("document.body.textContent.includes('Selected: provider-proof.png')"), true, 'Selected files survive Previous navigation');
+            await next('input[name=email]');
+            await fill('input[name=email]', providerEmail); await fill('input[name=password]', 'temporary-test-password'); await fill('input[name=password_confirmation]', 'temporary-test-password');
+            await evaluate("document.querySelector('input[name=terms_accepted]').click(); document.querySelector('input[name=privacy_accepted]').click(); document.querySelector('form').requestSubmit()");
+            await waitFor("document.body.textContent.includes('Review your registration')");
+            for (const width of [320, 768, 1440]) {
+                await command('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 768 });
+                assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true, 'Provider review fits ' + width);
+                await screenshot('registration-review-' + width);
+            }
+            await evaluate("document.querySelector('form').requestSubmit()");
+            await waitFor("document.querySelector('h1')?.textContent === 'Verify your email'");
+            await command('Page.navigate', { url: await getVerificationUrl(providerEmail) });
+            await waitFor("document.querySelector('h1')?.textContent === 'Organization review pending'");
+            assert.equal(await evaluate("document.querySelectorAll('a[href*=\"provider-verification\"]').length"), 2);
+            assert.equal(await evaluate("fetch('/provider/workspace').then(response => response.status)"), 403);
+            await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Log out').click()");
+            await waitFor("document.querySelector('[role=dialog]')?.textContent.includes('Would you like to sign out?')");
+            await evaluate("[...document.querySelectorAll('[role=dialog] button')].find(button => button.textContent.trim() === 'Yes, sign out').click()");
+            await waitFor("document.querySelector('h1')?.textContent.includes('Find scholarships.')");
+            await navigate('/terms', 'h1');
+            assert.equal(await evaluate("document.querySelector('h1').textContent"), 'Terms of Use');
+            await navigate('/privacy', 'h1');
+            assert.equal(await evaluate("document.querySelector('h1').textContent"), 'Privacy Policy');
+            console.log('PASS: student and provider four-step navigation, required-field errors, Previous/Next data and file preservation, final review and signup, individual option, live address selectors, signed email verification, provider pending approval/workspace restriction, private documents, policies and 320/768/1440 layouts.');
+        } else if (process.env.QA_WORKFLOW_COMPLETION_CHECK === 'true') {
+            const go = async (path: string, heading: string) => {
+                await command('Page.navigate', { url: appUrl + path });
+                await waitFor('document.querySelector("h1")?.textContent === ' + JSON.stringify(heading));
+            };
+            const labelledInput = async (label: string, value: string) => {
+                await evaluate(`(() => { const label = [...document.querySelectorAll('label')].find(item => item.textContent.trim() === ${JSON.stringify(label)}); document.getElementById(label.htmlFor).focus(); })()`);
+                await command('Input.insertText', { text: value });
+            };
+            await login('provider', 'Your provider account');
+            await go('/scholarship-announcements', 'Scholarship announcements');
+            await labelledInput('Announcement title', 'Browser verified announcement');
+            await fill('textarea', 'Prepare your COR and grades for the next academic term.');
+            await evaluate("document.querySelector('form').requestSubmit()");
+            await waitFor("[...document.querySelectorAll('h2')].some(item => item.textContent === 'Browser verified announcement')");
+            await go('/declarations', 'Existing scholarship declarations');
+            assert.equal(await evaluate("document.body.textContent.includes('Outside browser scholarship')"), true);
+            await evaluate("document.querySelector('form input[type=checkbox]').click()");
+            await labelledInput('Verification explanation', 'Evidence reviewed in isolated browser test');
+            await evaluate("document.querySelector('form').requestSubmit()");
+            await waitFor("document.body.textContent.includes('Provider review: verified')");
+            await go('/provider/applicant-counts/1', 'Report external applicants');
+            const csvPath = join(profile, 'responses.csv');
+            await writeFile(csvPath, 'email\nexternal@example.test\nEXTERNAL@example.test\nother@example.test\n'.replaceAll('\\n', '\n'));
+            const csvDocument = await command('DOM.getDocument');
+            const csvNode = await command('DOM.querySelector', { nodeId: (csvDocument.root as { nodeId: number }).nodeId, selector: 'input[type=file]' });
+            await command('DOM.setFileInputFiles', { nodeId: csvNode.nodeId, files: [csvPath] });
+            await labelledInput('External source label', 'Browser verified CSV source');
+            await evaluate(`(() => { const label = [...document.querySelectorAll('label')].find(item => item.textContent.trim() === 'CSV source as-of date'); const input = document.getElementById(label.htmlFor); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, new Date().toLocaleDateString('en-CA', {timeZone:'Asia/Manila'})); input.dispatchEvent(new Event('input', {bubbles:true})); input.dispatchEvent(new Event('change', {bubbles:true})); document.querySelector('input[type=file]').closest('form').querySelector('input[type=checkbox]').click(); })()`);
+            await evaluate("document.querySelector('input[type=file]').closest('form').requestSubmit()");
+            await waitFor("document.body.textContent.includes('CSV count imported for administrator verification')");
+            await go('/provider/scholarships/1/edit', 'Edit scholarship');
+            assert.equal(await evaluate("document.querySelector('input[name=accepts_existing_scholars]') !== null"), true);
+            assert.equal(await evaluate("document.body.textContent.includes('Give existing scholarship recipients lower priority')"), true);
+            await logout();
+            await login('student', 'Your student account');
+            await go('/scholarship-announcements', 'Scholarship announcements');
+            assert.equal(await evaluate("document.body.textContent.includes('Browser verified announcement')"), true);
+            await go('/declarations', 'Existing scholarship declarations');
+            assert.equal(await evaluate("document.body.textContent.includes('Provider review: verified')"), true);
+            assert.equal(await evaluate("document.body.textContent.includes('Save provider verification')"), false);
+            await go('/student/applications/1', 'Application details');
+            assert.equal(await evaluate("document.body.textContent.includes('Outside browser scholarship: verified')"), true);
+            assert.equal(await evaluate("document.body.textContent.includes('must verify declared scholarships')"), false);
+            assert.equal(await evaluate("document.body.textContent.includes('will be marked low priority')"), false);
+            for (const width of [320, 768, 1440]) {
+                await command('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 768 });
+                await go('/declarations', 'Existing scholarship declarations');
+                assert.equal(await evaluate('document.documentElement.scrollWidth <= window.innerWidth'), true, 'Declarations fit ' + width);
+                await go('/scholarship-announcements', 'Scholarship announcements');
+                assert.equal(await evaluate('document.documentElement.scrollWidth <= window.innerWidth'), true, 'Announcements fit ' + width);
+            }
+            console.log('PASS: isolated browser announcement publish/read, CSV upload, provider declaration verification, student verification display, explicit priority settings, and 320/768/1440px layouts.');
+        } else if (process.env.QA_INPUT_VALIDATION_CHECK === 'true') {
             const go = async (path: string, selector: string) => {
                 await command('Page.navigate', { url: appUrl + path });
                 await waitFor('document.querySelector(' + JSON.stringify(selector) + ') !== null');
@@ -387,10 +767,10 @@ echo 'Term fixture updated.';`;
                 await command('Page.navigate', { url: appUrl + path });
                 await waitFor('document.querySelector("h1")?.textContent === ' + JSON.stringify(heading));
             };
-            const publicNavigation = [['Home', '/'], ['Find Scholarships', '/scholarships'], ['How It Works', '/#how-it-works'], ['For Providers', '/#for-providers'], ['About Us', '/#about'], ['Passers', '/passers']];
+            const publicNavigation = [['Home', '/'], ['Scholarships', '/scholarships'], ['About', '/#about'], ['Contact', '/#contact']];
             const checkPublicChrome = async () => {
                 assert.deepEqual(await evaluate("[...document.querySelectorAll('header nav a')].map(link => [link.textContent, link.getAttribute('href')])"), publicNavigation);
-                assert.equal(await evaluate("document.querySelectorAll('footer h2').length"), 3);
+                assert.equal(await evaluate("document.querySelector('footer nav[aria-label=\"Footer navigation\"]') !== null"), true);
                 assert.equal(await evaluate("[...document.querySelectorAll('footer a')].filter(link => link.getAttribute('href')?.startsWith('#')).length"), 0, 'Footer section links resolve from every page');
                 assert.equal(await evaluate("document.querySelector('#student-sidebar') === null"), true);
             };
@@ -402,7 +782,7 @@ echo 'Term fixture updated.';`;
                     if ([320, 1440].includes(width)) await screenshot(name + '-' + width);
                 }
             };
-            await go('/', 'Your Next Opportunity Starts Here.');
+            await go('/', 'Find scholarships.Build your future.');
             assert.equal(await evaluate("document.querySelector('[data-testid=scholarship-grid]').textContent.includes('Phase Four Document Grant')"), true);
             assert.equal(await evaluate("document.querySelector('[data-testid=scholarship-grid]').textContent.includes('Browser Count Grant')"), false);
             await fill('input[name=q]', 'Phase Four');
@@ -419,16 +799,16 @@ echo 'Term fixture updated.';`;
             await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Reset').click()");
             await waitFor("document.body.textContent.includes('Phase Four Document Grant') && location.search === ''");
             await go('/scholarships/phase-four-documents', 'Phase Four Document Grant');
-            await evaluate("document.querySelector('header nav a[href=\"/#how-it-works\"]').click()");
+            await evaluate("document.querySelector('footer a[href=\"/#how-it-works\"]').click()");
             await waitFor("document.querySelector('#how-it-works') !== null && location.hash === '#how-it-works'");
-            await waitFor("document.querySelector('header nav a[aria-current=page]')?.getAttribute('href') === '/#how-it-works'");
-            for (const hash of ['#for-providers', '#about']) {
+            assert.equal(await evaluate("document.querySelector('#how-it-works') !== null"), true);
+            for (const hash of ['#about', '#contact']) {
                 await evaluate('document.querySelector(' + JSON.stringify('header nav a[href="/' + hash + '"]') + ').click()');
                 await waitFor('location.hash === ' + JSON.stringify(hash));
                 await waitFor('document.querySelector("header nav a[aria-current=page]")?.getAttribute("href") === ' + JSON.stringify('/' + hash));
                 assert.equal(await evaluate('document.querySelector(' + JSON.stringify(hash) + ') !== null'), true);
             }
-            await evaluate("document.querySelector('header nav a[href=\"/passers\"]').click()");
+            await evaluate("document.querySelector('footer a[href=\"/passers\"]').click()");
             await waitFor("document.querySelector('h1')?.textContent === 'Scholarship passers'");
             await checkPublicChrome();
             await evaluate("document.querySelector('header nav a[href=\"/scholarships\"]').click()");
@@ -465,7 +845,7 @@ echo 'Term fixture updated.';`;
                 await login(role, heading);
                 const footerLink = await evaluate("[...document.querySelectorAll('aside a')].find(link => link.textContent.includes('View public site'))?.getAttribute('href')");
                 assert.ok(footerLink === '/' || footerLink === appUrl + '/');
-                await go('/', 'Your Next Opportunity Starts Here.');
+                await go('/', 'Find scholarships.Build your future.');
                 assert.equal(await evaluate("[...document.querySelectorAll('a')].some(link => link.textContent === 'My account')"), true);
                 await go('/scholarships', 'Find a scholarship');
                 await checkPublicChrome();
@@ -2108,7 +2488,7 @@ echo 'Notification fixture ready.';
     }
     }
     if (process.env.QA_PUBLIC_EMPTY_CHECK === 'true') {
-        for (const [path, title, empty] of [['/', 'Your Next Opportunity Starts Here.', 'No published scholarships yet'], ['/scholarships', 'Find a scholarship', 'No matching scholarships'], ['/passers', 'Scholarship passers', 'No public results yet']]) {
+        for (const [path, title, empty] of [['/', 'Find scholarships.Build your future.', 'No published scholarships yet'], ['/scholarships', 'Find a scholarship', 'No matching scholarships'], ['/passers', 'Scholarship passers', 'No public results yet']]) {
             await command('Page.navigate', { url: appUrl + path });
             await waitFor('document.querySelector("h1")?.textContent === ' + JSON.stringify(title));
             assert.equal(await evaluate('document.body.textContent.includes(' + JSON.stringify(empty) + ')'), true);

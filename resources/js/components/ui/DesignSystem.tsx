@@ -8,7 +8,7 @@ export const motion = 'transition duration-200 ease-out motion-reduce:transition
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline';
 const variants: Record<ButtonVariant, string> = {
     primary: 'bg-civic-navy text-white hover:bg-civic-navy-soft',
-    secondary: 'bg-civic-teal text-white hover:bg-civic-teal-hover',
+    secondary: 'bg-civic-gold text-civic-navy hover:bg-civic-gold-soft',
     ghost: 'text-civic-muted hover:bg-civic-panel',
     danger: 'bg-civic-danger text-white hover:bg-red-950',
     outline: 'border border-civic-border bg-white text-civic-ink hover:bg-civic-panel',
@@ -24,12 +24,12 @@ export function Button({ variant = 'primary', size = 'md', loading = false, chil
 export function Input({ label, error, hint, id, className = '', ...props }: InputHTMLAttributes<HTMLInputElement> & { label: string; error?: string; hint?: string }) {
     const generatedId = useId(); const fieldId = id || generatedId;
     return <div><label htmlFor={fieldId} className="mb-2 block text-sm font-semibold leading-5 text-civic-ink">{label}</label>
-        <input {...props} id={fieldId} aria-invalid={Boolean(error)} aria-describedby={error || hint ? fieldId + '-help' : undefined} className={'min-h-11 w-full rounded-lg border border-civic-control bg-white px-3.5 py-2.5 text-base leading-6 text-civic-ink focus:border-civic-teal focus:outline-2 focus:outline-offset-2 focus:outline-civic-teal disabled:bg-civic-panel ' + className} />
+        <input {...props} id={fieldId} aria-invalid={Boolean(error)} aria-describedby={error || hint ? fieldId + '-help' : undefined} className={'min-h-11 w-full rounded-lg border bg-white px-3.5 py-2.5 text-base leading-6 text-civic-ink focus:border-civic-teal focus:outline-2 focus:outline-offset-2 focus:outline-civic-teal disabled:bg-civic-panel ' + (error ? 'border-civic-danger bg-red-50/30 ' : 'border-civic-border ') + className} />
         {(error || hint) && <p id={fieldId + '-help'} role={error ? 'alert' : undefined} className={'mt-2 text-sm leading-6 ' + (error ? 'text-civic-danger' : 'text-civic-muted')}>{error || hint}</p>}
     </div>;
 }
 export function Card({ className = '', ...props }: HTMLAttributes<HTMLDivElement>) {
-    return <div {...props} className={'rounded-lg border border-neutral-200 bg-white p-6 shadow-civic-card ' + className} />;
+    return <div {...props} className={'rounded-lg border border-neutral-200 bg-white p-5 sm:p-6 ' + className} />;
 }
 export type BadgeTone = 'neutral' | 'blue' | 'indigo' | 'green' | 'amber' | 'red' | 'purple';
 export const badgeColors: Record<BadgeTone, string> = {
@@ -39,7 +39,7 @@ export const badgeColors: Record<BadgeTone, string> = {
     purple: 'border-purple-200 bg-purple-50 text-purple-800',
 };
 export function Badge({ tone = 'neutral', icon: Icon = Circle, children }: { tone?: BadgeTone; icon?: LucideIcon; children: ReactNode }) {
-    return <span className={'inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold leading-4 ' + badgeColors[tone]}><Icon aria-hidden="true" className="size-3 shrink-0" /><span>{children}</span></span>;
+    return <span className={'inline-flex max-w-full items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-semibold leading-4 ' + badgeColors[tone]}><Icon aria-hidden="true" className="size-3 shrink-0" /><span>{children}</span></span>;
 }
 export const statusMap = {
     not_started: { label: 'Not started', tone: 'neutral', icon: Circle },
@@ -55,6 +55,9 @@ export const statusMap = {
     due_soon: { label: 'Due soon', tone: 'amber', icon: Clock3 },
     overdue: { label: 'Overdue', tone: 'red', icon: AlertCircle },
     approved: { label: 'Approved', tone: 'green', icon: CheckCircle2 },
+    suspended: { label: 'Suspended', tone: 'amber', icon: AlertCircle },
+    delayed: { label: 'Delayed', tone: 'amber', icon: AlertCircle },
+    failed: { label: 'Failed', tone: 'red', icon: AlertCircle },
     low_priority: { label: 'Low priority', tone: 'amber', icon: AlertCircle },
 } satisfies Record<string, { label: string; tone: BadgeTone; icon: LucideIcon }>;
 export function StatusBadge({ status }: { status: keyof typeof statusMap }) {
@@ -82,9 +85,9 @@ export function Skeleton({ className = '' }: { className?: string }) {
     return <div aria-hidden="true" className={'animate-pulse rounded-lg bg-neutral-200 motion-reduce:animate-none ' + className} />;
 }
 export function EmptyState({ title, description, action }: { title: string; description: string; action?: ReactNode }) {
-    return <div className="rounded-lg border border-dashed border-civic-border bg-white px-5 py-10 text-center">
-        <span className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-civic-panel"><SearchX aria-hidden="true" className="size-7 text-civic-teal" /></span>
-        <h3 className="text-lg font-bold text-civic-navy">{title}</h3><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-civic-muted">{description}</p>{action && <div className="mt-5">{action}</div>}
+    return <div className="rounded-lg border border-dashed border-civic-border bg-civic-canvas/50 px-5 py-7 text-center">
+        <span className="mx-auto mb-3 flex size-10 items-center justify-center rounded-full bg-civic-panel"><SearchX aria-hidden="true" className="size-5 text-civic-teal" /></span>
+        <h3 className="text-base font-semibold text-civic-navy">{title}</h3><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-civic-muted">{description}</p>{action && <div className="mt-5">{action}</div>}
     </div>;
 }
 export function Toast({ message, tone = 'green', onDismiss }: { message: string; tone?: BadgeTone; onDismiss: () => void }) {

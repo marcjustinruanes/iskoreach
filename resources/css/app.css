@@ -27,20 +27,64 @@
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
 
-/* Provider workspace palette. Account forms and other role layouts retain their own colors. */
-.provider-shell {
-    background: radial-gradient(ellipse at 95% 0%, #d8ece9 0%, transparent 45%),
-        radial-gradient(ellipse at 0% 90%, #e6e9f6 0%, transparent 45%), #edf2f7;
+/* Quiet workspace surfaces keep emphasis on records and primary actions. */
+.provider-shell { background: #f5f8f8; }
+.provider-metric { background: #fff; border-color: #dce3e9; }
+.provider-metric > div > span { background: #edf2f5; }
+.provider-welcome { background: #edf2f5; border-color: #dce3e9; }
+.provider-tool { background: #fff; border-color: #dce3e9; }
+
+@layer base {
+    html { scroll-padding-top: 5rem; }
+    body { -webkit-font-smoothing: antialiased; }
+    button:not(:disabled), summary { cursor: pointer; }
+    input, select, textarea { min-width: 0; }
+    input[type=checkbox], input[type=radio] { accent-color: #123563; flex-shrink: 0; }
+    input[type=checkbox]:focus-visible, input[type=radio]:focus-visible { outline: 2px solid #123563; outline-offset: 3px; }
+    input[type=file] { max-width: 100%; font-size: .875rem; line-height: 1.5rem; color: #4d6278; }
+    input[type=file]::file-selector-button { margin-right: .75rem; border: 1px solid #a3b6c9; border-radius: .375rem; background: #edf2f5; color: #123563; padding: .625rem .75rem; font: inherit; font-weight: 600; cursor: pointer; }
+    input[type=file]:focus-visible { outline: 2px solid #123563; outline-offset: 3px; }
+    input[type=file]:disabled::file-selector-button { cursor: not-allowed; opacity: .5; }
+    textarea { resize: vertical; }
+    input[aria-invalid=true], select[aria-invalid=true], textarea[aria-invalid=true] { border-color: #93000a; }
+    input:disabled, select:disabled, textarea:disabled { cursor: not-allowed; }
+
+    :target { scroll-margin-top: 5rem; }
 }
-.provider-metric { border-top-width: 3px; }
-.provider-metric:nth-child(4n + 1) { background: #edf9f5; border-color: #adddce; }
-.provider-metric:nth-child(4n + 2) { background: #eef4ff; border-color: #bdcfee; }
-.provider-metric:nth-child(4n + 3) { background: #fff8e9; border-color: #ead49a; }
-.provider-metric:nth-child(4n + 4) { background: #f4effc; border-color: #d3c3eb; }
-.provider-metric > div > span { background: #ffffffb3; }
-.provider-welcome { background: linear-gradient(115deg, #e0f4ed, #eff8e8); border-color: #bddccf; }
-.provider-tool { border-top-width: 3px; }
-.provider-tool:nth-child(3n + 1) { background: linear-gradient(140deg, #edf9f5, #fff); border-color: #b9dacf; }
-.provider-tool:nth-child(3n + 2) { background: linear-gradient(140deg, #edf3ff, #fff); border-color: #c5d3ed; }
-.provider-tool:nth-child(3n + 3) { background: linear-gradient(140deg, #fbf4e7, #fff); border-color: #e7d5ad; }
-.provider-shell main table thead { background: #e4eef3; }
+
+/* Registration: connected steps and a quiet, consistent form rhythm. */
+.registration-stepper { display: grid; gap: 0; }
+.registration-step { position: relative; display: flex; gap: 1rem; padding-bottom: 1.75rem; }
+.registration-step:last-child { padding-bottom: 0; }
+.registration-step:not(:last-child)::after { content: ''; position: absolute; left: 19px; top: 43px; bottom: 5px; width: 2px; background: rgb(255 255 255 / .18); }
+.registration-step.is-complete::after { background: #e5bd69; }
+.registration-step-icon { position: relative; z-index: 1; display: flex; width: 40px; height: 40px; flex-shrink: 0; align-items: center; justify-content: center; border: 1px solid rgb(255 255 255 / .28); border-radius: 12px; transition: background-color 180ms, box-shadow 180ms; }
+.registration-step.is-active .registration-step-icon { background: #fbad23; border-color: #fbad23; color: #123563; box-shadow: 0 0 0 4px rgb(251 173 35 / .16); }
+.registration-step.is-complete .registration-step-icon { background: #ffe7ad; border-color: #ffe7ad; color: #123563; }
+.registration-step.is-upcoming { color: rgb(255 255 255 / .65); }
+.registration-stepper-mobile { display: flex; justify-content: space-between; }
+.registration-stepper-mobile .registration-step { flex: 1; padding-bottom: 0; }
+.registration-stepper-mobile .registration-step:last-child { flex: 0; }
+.registration-stepper-mobile .registration-step::after { left: 44px; right: 4px; top: 19px; bottom: auto; width: auto; height: 2px; background: #a3b6c9; }
+.registration-stepper-mobile .registration-step.is-complete::after { background: #e5bd69; }
+.registration-stepper-mobile .registration-step-icon { background: #f5f8f8; color: #566e87; border-color: #a3b6c9; }
+.registration-heading:focus { outline: none; }
+.registration-step-content { min-height: 22rem; animation: registration-enter 180ms ease-out both; }
+.registration-form fieldset > legend { font-size: .75rem; line-height: 1.5rem; text-transform: uppercase; letter-spacing: .06em; color: #566e87; }
+.registration-form input:not([type=checkbox]):not([type=file]), .registration-form select { border-radius: 10px; border-color: #a3b6c9; transition: border-color 150ms, box-shadow 150ms; }
+.registration-form input:not([type=checkbox]):not([type=file]):focus, .registration-form select:focus { border-color: #123563; box-shadow: 0 0 0 3px rgb(163 182 201 / .25); outline-offset: 2px; }
+.registration-form input[aria-invalid=true], .registration-form select[aria-invalid=true] { border-color: #93000a; background-color: #fffafa; }
+.registration-form input[type=checkbox] { width: 1rem; height: 1rem; flex-shrink: 0; accent-color: #123563; }
+.registration-form input[type=checkbox]:focus-visible { outline: 2px solid #123563; outline-offset: 3px; }
+.registration-upload { padding: 1rem; border: 1px dashed #a3b6c9; border-radius: 12px; background: #f5f8f8; transition: border-color 150ms, background-color 150ms; }
+.registration-upload:focus-within, .registration-upload-selected { border-style: solid; border-color: #566e87; background: #fff; }
+.registration-upload-error { border-color: #93000a; background: #fffafa; }
+.registration-navigation { position: relative; margin-top: 1.75rem; padding-top: 1.25rem; padding-bottom: .5rem; border-top: 1px solid #a3b6c966; background: #fff; }
+.registration-nav-button { transition: background-color 150ms, transform 150ms; }
+.registration-nav-button:active:not(:disabled) { transform: translateY(1px); }
+@keyframes registration-enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .registration-step-content { animation: none; } .registration-step-icon, .registration-form input, .registration-form select, .registration-upload, .registration-nav-button { transition: none; } .registration-nav-button:active:not(:disabled) { transform: none; } }
+@media (max-width: 380px) { .registration-nav-button { padding-left: .65rem; padding-right: .65rem; font-size: .75rem; gap: .375rem; } }
+
+/* A visible focus boundary on the dark role navigation. */
+nav[aria-label="Student navigation"] a:focus-visible, nav[aria-label="Provider navigation"] a:focus-visible, nav[aria-label="Administrative navigation"] a:focus-visible { outline-color: #fbad23; }
