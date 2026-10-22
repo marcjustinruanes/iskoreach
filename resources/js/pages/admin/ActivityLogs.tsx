@@ -1,8 +1,9 @@
+import { AdminCard as Card } from '../../components/admin/AdminPanel';
 import { router, useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import type { Paginated, SharedProps } from '../../types';
 import AdminLayout from '../../layouts/AdminLayout';
-import { Badge, Button, Card, EmptyState, Input, focusRing } from '../../components/ui/DesignSystem';
+import { Badge, Button, EmptyState, Input, focusRing } from '../../components/ui/DesignSystem';
 import { Pagination, Table } from '../../components/ui/DataDisplay';
 interface Filters { action: string; type: string; actor: string; record: string; from: string; to: string }
 interface Log { id: number; actor: string; actor_reference: string | null; action: string; action_code: string; record: string; occurred_at: string; reason: string | null; transition: { from?: string; to?: string } }
@@ -14,14 +15,14 @@ export default function ActivityLogs({ filters, logs, actions, types, adminNavig
     if (!adminNavigation) return null;
     const submit = (event: FormEvent) => { event.preventDefault(); form.get(adminNavigation.activity, { preserveScroll: true, preserveState: true }); };
     return <AdminLayout title="Activity logs">
-        <Card className="mb-6 p-5 sm:p-6"><form onSubmit={submit} aria-label="Activity log filters" className="space-y-4"><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <Card className="mb-5 p-5 sm:p-6"><form onSubmit={submit} aria-label="Activity log filters" className="space-y-4"><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <Select field="action" label="Action" value={form.data.action} options={actions} change={value => form.setData('action', value)} error={form.errors.action} />
             <Select field="type" label="Record type" value={form.data.type} options={types} change={value => form.setData('type', value)} error={form.errors.type} />
             <Input label="Actor account number" name="actor" type="number" min={1} value={form.data.actor} onChange={event => form.setData('actor', event.target.value)} error={form.errors.actor} />
             <Input label="Target record number" name="record" type="number" min={1} value={form.data.record} onChange={event => form.setData('record', event.target.value)} error={form.errors.record} />
             <Input label="From date" name="from" type="date" value={form.data.from} onChange={event => form.setData('from', event.target.value)} error={form.errors.from} />
             <Input label="Through date (inclusive)" name="to" type="date" value={form.data.to} onChange={event => form.setData('to', event.target.value)} error={form.errors.to} />
-        </div><div className="flex flex-wrap gap-3"><Button type="submit" loading={form.processing}>Apply filters</Button><Button variant="outline" onClick={() => router.get(adminNavigation.activity)}>Reset</Button></div></form></Card>
+        </div><div className="admin-form-actions flex flex-wrap gap-3"><Button type="submit" loading={form.processing}>Apply filters</Button><Button variant="outline" onClick={() => router.get(adminNavigation.activity)}>Reset</Button></div></form></Card>
         <Card className="min-w-0 p-5 sm:p-6"><div className="mb-5 flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-lg font-bold text-civic-navy">Recorded activity</h2><p aria-live="polite" className="mt-2 text-sm leading-6 text-civic-muted">{logs.total} matching {logs.total === 1 ? 'event' : 'events'}. Newest first; times use Asia/Manila.</p></div><Badge>Read only</Badge></div>
             {logs.data.length ? <Table rows={logs.data} rowKey={log => log.id} caption="Recorded administrative and related platform activity" columns={[
                 { key: 'time', label: 'When', render: log => <time dateTime={log.occurred_at} className="text-xs leading-5 text-civic-muted">{new Date(log.occurred_at).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}</time> },

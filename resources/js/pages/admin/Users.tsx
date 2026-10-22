@@ -1,9 +1,10 @@
+import { AdminCard as Card } from '../../components/admin/AdminPanel';
 import { Link, router, useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import type { ManagedAccount, Paginated, SharedProps } from '../../types';
 import AdminLayout from '../../layouts/AdminLayout';
 import AccountStatusBadge from '../../components/AccountStatusBadge';
-import { Button, Card, EmptyState, Input, focusRing } from '../../components/ui/DesignSystem';
+import { Button, EmptyState, Input, focusRing } from '../../components/ui/DesignSystem';
 import { Pagination, Table } from '../../components/ui/DataDisplay';
 
 interface AccountFilters { q: string; role: string; status: string; sort: string }
@@ -23,7 +24,7 @@ export default function Users({ accounts, filters, adminNavigation }: UsersProps
         router.get(adminNavigation.users, {}, { preserveScroll: true });
     };
     return <AdminLayout title="User management">
-        <Card className="mb-6 rounded-xl p-5 sm:p-6"><form onSubmit={search} aria-label="Search and filter accounts" className="space-y-4">
+        <Card className="mb-5 rounded-xl p-5 sm:p-6"><form onSubmit={search} aria-label="Search and filter accounts" className="space-y-4">
             <Input label="Search accounts" type="search" name="q" placeholder="Name, email, or provider organization" value={form.data.q} onChange={event => form.setData('q', event.target.value)} maxLength={200} error={form.errors.q} />
             <div className="grid items-end gap-4 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_auto]">
                 <div><label htmlFor="account-role" className="mb-2 block text-sm font-semibold">Account type</label><select id="account-role" name="role" value={form.data.role} onChange={event => form.setData('role', event.target.value)} className={selectClass}><option value="">Students and providers</option><option value="student">Students</option><option value="provider">Providers</option></select>{form.errors.role && <p role="alert" className="mt-2 text-sm text-civic-danger">{form.errors.role}</p>}</div>

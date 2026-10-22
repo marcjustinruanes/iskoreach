@@ -576,7 +576,7 @@ $attachment->forceFill(['submitted_at'=>now(),'review_status'=>'rejected','revie
                     await delay(80);
                     assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true, path + ' fits ' + width);
                     assert.equal(await evaluate("[...document.querySelectorAll('main input:not([type=hidden])')].every(input => input.labels.length > 0 || input.getAttribute('aria-label') || input.getAttribute('aria-labelledby'))"), true, path + ' inputs are labeled');
-                    if (/dashboard|profile|student-verifications$|scholarships\/create/.test(path)) await screenshot('system-' + path.slice(1).replaceAll('/', '-') + '-' + width);
+                    if (/dashboard|profile|student-verifications$|scholarships\/create|admin\/(providers|users|scholarships)\/\d+$/.test(path)) await screenshot('system-' + path.slice(1).replaceAll('/', '-') + '-' + width);
                 }
                 checked++;
                 const links = await evaluate("[...document.querySelectorAll('main a[href]')].map(link=>new URL(link.href).pathname)") as string[];

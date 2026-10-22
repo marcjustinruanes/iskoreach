@@ -1,10 +1,11 @@
+import { AdminCard as Card } from '../../components/admin/AdminPanel';
 import { router, useForm } from '@inertiajs/react';
 import { CalendarDays, LockKeyhole, Pencil, Plus } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Paginated, SharedProps } from '../../types';
 import AdminLayout from '../../layouts/AdminLayout';
-import { Badge, Button, Card, EmptyState, Input, focusRing } from '../../components/ui/DesignSystem';
+import { Badge, Button, EmptyState, Input, focusRing } from '../../components/ui/DesignSystem';
 import { Pagination } from '../../components/ui/DataDisplay';
 import { Modal } from '../../components/ui/Overlays';
 import { useRequestFeedback } from '../../components/ui/useRequestFeedback';
@@ -26,8 +27,8 @@ export default function AcademicTerms({ terms, filters, storeUrl }: Props) {
     const request = useRequestFeedback(form.cancel);
     const submit = (event: FormEvent) => { event.preventDefault(); if (!request.begin()) return; form.get('/admin/academic-terms', { preserveState: true, preserveScroll: true, onFinish: request.finish }); };
     return <AdminLayout title="Academic terms" actions={<Button onClick={() => setEditor({ term: null })}><Plus aria-hidden="true" className="size-4" />Create term</Button>}>
-        <div className="mb-6 flex flex-wrap items-start justify-between gap-4 rounded-xl border border-teal-200 bg-teal-50 p-5"><div className="flex max-w-3xl gap-3"><CalendarDays aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-civic-teal" /><div><h2 className="text-sm font-semibold text-civic-navy">One shared term directory</h2><p className="mt-2 text-sm leading-6 text-civic-muted">Terms linked to records are read-only to preserve history. Terms can overlap; there is no global active term.</p></div></div></div>
-        <Card className="mb-6"><form aria-label="Filter academic terms" onSubmit={submit} className="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
+        <div className="mb-5 flex flex-wrap items-start justify-between gap-4 rounded-xl border border-teal-200 bg-teal-50 p-5"><div className="flex max-w-3xl gap-3"><CalendarDays aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-civic-teal" /><div><h2 className="text-sm font-semibold text-civic-navy">One shared term directory</h2><p className="mt-2 text-sm leading-6 text-civic-muted">Terms linked to records are read-only to preserve history. Terms can overlap; there is no global active term.</p></div></div></div>
+        <Card className="mb-5"><form aria-label="Filter academic terms" onSubmit={submit} className="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
             <Input label="Search academic year or semester" name="q" type="search" maxLength={100} value={form.data.q} onChange={event => form.setData('q', event.target.value)} error={form.errors.q} placeholder="e.g. 2026-2027" />
             <div><label htmlFor="term-usage" className="mb-2 block text-sm font-semibold">Usage</label><select id="term-usage" name="usage" value={form.data.usage} onChange={event => form.setData('usage', event.target.value)} className={'min-h-11 w-full rounded-lg border border-civic-control bg-white px-3 py-2.5 text-base ' + focusRing}><option value="">All terms</option><option value="unused">Unused · editable</option><option value="used">In use · read-only</option></select></div>
             <div><label htmlFor="term-sort" className="mb-2 block text-sm font-semibold">Sort by</label><select id="term-sort" name="sort" value={form.data.sort} onChange={event => form.setData('sort', event.target.value)} className={'min-h-11 w-full rounded-lg border border-civic-control bg-white px-3 py-2.5 text-base ' + focusRing}><option value="year_desc">Academic year: Z to A</option><option value="year_asc">Academic year: A to Z</option><option value="latest">Recently created</option></select></div>

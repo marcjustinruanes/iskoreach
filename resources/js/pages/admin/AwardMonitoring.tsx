@@ -1,9 +1,10 @@
+import { AdminCard as Card } from '../../components/admin/AdminPanel';
 import { Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Paginated, SharedProps } from '../../types';
 import AdminLayout from '../../layouts/AdminLayout';
-import { Badge, Button, Card, EmptyState, Input, buttonStyles, focusRing } from '../../components/ui/DesignSystem';
+import { Badge, Button, EmptyState, Input, buttonStyles, focusRing } from '../../components/ui/DesignSystem';
 import { Pagination, Table } from '../../components/ui/DataDisplay';
 import type { TableColumn } from '../../components/ui/DataDisplay';
 import { Modal } from '../../components/ui/Overlays';
@@ -53,8 +54,8 @@ export default function AwardMonitoring({ section, filters, records, statuses, p
         );
     }
     return <AdminLayout title={titles[section]}>
-        {section === 'awards' && <Link href="/passers" className={buttonStyles('outline') + ' mb-6'}>View public passers list</Link>}
-        <Card className="mb-6 p-5 sm:p-6"><form onSubmit={submit} aria-label={'Filter ' + section} className="space-y-4">
+        {section === 'awards' && <Link href="/passers" className={buttonStyles('outline') + ' mb-5'}>View public passers list</Link>}
+        <Card className="mb-5 p-5 sm:p-6"><form onSubmit={submit} aria-label={'Filter ' + section} className="space-y-4">
             <Input label="Search scholarships or providers" type="search" name="q" maxLength={200} value={form.data.q} onChange={e => form.setData('q', e.target.value)} error={form.errors.q} />
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 <Select label="Status" field="status" value={form.data.status} options={statuses.map(value => ({ value, name: label(value) }))} change={value => form.setData('status', value)} />
@@ -66,7 +67,7 @@ export default function AwardMonitoring({ section, filters, records, statuses, p
                 <Input label="Award number" name="award" type="number" min={1} placeholder="For example: 12" value={form.data.award} onChange={e => form.setData('award', e.target.value)} error={form.errors.award} />
             </div>
             {(['status', 'provider', 'term', 'activity', 'consent'] as const).map(field => form.errors[field] && <p key={field} role="alert" className="text-sm text-civic-danger">{form.errors[field]}</p>)}
-            <div className="flex flex-wrap gap-3"><Button type="submit" loading={form.processing}>Apply filters</Button><Button variant="outline" onClick={reset}>Reset</Button></div>
+            <div className="admin-form-actions flex flex-wrap gap-3"><Button type="submit" loading={form.processing}>Apply filters</Button><Button variant="outline" onClick={reset}>Reset</Button></div>
         </form></Card>
         <Card className="min-w-0 p-5 sm:p-6"><h2 className="text-lg font-bold text-civic-navy">Recorded {section === 'releases' ? 'benefit releases' : section}</h2><p aria-live="polite" className="mt-2 mb-5 text-sm leading-6 text-civic-muted">{records.total} matching {records.total === 1 ? 'record' : 'records'}. Dates use Asia/Manila.</p>
             {records.data.length ? <Table rows={records.data} rowKey={record => record.id} columns={columns} caption={titles[section]} /> : <EmptyState title="No matching records" description="Records will appear when awards and provider tracking entries are recorded. Try resetting any active filters." />}
@@ -94,7 +95,7 @@ function PublicationDialog({ record, close }: { record: Record; close: () => voi
             <label className="flex items-start gap-3 text-sm leading-6"><input type="checkbox" name="confirmed" checked={form.data.confirmed} onChange={e => form.setData('confirmed', e.target.checked)} className={'mt-1 size-4 shrink-0 accent-civic-teal ' + focusRing} />I confirm this publication decision for AW-{record.id}.</label>
             {Object.entries(form.errors).filter(([key]) => key !== 'reason').map(([key, error]) => <p key={key} role="alert" className="text-sm text-civic-danger">{error}</p>)}
             {form.errors.version && <Button variant="outline" onClick={() => router.reload()}>Reload latest award</Button>}
-            <div className="flex flex-wrap gap-3"><Button type="submit" loading={form.processing} disabled={!form.data.confirmed || (publishing && !record.can_publish)}>{publishing ? 'Confirm publication' : 'Remove listing'}</Button><Button variant="outline" disabled={form.processing} onClick={close}>Cancel</Button></div>
+            <div className="admin-form-actions flex flex-wrap gap-3"><Button type="submit" variant={publishing ? 'primary' : 'danger'} loading={form.processing} disabled={!form.data.confirmed || (publishing && !record.can_publish)}>{publishing ? 'Confirm publication' : 'Remove listing'}</Button><Button variant="outline" disabled={form.processing} onClick={close}>Cancel</Button></div>
         </form>
     </Modal>;
 }

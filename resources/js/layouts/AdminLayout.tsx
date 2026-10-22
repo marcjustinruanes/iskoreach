@@ -60,7 +60,7 @@ export default function AdminLayout({ title, description, actions, children }: {
 
                 </div>
             </header>
-            <main id="main-content" className="workspace-content mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
+            <main id="main-content" className="admin-workspace workspace-content mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
                 <PageHeader title={title} description={description} actions={actions} />
                 {status && <div role="status" className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-900">{status}</div>}
                 {children}

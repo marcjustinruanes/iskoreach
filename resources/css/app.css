@@ -151,3 +151,8 @@ nav[aria-label="Student navigation"] a:focus-visible, nav[aria-label="Provider n
 .workspace-content { padding-inline: var(--workspace-gutter); padding-block: 1.5rem; }
 .chat-history { scrollbar-width: thin; scrollbar-color: #a3b6c9 transparent; }
 @media (max-width: 639px) { .workspace-content { padding-block: 1.25rem; } }
+
+/* Administrative tables share a stronger header boundary and compact actions. */
+.admin-workspace table thead { border-bottom: 2px solid var(--section-divider); }
+.admin-workspace table th { font-size: .75rem; line-height: 1.25rem; }
+.admin-workspace .admin-panel > form > .admin-form-actions { border-top: 1px solid var(--section-divider); padding-top: 1rem; }

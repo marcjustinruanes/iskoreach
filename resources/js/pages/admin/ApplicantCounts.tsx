@@ -1,8 +1,9 @@
+import { AdminCard as Card } from '../../components/admin/AdminPanel';
 import { Link, router, useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import type { ApplicantCountSummary, Paginated, SharedProps } from '../../types';
 import AdminLayout from '../../layouts/AdminLayout';
-import { Badge, Button, Card, EmptyState, Input, focusRing } from '../../components/ui/DesignSystem';
+import { Badge, Button, EmptyState, Input, focusRing } from '../../components/ui/DesignSystem';
 import { Pagination, Table } from '../../components/ui/DataDisplay';
 
 interface Props extends SharedProps { filters: { q: string; pending: string }; scholarships: Paginated<{ id: number; title: string; provider: string | null; summary: ApplicantCountSummary; show_url: string }> }
@@ -10,7 +11,7 @@ export default function ApplicantCounts({ filters, scholarships, adminNavigation
     const form = useForm(filters);
     if (!adminNavigation) return null;
     const submit = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); form.get(adminNavigation.counts, { preserveState: true, preserveScroll: true }); };
-    return <AdminLayout title="Applicant counts"><Card className="mb-6 rounded-xl p-5"><form onSubmit={submit} aria-label="Search applicant counts" className="space-y-4"><Input label="Search scholarships" name="q" type="search" maxLength={200} value={form.data.q} onChange={event => form.setData('q', event.target.value)} error={form.errors.q} /><label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" name="pending" checked={form.data.pending === '1'} onChange={event => form.setData('pending', event.target.checked ? '1' : '')} className={'size-5 accent-civic-teal ' + focusRing} />Only scholarships with reports awaiting review</label><div className="flex gap-3"><Button type="submit" loading={form.processing}>Apply filters</Button><Button variant="outline" onClick={() => router.get(adminNavigation.counts)}>Reset</Button></div></form></Card>
+    return <AdminLayout title="Applicant counts"><Card className="mb-5 rounded-xl p-5"><form onSubmit={submit} aria-label="Search applicant counts" className="space-y-4"><Input label="Search scholarships" name="q" type="search" maxLength={200} value={form.data.q} onChange={event => form.setData('q', event.target.value)} error={form.errors.q} /><label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" name="pending" checked={form.data.pending === '1'} onChange={event => form.setData('pending', event.target.checked ? '1' : '')} className={'size-5 accent-civic-teal ' + focusRing} />Only scholarships with reports awaiting review</label><div className="flex gap-3"><Button type="submit" loading={form.processing}>Apply filters</Button><Button variant="outline" onClick={() => router.get(adminNavigation.counts)}>Reset</Button></div></form></Card>
         <Card className="min-w-0 rounded-xl p-5"><h2 className="mb-5 text-lg font-bold text-civic-navy">{scholarships.total} scholarship count records</h2>{scholarships.data.length ? <Table rows={scholarships.data} rowKey={item => item.id} caption="Applicant count monitoring" columns={[
             { key: 'title', label: 'Scholarship', render: item => <div className="min-w-40"><Link href={item.show_url} className={'break-words rounded font-semibold text-civic-teal underline underline-offset-4 ' + focusRing}>{item.title}</Link><p className="mt-1 text-xs leading-5 text-civic-muted">{item.provider || 'Organization not recorded'}</p></div> },
             { key: 'internal', label: 'Internal / waitlisted', render: item => item.summary.internal_count + ' / ' + item.summary.waitlisted_count },
