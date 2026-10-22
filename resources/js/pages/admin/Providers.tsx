@@ -19,7 +19,7 @@ export default function Providers({ providers, filters, adminNavigation }: Provi
         form.clearErrors();
         router.get(adminNavigation.providers, {}, { preserveScroll: true });
     };
-    return <AdminLayout title="Provider reviews" description="Find provider accounts and review organization details before deciding on workspace access.">
+    return <AdminLayout title="Provider reviews">
         <Card className="mb-6 rounded-xl p-5 sm:p-6"><form onSubmit={search} className="grid items-end gap-4 md:grid-cols-[minmax(0,1fr)_12rem_auto]" aria-label="Search and filter providers">
             <Input label="Search providers" type="search" name="q" value={form.data.q} onChange={event => form.setData('q', event.target.value)} placeholder="Organization, contact person, or email" maxLength={200} error={form.errors.q} />
             <div><label htmlFor="provider-status-filter" className="mb-2 block text-sm font-semibold">Verification status</label><select id="provider-status-filter" name="status" value={form.data.status} onChange={event => form.setData('status', event.target.value)} className={'min-h-11 w-full rounded-lg border border-civic-control bg-white px-3 py-2.5 text-base ' + focusRing}><option value="">All statuses</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="suspended">Suspended</option></select>{form.errors.status && <p role="alert" className="mt-2 text-sm text-civic-danger">{form.errors.status}</p>}</div>

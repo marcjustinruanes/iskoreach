@@ -1,3 +1,4 @@
+import PageHeader from '../components/PageHeader';
 import WorkspaceBreadcrumbs from '../components/WorkspaceBreadcrumbs';
 import SidebarNavigation, { type SidebarGroup } from '../components/SidebarNavigation';
 import SidebarAccount from '../components/SidebarAccount';
@@ -13,7 +14,7 @@ import VerificationNotices from '../components/VerificationNotices';
 import { EmptyState, focusRing } from '../components/ui/DesignSystem';
 import { Drawer, Modal } from '../components/ui/Overlays';
 
-export default function ProviderLayout({ title, description, actions, children }: { title: string; description: string; actions?: ReactNode; children: ReactNode }) {
+export default function ProviderLayout({ title, description, actions, children }: { title: string; description?: string; actions?: ReactNode; children: ReactNode }) {
     const unreadNotifications = useNotificationSummary();
     const { auth, providerContext: context, status } = usePage<SharedProps>().props;
     const { url } = usePage();
@@ -66,7 +67,7 @@ export default function ProviderLayout({ title, description, actions, children }
 
                 </div>
             </header>
-            <main id="main-content" className="workspace-content mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8 lg:py-6"><div className="mb-6 flex flex-wrap items-start justify-between gap-4"><div className="min-w-0 max-w-3xl"><h1 className="text-2xl font-bold leading-8 tracking-tight text-civic-navy">{title}</h1><p className="mt-2 text-sm leading-6 text-civic-muted">{description}</p></div>{actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}</div>
+            <main id="main-content" className="workspace-content mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8 lg:py-6"><PageHeader title={title} description={description} actions={actions} />
                 {status && <p role="status" className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm leading-6 text-emerald-900">{status}</p>}{children}
             </main>
         </div>

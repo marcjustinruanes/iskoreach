@@ -13,7 +13,7 @@ export default function ActivityLogs({ filters, logs, actions, types, adminNavig
     const form = useForm<Filters>(filters);
     if (!adminNavigation) return null;
     const submit = (event: FormEvent) => { event.preventDefault(); form.get(adminNavigation.activity, { preserveScroll: true, preserveState: true }); };
-    return <AdminLayout title="Activity logs" description="Review recorded oversight actions and related provider and publication events.">
+    return <AdminLayout title="Activity logs">
         <Card className="mb-6 p-5 sm:p-6"><form onSubmit={submit} aria-label="Activity log filters" className="space-y-4"><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <Select field="action" label="Action" value={form.data.action} options={actions} change={value => form.setData('action', value)} error={form.errors.action} />
             <Select field="type" label="Record type" value={form.data.type} options={types} change={value => form.setData('type', value)} error={form.errors.type} />

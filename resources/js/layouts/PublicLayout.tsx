@@ -12,8 +12,8 @@ import fontUrl from '../../../public/fonts/plus-jakarta-sans-latin.woff2?url';
 const navigation: [string, string][] = [['Home', '/'], ['Scholarships', '/scholarships'], ['About', '/#about'], ['Contact', '/#contact']];
 export const publicPageContainer = landingContainer + ' py-8 sm:py-10';
 
-export function PublicPageHeading({ title, description, eyebrow }: { title: string; description: string; eyebrow?: string }) {
-    return <div className="mb-6 max-w-3xl">{eyebrow && <p className="mb-3 text-xs font-bold uppercase tracking-widest text-civic-teal">{eyebrow}</p>}<h1 className="break-words text-2xl font-bold leading-8 tracking-tight text-civic-navy sm:text-3xl">{title}</h1><p className="mt-2 text-sm leading-6 text-civic-muted">{description}</p></div>;
+export function PublicPageHeading({ title, description, eyebrow }: { title: string; description?: string; eyebrow?: string }) {
+    return <div className="mb-6 max-w-3xl">{eyebrow && <p className="mb-3 text-xs font-bold uppercase tracking-widest text-civic-teal">{eyebrow}</p>}<h1 className="break-words text-2xl font-bold leading-8 tracking-tight text-civic-navy sm:text-3xl">{title}</h1>{description && <p className="mt-2 text-sm leading-6 text-civic-muted">{description}</p>}</div>;
 }
 
 export default function PublicLayout({ children }: { children: ReactNode }) {

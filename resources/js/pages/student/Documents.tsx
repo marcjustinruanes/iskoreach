@@ -23,7 +23,7 @@ export default function Documents({ documents, filters, upload_limit_kb }: Props
         if (!request.begin()) return;
         form.post('/student/documents', { forceFormData: true, preserveScroll: true, onSuccess: () => { form.reset(); if (fileInput.current) fileInput.current.value = ''; }, onFinish: request.finish });
     };
-    return <AppLayout title="My document vault" description="Keep reusable documents private and choose which files to share with each scholarship application.">
+    return <AppLayout title="My document vault" description="Documents stay private until you attach them to an application.">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-civic-blue-gray bg-civic-panel p-4"><p className="max-w-2xl text-sm leading-6 text-civic-navy">Upload here, then attach and confirm each file in your application or renewal checklist. Uploading alone does not submit a requirement.</p><div className="flex flex-wrap gap-2"><Link href="/student/applications" className={buttonStyles('outline', 'sm')}>My applications</Link><Link href="/renewals" className={buttonStyles('outline', 'sm')}>Renewal checklists</Link></div></div>
         <div className="grid min-w-0 items-start gap-6 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
         <Card className="mb-6"><h2 className="text-lg font-bold">Upload a document</h2><p className="mt-2 mb-5 text-sm leading-6 text-civic-muted">PDF, JPG, or PNG. Current upload limit: {Math.round(upload_limit_kb / 1024 * 10) / 10} MB per file. Uploading a new file creates a separate entry.</p>

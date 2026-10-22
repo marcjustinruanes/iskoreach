@@ -14,7 +14,7 @@ function CreateForm({ application: item, terms }: { application: Candidate; term
  const form = useForm({ action: 'award_create', version: item.version, academic_term_id: '', starts_on: '', ends_on: '', reason: '', confirmed: false, conflict_confirmed: false, context_token: item.context.token });
  const request = useRequestFeedback(form.cancel);
  const submit = (event: FormEvent) => { event.preventDefault(); if (!request.begin()) return; form.post('/benefits/applications/' + item.id, { onSuccess: () => setOpen(false), onFinish: request.finish }); };
- return <ProviderLayout title="Confirm scholarship award" description="Create a separate confirmed award for this accepted application.">
+ return <ProviderLayout title="Confirm scholarship award" description="Acceptance alone does not create an award. Confirm the award details below.">
  <Link href={'/provider/applications/' + item.id} className={buttonStyles('outline') + ' mb-6'}>Back to applicant</Link>
  <Card className="max-w-3xl"><p className="text-xs font-semibold text-civic-muted">Application #{item.id}</p><h2 className="mt-2 break-words text-xl font-bold">{item.scholarship}</h2><p className="mt-3 break-words text-sm leading-6">{item.student}</p>
  {item.existing_url ? <Link href={item.existing_url} className={buttonStyles('primary') + ' mt-5'}>View existing award</Link> : !terms.length ? <p className="mt-5 text-sm leading-6 text-civic-muted">An academic term must exist before an award can be recorded. Term administration is not available here.</p> : <form className="mt-6 space-y-5" onSubmit={event => { event.preventDefault(); setOpen(true); }}>

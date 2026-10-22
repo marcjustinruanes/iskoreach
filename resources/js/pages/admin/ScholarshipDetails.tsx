@@ -7,7 +7,7 @@ import { Badge, Card, EmptyState, StatusBadge, buttonStyles } from '../../compon
 
 interface ScholarshipDetailsProps extends SharedProps { scholarship: MonitoredScholarshipDetails }
 export default function ScholarshipDetails({ scholarship: item, adminNavigation }: ScholarshipDetailsProps) {
-    return <AdminLayout title="Scholarship details" description="Read the recorded program information, eligibility criteria, requirements, and publication status.">
+    return <AdminLayout title="Scholarship details">
         {adminNavigation && <Link href={adminNavigation.scholarships} className={buttonStyles('outline') + ' mb-6'}>Back to scholarship monitoring</Link>}
         {item.deleted_at && <p role="status" className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">Retained record: removed on {scholarshipDate(item.deleted_at)}. This information is preserved for administrative history.</p>}
         <Card className="rounded-xl p-5 sm:p-6"><div className="flex flex-wrap items-start justify-between gap-4"><h2 className="min-w-0 break-words text-2xl font-bold leading-9 text-civic-navy">{item.title}</h2><ScholarshipStatusBadge status={item.status} /></div><p className="mt-2 break-words text-sm text-civic-muted">{item.provider} · {item.scholarship_type}</p><p className="mt-6 whitespace-pre-wrap break-words text-base leading-7">{item.description}</p>

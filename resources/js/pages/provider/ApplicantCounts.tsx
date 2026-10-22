@@ -6,7 +6,7 @@ import { Card, EmptyState, buttonStyles, focusRing } from '../../components/ui/D
 import { Pagination, Table } from '../../components/ui/DataDisplay';
 interface Props extends SharedProps { scholarships: Paginated<{ id: number; title: string; show_url: string; summary: ApplicantCountSummary }> }
 export default function ApplicantCounts({ scholarships }: Props) {
-    return <ProviderLayout title="Applicant counts" description="Keep scholarship totals accurate with verified external application reports." actions={<Link href="/provider/scholarships" className={buttonStyles('outline')}>My scholarships<ArrowRight aria-hidden="true" className="size-4" /></Link>}>
+    return <ProviderLayout title="Applicant counts" actions={<Link href="/provider/scholarships" className={buttonStyles('outline')}>My scholarships<ArrowRight aria-hidden="true" className="size-4" /></Link>}>
         <div className="mb-5 grid gap-3 md:grid-cols-3">{[
             { title: 'Internal submissions', description: 'Submitted student applications are counted automatically. Drafts are excluded.', icon: UsersRound },
             { title: 'Verified external reports', description: 'Only valid admin-verified reports are included. Pending reports stay separate.', icon: FileCheck2 },

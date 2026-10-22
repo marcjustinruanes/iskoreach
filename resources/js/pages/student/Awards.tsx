@@ -9,8 +9,8 @@ import { Modal } from '../../components/ui/Overlays';
 import { useRequestFeedback } from '../../components/ui/useRequestFeedback';
 interface Award { id: number; scholarship: string; provider: string | null; status: string; active: boolean; consented: boolean; published: boolean; version: number; consent_url: string }
 export default function Awards({ awards }: SharedProps & { awards: Paginated<Award> }) {
-    return <AppLayout title="My awards" description="View your recorded awards and choose whether your name can appear on the public passers list.">
-        <Link href="/passers" className={buttonStyles('outline') + ' mb-6'}>View public passers list</Link>
+    return <AppLayout title="My awards" description="Public listing requires your consent and administrator approval." actions={<Link href="/passers" className={buttonStyles('outline')}>View public passers list</Link>}>
+
         <div className="space-y-5">{awards.data.length ? awards.data.map(award => <AwardCard key={award.id + ':' + award.version} award={award} />) : <EmptyState title="No confirmed awards yet" description="Your confirmed scholarship awards will appear here. An accepted application is separate from a confirmed award." />}</div>
         <Pagination page={awards} label="My awards pages" />
     </AppLayout>;

@@ -1,3 +1,4 @@
+import PageHeader from '../components/PageHeader';
 import WorkspaceBreadcrumbs from '../components/WorkspaceBreadcrumbs';
 import SidebarNavigation, { type SidebarGroup } from '../components/SidebarNavigation';
 import SidebarAccount from '../components/SidebarAccount';
@@ -12,7 +13,7 @@ import SidebarToggle, { useSidebarCollapsed } from '../components/SidebarToggle'
 import { buttonStyles, focusRing } from '../components/ui/DesignSystem';
 import { Drawer, Modal } from '../components/ui/Overlays';
 
-export default function AdminLayout({ title, description, children }: { title: string; description: string; children: ReactNode }) {
+export default function AdminLayout({ title, description, actions, children }: { title: string; description?: string; actions?: ReactNode; children: ReactNode }) {
     const { props, url } = usePage<SharedProps>();
     const unreadNotifications = useNotificationSummary();
     const { auth, adminNavigation: navigation, status } = props;
@@ -60,7 +61,7 @@ export default function AdminLayout({ title, description, children }: { title: s
                 </div>
             </header>
             <main id="main-content" className="workspace-content mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
-                <div className="mb-6"><h1 className="text-2xl font-bold leading-8 tracking-tight text-civic-navy">{title}</h1><p className="mt-1 max-w-3xl text-sm leading-6 text-civic-muted">{description}</p></div>
+                <PageHeader title={title} description={description} actions={actions} />
                 {status && <div role="status" className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-900">{status}</div>}
                 {children}
             </main>

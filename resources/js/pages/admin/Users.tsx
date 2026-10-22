@@ -22,7 +22,7 @@ export default function Users({ accounts, filters, adminNavigation }: UsersProps
         form.clearErrors();
         router.get(adminNavigation.users, {}, { preserveScroll: true });
     };
-    return <AdminLayout title="User management" description="Find student and provider accounts, check their access status, and view recorded account activity.">
+    return <AdminLayout title="User management">
         <Card className="mb-6 rounded-xl p-5 sm:p-6"><form onSubmit={search} aria-label="Search and filter accounts" className="space-y-4">
             <Input label="Search accounts" type="search" name="q" placeholder="Name, email, or provider organization" value={form.data.q} onChange={event => form.setData('q', event.target.value)} maxLength={200} error={form.errors.q} />
             <div className="grid items-end gap-4 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_auto]">

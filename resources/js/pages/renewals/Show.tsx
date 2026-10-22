@@ -22,7 +22,7 @@ function RenewalDetails({ auth, renewal, documents }: SharedProps & { renewal: R
  const select = (value: 'submit' | 'approved' | 'rejected') => { form.setData({ action: value, version: renewal.version, confirmed: false, reason: '' }); setAction(value); };
  const submit = (event: FormEvent) => { event.preventDefault(); if (!request.begin()) return; form.patch(renewal.url, { preserveScroll: true, onSuccess: () => setAction(null), onFinish: request.finish }); };
  const complete = renewal.checklist.every(rule => !(rule.required || rule.attachment) || rule.complete);
- return <ChatShell title={'Renewal RN-' + renewal.id} description="Review the request, document checklist, and recorded decisions.">
+ return <ChatShell title={'Renewal RN-' + renewal.id} description={renewal.scholarship}>
  <Link href="/renewals" className={buttonStyles('outline') + ' mb-6'}>All renewals</Link>
  <div className="space-y-5"><Card><div className="flex flex-wrap justify-between gap-3"><div className="min-w-0"><p className="text-xs font-semibold text-civic-muted">AW-{renewal.award_id}</p><h2 className="mt-2 break-words text-xl font-bold">{renewal.scholarship}</h2><p className="mt-2 text-sm leading-6 text-civic-muted">{renewal.term}</p></div><StatusBadge status={renewal.status} /></div><p className="mt-4 text-sm leading-6">Deadline: {scholarshipDate(renewal.deadline_at)} (Philippine time)</p><p className="mt-3 text-sm leading-6 text-civic-muted">A renewal approval records the decision. Award duration and benefit releases are managed separately.</p>
  {!renewal.eligible && <p role="status" className="mt-4 text-sm leading-6 text-civic-danger">This award is currently ineligible for renewal changes. Recorded history remains available.</p>}

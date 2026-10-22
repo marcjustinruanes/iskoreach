@@ -1,10 +1,9 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import type { ReactNode } from 'react';
-import { ArrowLeft, Building2, GraduationCap, ShieldCheck } from 'lucide-react';
+import { Building2, GraduationCap, ShieldCheck } from 'lucide-react';
 import PublicLayout from './PublicLayout';
-import { focusRing } from '../components/ui/DesignSystem';
 
-interface AuthLayoutProps { title: string; description: string; children: ReactNode; registrationPanel?: ReactNode }
+interface AuthLayoutProps { title: string; description?: string; children: ReactNode; registrationPanel?: ReactNode }
 
 export default function AuthLayout({ title, description, children, registrationPanel }: AuthLayoutProps) {
     return <PublicLayout>
@@ -24,9 +23,8 @@ export default function AuthLayout({ title, description, children, registrationP
             </aside>
             <section aria-labelledby="auth-title" className={"mx-auto w-full rounded-xl border border-neutral-200 bg-white px-5 py-6 sm:p-7 " + (registrationPanel ? "max-w-2xl registration-card" : "max-w-lg")}>
                 <h1 id="auth-title" className="text-2xl font-bold leading-8 tracking-tight text-civic-navy">{title}</h1>
-                <p className="mt-2 text-sm leading-6 text-civic-muted">{description}</p>
-                <div className="mt-7">{children}</div>
-                <Link href="/" className={'mt-7 inline-flex min-h-11 items-center gap-2 rounded text-sm font-medium text-civic-muted hover:text-civic-teal ' + focusRing}><ArrowLeft aria-hidden="true" className="size-4" />Back to IskoReach</Link>
+                {description && <p className="mt-2 text-sm leading-6 text-civic-muted">{description}</p>}
+                <div className="mt-5">{children}</div>
             </section>
         </main>
     </PublicLayout>;

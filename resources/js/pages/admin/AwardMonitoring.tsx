@@ -52,7 +52,7 @@ export default function AwardMonitoring({ section, filters, records, statuses, p
             { key: 'dates', label: 'Release dates', render: record => <div className="space-y-1 text-xs leading-6"><p>Scheduled: {date(record.scheduled_at)}</p><p>Released: {date(record.released_at)}</p>{record.status === 'released' && !record.release_confirmed && <p className="font-semibold text-amber-800">Release timestamp missing</p>}</div> },
         );
     }
-    return <AdminLayout title={titles[section]} description={section === 'awards' ? 'Monitor confirmed awards and oversee publication of the public passers list.' : section === 'renewals' ? 'Track renewal deadlines and recorded provider decisions.' : 'Track recorded scholarship benefits and release progress.'}>
+    return <AdminLayout title={titles[section]}>
         {section === 'awards' && <Link href="/passers" className={buttonStyles('outline') + ' mb-6'}>View public passers list</Link>}
         <Card className="mb-6 p-5 sm:p-6"><form onSubmit={submit} aria-label={'Filter ' + section} className="space-y-4">
             <Input label="Search scholarships or providers" type="search" name="q" maxLength={200} value={form.data.q} onChange={e => form.setData('q', e.target.value)} error={form.errors.q} />

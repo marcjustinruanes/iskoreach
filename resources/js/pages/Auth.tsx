@@ -47,7 +47,7 @@ function AuthScreen({ mode, token = '', email = '', status }: AuthPageProps) {
 
     const titles: Record<Mode, string> = { login: 'Log in', register: 'Create your account', forgot: 'Forgot password?', reset: 'Reset your password', confirm: 'Confirm your password' };
     const descriptions: Record<Mode, string> = {
-        login: 'Enter your details to access your IskoReach account.',
+        login: '',
         register: 'Choose your account type and enter your details below.',
         forgot: 'Enter the email address associated with your account.',
         reset: 'Choose a new password for your IskoReach account.',

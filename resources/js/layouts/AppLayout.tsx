@@ -1,3 +1,4 @@
+import PageHeader from '../components/PageHeader';
 import LogoutButton from '../components/LogoutConfirmation';
 import NotificationBell, { useNotificationSummary } from '../components/NotificationBell';
 import { Head, Link, usePage } from '@inertiajs/react';
@@ -12,7 +13,8 @@ import { Notice } from '../components/ui/Form';
 
 interface AppLayoutProps {
     title: string;
-    description: string;
+    description?: string;
+    actions?: ReactNode;
     children: ReactNode;
 }
 
@@ -23,7 +25,7 @@ export default function AppLayout(props: AppLayoutProps) {
     return auth.user?.role === 'student' ? <StudentLayout {...props} /> : <LegacyAppLayout {...props} />;
 }
 
-function LegacyAppLayout({ title, description, children }: AppLayoutProps) {
+function LegacyAppLayout({ title, description, actions, children }: AppLayoutProps) {
     const unreadNotifications = useNotificationSummary();
     const { auth, status } = usePage<SharedProps>().props;
     const { collapsed, isDesktop, toggle } = useSidebarCollapsed(auth.user?.role || 'account');
@@ -75,10 +77,7 @@ function LegacyAppLayout({ title, description, children }: AppLayoutProps) {
                 <NotificationBell unread={unreadNotifications} />
             </header>
             <main id="main-content" className="mx-auto max-w-6xl px-5 py-8 sm:px-8 sm:py-10 lg:px-10">
-                <div className="mb-8">
-                    <h1 className="text-3xl font-semibold leading-10 tracking-tight text-slate-950">{title}</h1>
-                    <p className="mt-2 max-w-prose text-base leading-7 text-slate-600">{description}</p>
-                </div>
+                <PageHeader title={title} description={description} actions={actions} />
                 {status && <Notice>{status}</Notice>}
                 {children}
             </main>

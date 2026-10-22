@@ -16,7 +16,7 @@ export default function Reports({ filters, definition, options, rows, export_url
     const form = useForm<Filters>(filters);
     if (!adminNavigation) return null;
     const submit = (event: FormEvent) => { event.preventDefault(); form.get(adminNavigation.reports, { preserveScroll: true, preserveState: true }); };
-    return <AdminLayout title="Reports" description="Review aggregate platform records and download reports for a selected period.">
+    return <AdminLayout title="Reports">
         <Card className="mb-6 p-5 sm:p-6"><form onSubmit={submit} aria-label="Report filters" className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[2fr_1fr_1fr]"><div><label htmlFor="report-type" className="mb-2 block text-sm font-semibold">Report</label><select id="report-type" name="type" value={form.data.type} onChange={event => form.setData('type', event.target.value)} className={'min-h-11 w-full rounded-lg border border-civic-control bg-white px-3 py-2.5 text-base ' + focusRing}>{options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>{form.errors.type && <p role="alert" className="mt-2 text-sm text-civic-danger">{form.errors.type}</p>}</div>
                 <Input label="From date" name="from" type="date" required value={form.data.from} onChange={event => form.setData('from', event.target.value)} error={form.errors.from} />

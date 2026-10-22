@@ -25,7 +25,7 @@ export default function Dashboard({ auth, applicationSummary: summary, recentApp
         {label:'Accepted',count:summary.accepted,href:'/student/applications?status=accepted',color:'text-emerald-700'},
         {label:'Rejected',count:summary.rejected,href:'/student/applications?status=rejected',color:'text-red-700'},
     ];
-    return <StudentLayout title="Your student account" description="Scholarships, deadlines and your next steps.">
+    return <StudentLayout title="Your student account">
         <section aria-labelledby="discovery-heading" className="dashboard-discovery mb-6 rounded-xl border border-neutral-200 bg-white p-4 sm:p-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><h2 id="discovery-heading" className="text-base font-bold">Welcome, {auth.user?.name.split(' ')[0]}</h2><Link href="/student/applications" className={'text-sm text-civic-muted hover:underline '+focusRing}>{summary.total} submitted applications</Link></div>
             <form className="flex flex-col items-end gap-3 sm:flex-row" onSubmit={event=>{event.preventDefault();if(request.begin())search.get('/student/scholarships',{onFinish:request.finish});}}><div className="w-full"><Input label="Find a scholarship" name="q" type="search" value={search.data.q} onChange={event=>search.setData('q',event.target.value)} placeholder="Scholarship, provider or keyword" error={search.errors.q} /></div><Button type="submit" loading={search.processing}><Search aria-hidden="true" className="size-4" />Search</Button><Link href="/student/scholarships" className={buttonStyles('outline')+' shrink-0'}>More filters</Link></form>{request.error && <p role="alert" className="mt-3 text-sm text-civic-danger">{request.error}</p>}

@@ -6,7 +6,7 @@ import { Head, usePage } from '@inertiajs/react';
 import type { ReactNode } from 'react';
 import PublicLayout, { PublicPageHeading, publicPageContainer } from './PublicLayout';
 
-export default function PublicDirectoryLayout({ title, description, children, studentWorkspace = false }: { title: string; description: string; children: ReactNode; studentWorkspace?: boolean }) {
+export default function PublicDirectoryLayout({ title, description, children, studentWorkspace = false }: { title: string; description?: string; children: ReactNode; studentWorkspace?: boolean }) {
     const { auth } = usePage<SharedProps>().props;
     if (auth.user?.role === 'provider') return <ProviderLayout title={title} description={description}>{children}</ProviderLayout>;
     if (auth.user?.role === 'admin') return <AdminLayout title={title} description={description}>{children}</AdminLayout>;

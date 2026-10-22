@@ -12,7 +12,7 @@ interface UserDetailsProps extends SharedProps {
 const date = (value: string) => new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Manila' }).format(new Date(value));
 
 export default function UserDetails({ account, activity, adminNavigation }: UserDetailsProps) {
-    return <AdminLayout title="Account details" description="Review account identity, current access, and recorded administrative activity.">
+    return <AdminLayout title="Account details">
         {adminNavigation && <Link href={adminNavigation.users} className={buttonStyles('outline') + ' mb-6'}>Back to user management</Link>}
         <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
             <Card className="min-w-0 rounded-xl p-5 sm:p-6"><div className="flex flex-wrap items-start justify-between gap-3"><h2 className="min-w-0 break-words text-xl font-bold leading-8 text-civic-navy">{account.name}</h2><AccountStatusBadge status={account.status} /></div>

@@ -11,7 +11,7 @@ interface ProviderDetailsProps extends SharedProps { provider: Provider; history
 const date = (value: string) => new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Manila' }).format(new Date(value));
 
 export default function ProviderDetails({ provider, history, adminNavigation }: ProviderDetailsProps) {
-    return <AdminLayout title="Provider verification" description="Check the registered information, review history, and decide on account access.">
+    return <AdminLayout title="Provider verification">
         {adminNavigation && <Link href={adminNavigation.providers} className={buttonStyles('outline') + ' mb-6'}>Back to provider accounts</Link>}
         <div className="grid min-w-0 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
             <Card className="min-w-0 rounded-xl p-5 sm:p-6"><div className="flex flex-wrap items-start justify-between gap-4"><h2 className="min-w-0 break-words text-xl font-bold leading-8 text-civic-navy">{provider.organization_name || 'Organization details incomplete'}</h2><StatusBadge status={provider.verification_status} /></div>
