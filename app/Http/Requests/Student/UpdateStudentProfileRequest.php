@@ -3,8 +3,10 @@
 namespace App\Http\Requests\Student;
 
 use App\Models\StudentProfile;
+use App\Services\StudentRegistration;
 use App\Support\InputRules;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateStudentProfileRequest extends FormRequest
 {
@@ -17,15 +19,22 @@ class UpdateStudentProfileRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $this->replace(InputRules::normalize($this->all(), ['school', 'course'], []));
+        $this->replace(app(StudentRegistration::class)->normalize($this->all()));
     }
 
     public function rules(): array
     {
+        $extra = [];
+        foreach (app(StudentRegistration::class)->rules() as $field => $rules) {
+            if (in_array($field, StudentRegistration::FIELDS, true) && ! in_array($field, ['school', 'course', 'year_level'], true)) {
+                $extra[$field] = ['sometimes', ...$rules];
+            }
+        }
+
         return [
             'school' => ['nullable', 'string', 'max:255', InputRules::singleLine()],
             'course' => ['nullable', 'string', 'max:255', InputRules::singleLine()],
-            'year_level' => ['nullable', 'integer', 'between:1,12'],
-        ];
+            'year_level' => ['nullable', 'integer', Rule::in(StudentRegistration::YEAR_LEVELS)],
+        ] + $extra;
     }
 }

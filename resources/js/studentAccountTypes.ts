@@ -1,0 +1,2 @@
+export interface SetupStep { key: string; label: string; complete: boolean; url: string }
+export interface AccountSetup { steps: SetupStep[]; completed: number; total: number; percentage: number; email_verified: boolean; photo_url: string | null; verification: { status: string; reason: string | null; id: number | null; eligible: boolean; conditions: SetupStep[]; documents: {kind: string; label: string; complete: boolean; name: string | null}[] } }

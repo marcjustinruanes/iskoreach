@@ -17,6 +17,8 @@ export interface SharedProps {
 }
 
 export interface StudentProfile {
+    first_name?: string | null; surname?: string | null; middle_name?: string | null; suffix?: string | null; date_of_birth?: string | null; sex?: string | null; contact_number?: string | null;
+    student_number?: string | null; college?: string | null; enrollment_status?: string | null; region_name?: string | null; province_name?: string | null; city_name?: string | null; barangay_name?: string | null; street_address?: string | null;
     id: number;
     school: string | null;
     course: string | null;
@@ -39,6 +41,7 @@ export interface ProviderReview extends ProviderProfile {
 }
 
 export interface ProviderDetails extends ProviderReview {
+    registration_details: Record<string, string | boolean | null>; registration_version: number; email_verified: boolean; documents_available: boolean; documents: { kind: string; name: string; url: string }[];
     verification_version: number; reviewed_at: string | null; reviewer: string | null; review_url: string;
 }
 
@@ -80,7 +83,7 @@ export interface AdminDashboardProps extends SharedProps {
 }
 
 export type ScholarshipStatus = 'draft' | 'published' | 'closed' | 'archived';
-export interface ScholarshipLocation { id: number; scope: string; region_code: string | null; city_code: string | null; region_name?: string | null; city_name?: string | null }
+export interface ScholarshipLocation { province_code?: string | null; province_name?: string | null; id: number; scope: string; region_code: string | null; city_code: string | null; region_name?: string | null; city_name?: string | null }
 export interface MonitoredScholarship {
     id: number; title: string; provider: string; scholarship_type: string; status: ScholarshipStatus; locations: ScholarshipLocation[];
     opens_at: string | null; deadline_at: string | null; accepts_existing_scholars: boolean; updated_at: string | null;

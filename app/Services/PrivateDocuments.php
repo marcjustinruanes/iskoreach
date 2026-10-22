@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Enums\ApplicationStatus;
 use App\Models\Application;
 use App\Models\ApplicationDocument;
+use App\Models\ApplicationStatusHistory;
 use App\Models\ProviderProfile;
 use App\Models\Scholarship;
 use App\Models\ScholarshipRequirement;
@@ -61,6 +63,9 @@ class PrivateDocuments
             User::query()->lockForUpdate()->findOrFail($student->id);
             $item = StudentDocument::query()->lockForUpdate()->findOrFail($document->id);
             Gate::forUser($student)->authorize('view', $item);
+            if (in_array($item->id, array_values($student->studentProfile?->verification_documents ?? []), true)) {
+                app(StudentAccountSetup::class)->invalidate($student);
+            }
             $item->delete();
             $this->audit($student, 'document.removed', $item->id, StudentDocument::class);
         });
@@ -100,8 +105,14 @@ class PrivateDocuments
                     'requirement_snapshot' => $rule->only('name', 'description', 'required', 'allowed_mime_types', 'max_size_kb', 'requirement_stage'),
                     'checklist_completed_at' => now()]);
             }
+            $complete = collect($this->checklist($item))->where('required', true)->every(fn (array $row): bool => $row['complete']);
+            $fromStatus = $item->status->value;
+            $item->status = $complete ? ApplicationStatus::NotStarted : ApplicationStatus::RequirementsPending;
             $item->workflow_version++;
             $item->save();
+            if ($fromStatus !== $item->status->value) {
+                ApplicationStatusHistory::create(['application_id' => $item->id, 'from_status' => $fromStatus, 'to_status' => $item->status->value, 'changed_by' => $student->id, 'reason' => 'Document checklist readiness changed.', 'occurred_at' => now()]);
+            }
             $this->audit($student, $remove ? 'application.document_removed' : 'application.document_attached', $item->id, Application::class);
         });
     }
@@ -159,7 +170,7 @@ class PrivateDocuments
     private function attachmentData(ApplicationDocument $attachment): array
     {
         return ['id' => $attachment->id, 'name' => $attachment->requirement_snapshot['name'], 'file_name' => $attachment->document->original_name,
-            'version' => $attachment->version, 'size_bytes' => $attachment->document->size_bytes, 'download_url' => route('application-documents.download', $attachment)];
+            'submitted' => $attachment->submitted_at !== null, 'review_status' => $attachment->review_status, 'review_notes' => $attachment->review_notes, 'version' => $attachment->version, 'size_bytes' => $attachment->document->size_bytes, 'download_url' => route('application-documents.download', $attachment)];
     }
 
     private function audit(User $student, string $action, int $id, string $type): void

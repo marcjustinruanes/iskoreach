@@ -13,6 +13,7 @@ use App\Notifications\AwardBenefitActivity;
 use App\Notifications\ChatActivity;
 use App\Notifications\ProviderVerificationDecision;
 use App\Notifications\RenewalActivity;
+use App\Notifications\ScholarshipNotice;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Notifications\DatabaseNotification;
 
@@ -20,7 +21,7 @@ class AccountNotifications
 {
     public function query(User $user): Builder
     {
-        return $user->notifications()->whereIn('type', [ApplicationActivity::class, ProviderVerificationDecision::class, ChatActivity::class, RenewalActivity::class, AwardBenefitActivity::class])->getQuery();
+        return $user->notifications()->whereIn('type', [ApplicationActivity::class, ProviderVerificationDecision::class, ChatActivity::class, RenewalActivity::class, AwardBenefitActivity::class, ScholarshipNotice::class, 'student_verification'])->getQuery();
     }
 
     public function summary(User $user): array
@@ -51,9 +52,23 @@ class AccountNotifications
     public function row(User $user, DatabaseNotification $notice): array
     {
         $url = null;
-        if ($notice->type === AwardBenefitActivity::class) {
+        if ($notice->type === 'student_verification') {
+            $title = $notice->data['title'];
+            $message = $notice->data['message'];
+            $url = route('student.profile').'#verification';
+        } elseif ($notice->type === ScholarshipNotice::class) {
+            $title = $notice->data['title'];
+            $message = $notice->data['message'];
+            $url = route('scholarship-announcements.index');
+            $application = Application::find($notice->data['application_id'] ?? 0);
+            if ($application && $user->can('view', $application)) {
+                $url = route('student.applications.show', $application);
+            } elseif ($application && $user->can('review', $application)) {
+                $url = route('provider.applications.show', $application);
+            }
+        } elseif ($notice->type === AwardBenefitActivity::class) {
             $title = str_starts_with($notice->data['event'] ?? '', 'release_') ? 'Benefit record update' : 'Award record update';
-            $statuses = ['active' => 'Active', 'completed' => 'Completed', 'revoked' => 'Revoked', 'pending' => 'Pending', 'processing' => 'Processing', 'released' => 'Released'];
+            $statuses = ['active' => 'Active', 'suspended' => 'Suspended', 'completed' => 'Completed', 'revoked' => 'Revoked', 'pending' => 'Pending', 'processing' => 'Processing', 'delayed' => 'Delayed', 'failed' => 'Failed', 'released' => 'Released'];
             $message = 'Recorded status: '.($statuses[$notice->data['status'] ?? ''] ?? 'Update available').'. Open the record for current details.';
             $id = $notice->data['award_id'] ?? null;
             $award = is_int($id) ? ScholarshipAward::find($id) : null;

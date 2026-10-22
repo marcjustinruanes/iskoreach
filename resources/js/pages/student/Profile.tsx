@@ -1,38 +1,13 @@
-import { useForm } from '@inertiajs/react';
-import { useState } from 'react';
-import type { FormEvent } from 'react';
+import { Link, useForm } from '@inertiajs/react';
 import type { SharedProps, StudentProfile } from '../../types';
+import type { AccountSetup } from '../../studentAccountTypes';
 import StudentLayout from '../../layouts/StudentLayout';
-import { Button, Section, TextField } from '../../components/ui/Form';
-import { Badge } from '../../components/ui/DesignSystem';
-import { textError } from '../../components/ui/inputValidation';
-
-export default function Profile({ auth, profile, accountCreatedAt }: SharedProps & { profile: StudentProfile; accountCreatedAt: string | null }) {
-    const [offline, setOffline] = useState(false);
-    const form = useForm({ school: profile.school ?? '', course: profile.course ?? '', year_level: profile.year_level?.toString() ?? '' });
-    const submit = (event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        setOffline(!navigator.onLine);
-        if (!navigator.onLine) return;
-        form.clearErrors();
-        const school = textError(form.data.school);
-        const course = textError(form.data.course);
-        const year = form.data.year_level !== '' && (!/^\d+$/.test(form.data.year_level) || Number(form.data.year_level) < 1 || Number(form.data.year_level) > 12);
-        if (school) form.setError('school', school);
-        if (course) form.setError('course', course);
-        if (year) form.setError('year_level', 'Enter a whole year level from 1 to 12.');
-        if (school || course || year) return;
-        form.patch('/student/profiles/' + profile.id, { preserveScroll: true, onSuccess: () => form.setDefaults() });
-    };
-    return <StudentLayout title="My Profile" description="Review your account information and keep your academic details up to date.">
-        <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]"><Section title="Academic information" description="Your details stay private until you submit an application. Submitted applications keep the profile snapshot you shared at that time.">
-            <form noValidate aria-label="Student profile" onSubmit={submit} className="max-w-2xl space-y-5">
-                {offline && <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">You are offline. Your changes are still here. Reconnect and save again.</p>}
-                <TextField label="School or university" name="school" value={form.data.school} onChange={e => form.setData('school', e.target.value)} error={form.errors.school} maxLength={255} autoComplete="organization" />
-                <TextField label="Course or program" name="course" value={form.data.course} onChange={e => form.setData('course', e.target.value)} error={form.errors.course} maxLength={255} />
-                <TextField label="Year level" name="year_level" type="number" min={1} max={12} value={form.data.year_level} onChange={e => form.setData('year_level', e.target.value)} error={form.errors.year_level} className="sm:max-w-40" />
-                <div className="flex flex-wrap items-center gap-3 border-t border-slate-200 pt-5"><Button type="submit" disabled={form.processing}>{form.processing ? 'Saving…' : 'Save profile'}</Button>{form.isDirty && <span className="text-xs text-civic-muted">You have unsaved changes.</span>}</div>
-            </form>
-        </Section><Section title="Account information"><Badge tone="green">Student · Active</Badge><dl className="mt-5 space-y-5 text-sm"><div><dt className="text-xs text-civic-muted">Full name</dt><dd className="mt-1 break-words font-semibold">{auth.user?.name}</dd></div><div><dt className="text-xs text-civic-muted">Account email</dt><dd className="mt-1 break-all font-semibold">{auth.user?.email}</dd></div>{accountCreatedAt && <div><dt className="text-xs text-civic-muted">Joined</dt><dd className="mt-1 font-semibold">{new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium', timeZone: 'Asia/Manila' }).format(new Date(accountCreatedAt))}</dd></div>}</dl><p className="mt-5 border-t border-slate-200 pt-4 text-xs leading-5 text-civic-muted">Students have immediate access. No administrator approval is required. Account name and email are read-only here.</p></Section></div>
-    </StudentLayout>;
+import StudentRegistrationFields, { studentRegistrationDefaults } from '../../components/StudentRegistrationFields';
+import StudentVerificationPanel from '../../components/StudentVerificationPanel';
+import { Badge, Button, Card, ProgressBar, focusRing } from '../../components/ui/DesignSystem';
+export default function Profile({ auth, profile, accountSetup }: SharedProps & { profile: StudentProfile; accountSetup: AccountSetup; accountCreatedAt: string | null }) {
+    const initial = {...studentRegistrationDefaults};
+    for (const key of Object.keys(initial) as (keyof typeof initial)[]) { if (key === 'terms_accepted' || key === 'privacy_accepted') continue; const value = (profile as unknown as Record<string,unknown>)[key]; initial[key] = value === null || value === undefined ? '' : key === 'date_of_birth' ? String(value).slice(0,10) : String(value); }
+    const form = useForm(initial);
+    return <StudentLayout title="My Profile" description="Manage your personal details, academic information, and optional student verification."><Card className="mb-6"><h2 className="text-lg font-bold">Account information</h2><p className="mt-2 text-sm">{auth.user?.email} - {accountSetup.email_verified?'Email verified':'Email not verified'}</p><p className="mt-2 text-sm">Student verification: <strong>{accountSetup.verification.status.replaceAll('_',' ')}</strong></p>{accountSetup.verification.status==='verified' && <div className="mt-2"><Badge tone="blue">Verified student</Badge></div>}<div className="mt-4"><ProgressBar value={accountSetup.completed} max={accountSetup.total} label={'Account setup: '+accountSetup.completed+'/'+accountSetup.total+' completed'} /></div>{!accountSetup.email_verified && <Link href="/student/email-code" className="mt-3 inline-flex min-h-11 items-center text-sm underline">Verify email with a code</Link>}</Card><nav aria-label="Profile sections" className="mb-6 flex flex-wrap gap-2">{[{href:'#personal',label:'Personal information'},{href:'#academic',label:'Academic information'},{href:'#address',label:'Address'},{href:'#verification',label:'Optional verification'}].map(item=><a key={item.href} href={item.href} className={'inline-flex min-h-11 items-center rounded-lg border border-neutral-200 bg-white px-3 text-sm font-medium hover:bg-civic-panel '+focusRing}>{item.label}</a>)}</nav><Card className="mb-6"><h2 className="mb-5 text-lg font-bold">Registration details</h2><form noValidate aria-label="Student profile" className="space-y-6" onSubmit={event=>{event.preventDefault();form.transform(data=>Object.fromEntries(Object.entries(data).filter(([key,value])=>value!==initial[key as keyof typeof initial])));form.patch('/student/profiles/'+profile.id,{preserveScroll:true});}}><StudentRegistrationFields data={form.data} errors={form.errors} onChange={(field,value)=>form.setData(current=>({...current,[field]:value}))} />{Object.values(form.errors).map(error=><p key={error} role="alert" className="text-sm text-civic-danger">{error}</p>)}<Button type="submit" loading={form.processing}>Save profile</Button><p className="text-xs leading-5 text-civic-muted">Saved changes affect future applications. Submitted application snapshots remain unchanged. Changes to verification evidence require a new review.</p></form></Card><StudentVerificationPanel setup={accountSetup} /></StudentLayout>;
 }
