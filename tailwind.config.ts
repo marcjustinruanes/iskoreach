@@ -1,6 +1,6 @@
 import type { Config } from 'tailwindcss';
 
-// Values come from the supplied Stitch HTML; functional colors extend that palette.
+// Shared navy, amber, blue-gray and cream palette supplied for IskoReach.
 export default {
     theme: {
         extend: {
@@ -15,10 +15,12 @@ export default {
             },
             colors: {
                 civic: {
-                    navy: '#001428', 'navy-soft': '#0f2942', teal: '#006a61',
-                    'teal-hover': '#005049', mint: '#86f2e4', canvas: '#f8f9ff',
-                    panel: '#eff4ff', 'panel-strong': '#dce9ff', ink: '#0d1c2e',
-                    muted: '#43474d', border: '#c3c6ce', control: '#74777e', gold: '#f3c969',
+                    navy: '#123563', 'navy-soft': '#566e87', teal: '#123563',
+                    'teal-hover': '#234b77', mint: '#ffe7ad', canvas: '#f5f8f8',
+                    panel: '#edf2f5', 'panel-strong': '#a3b6c9', ink: '#123563',
+                    muted: '#4d6278', border: '#a3b6c9', control: '#566e87',
+                    gold: '#fbad23', 'gold-soft': '#e5bd69', cream: '#ffe7ad',
+                    'blue-gray': '#a3b6c9', slate: '#566e87',
                     success: '#065f46', warning: '#92400e', danger: '#93000a',
                 },
                 neutral: {

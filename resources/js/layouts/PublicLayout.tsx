@@ -9,7 +9,7 @@ import { buttonStyles, focusRing } from '../components/ui/DesignSystem';
 import { Drawer } from '../components/ui/Overlays';
 import fontUrl from '../../../public/fonts/plus-jakarta-sans-latin.woff2?url';
 
-const navigation: [string, string][] = [['Home', '/'], ['Find Scholarships', '/scholarships'], ['How It Works', '/#how-it-works'], ['For Providers', '/#for-providers'], ['About Us', '/#about'], ['Passers', '/passers']];
+const navigation: [string, string][] = [['Home', '/'], ['Scholarships', '/scholarships'], ['About', '/#about'], ['Contact', '/#contact']];
 export const publicPageContainer = landingContainer + ' py-10 sm:py-12';
 
 export function PublicPageHeading({ title, description, eyebrow }: { title: string; description: string; eyebrow?: string }) {
@@ -40,10 +40,10 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
     return <div id="home" className="flex min-h-dvh flex-col bg-civic-canvas font-stitch text-civic-ink selection:bg-civic-mint selection:text-civic-navy">
         <Head><link rel="preload" href={fontUrl} as="font" type="font/woff2" crossOrigin="anonymous" /></Head>
         <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[90] focus:rounded-lg focus:bg-white focus:p-4 focus:text-civic-navy">Skip to content</a>
-        <header className="sticky top-0 z-40 border-b border-civic-panel-strong/60 bg-civic-canvas/95 backdrop-blur-xl"><div className={landingContainer + ' flex min-h-20 items-center justify-between gap-3 py-3'}>
+        <header className="sticky top-0 z-40 border-b border-civic-panel-strong/60 bg-civic-canvas"><div className={landingContainer + ' flex min-h-20 items-center justify-between gap-3 py-3'}>
             <Brand />
-            <nav aria-label="Main navigation" className="hidden items-center gap-1 xl:flex">{links()}</nav>
-            <div className="flex shrink-0 items-center gap-2">{!auth.user && <Link href="/login" className={'hidden min-h-11 items-center rounded-lg px-3 text-sm font-semibold text-civic-muted sm:inline-flex ' + focusRing}>Log in</Link>}<Link href={accountHref} className={buttonStyles('secondary', 'sm')}>{auth.user ? 'My account' : 'Get started'}</Link><button type="button" onClick={() => setMenuOpen(true)} aria-label="Open navigation menu" aria-expanded={menuOpen} className={'flex size-11 items-center justify-center rounded-lg hover:bg-civic-panel xl:hidden ' + focusRing}><Menu aria-hidden="true" className="size-6" /></button></div>
+            <nav aria-label="Main navigation" className="hidden items-center gap-1 lg:flex">{links()}</nav>
+            <div className="flex shrink-0 items-center gap-2">{!auth.user && <Link href="/login" className={'hidden min-h-11 items-center rounded-lg px-3 text-sm font-semibold text-civic-muted sm:inline-flex ' + focusRing}>Log in</Link>}<Link href={accountHref} className={buttonStyles('secondary', 'sm')}>{auth.user ? 'My account' : 'Get started'}</Link><button type="button" onClick={() => setMenuOpen(true)} aria-label="Open navigation menu" aria-expanded={menuOpen} className={'flex size-11 items-center justify-center rounded-lg hover:bg-civic-panel lg:hidden ' + focusRing}><Menu aria-hidden="true" className="size-6" /></button></div>
         </div></header>
         <Drawer open={menuOpen} onClose={() => setMenuOpen(false)} title="Explore IskoReach" description="Scholarships, public passers, and information about IskoReach."><nav aria-label="Mobile navigation" className="flex flex-col gap-2">{links(true)}<Link href={loginHref} onClick={() => setMenuOpen(false)} className={buttonStyles('primary')}>{auth.user ? 'My account' : 'Log in'}</Link></nav></Drawer>
         {children}
