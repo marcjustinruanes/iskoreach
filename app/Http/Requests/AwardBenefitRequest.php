@@ -21,7 +21,7 @@ class AwardBenefitRequest extends FormRequest
             'ends_on' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:starts_on'],
             'conflict_confirmed' => ['sometimes', 'boolean'],
             'context_token' => ['required_if:action,award_create', 'nullable', 'string', 'size:64'],
-            'amount' => ['required_if:action,release_create', 'nullable', 'numeric', 'decimal:0,2', 'gt:0', 'max:9999999999.99'],
+            'amount' => ['nullable', 'numeric', 'decimal:0,2', 'gt:0', 'max:9999999999.99'],
             'currency' => ['required_if:action,release_create', 'nullable', 'in:PHP,USD,EUR'],
             'scheduled_at' => ['nullable', 'date_format:Y-m-d\\TH:i'],
             'released_at' => ['required_if:action,release_release', 'nullable', 'date_format:Y-m-d\\TH:i'],

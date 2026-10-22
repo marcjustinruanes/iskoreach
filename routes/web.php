@@ -123,6 +123,8 @@ Route::middleware(['auth', 'verified', 'role:provider'])->prefix('provider')->na
         Route::get('/applications', [App\Http\Controllers\Provider\ApplicationController::class, 'index'])->name('applications.index');
         Route::get('/applications/{application}', [App\Http\Controllers\Provider\ApplicationController::class, 'show'])->name('applications.show');
         Route::patch('/applications/{application}', [App\Http\Controllers\Provider\ApplicationController::class, 'update'])->name('applications.update');
+        Route::get('/scholarships/{scholarship}/preview', [ProviderScholarshipController::class, 'preview'])->name('scholarships.preview');
+        Route::post('/applications/{application}/notes', [App\Http\Controllers\Provider\ApplicationController::class, 'note'])->name('applications.notes');
         Route::resource('scholarships', ProviderScholarshipController::class)->except(['show', 'destroy']);
         Route::patch('/scholarships/{scholarship}/lifecycle', [ProviderScholarshipController::class, 'lifecycle'])->name('scholarships.lifecycle');
         Route::post('/applicant-counts/{scholarship}/import', ExternalApplicantImportController::class)->middleware('throttle:10,1')->name('applicant-counts.import');

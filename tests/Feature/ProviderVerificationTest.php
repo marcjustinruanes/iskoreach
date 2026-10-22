@@ -4,9 +4,11 @@ namespace Tests\Feature;
 
 use App\Enums\ProviderVerificationStatus;
 use App\Enums\UserRole;
+use App\Models\ActivityLog;
 use App\Models\ProviderProfile;
 use App\Models\StudentProfile;
 use App\Models\User;
+use App\Services\AdminAuditHistory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\SendQueuedNotifications;
 use Illuminate\Support\Facades\Bus;
@@ -17,6 +19,28 @@ use Tests\TestCase;
 class ProviderVerificationTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_suspension_requires_a_reason_blocks_workspace_and_cannot_be_cleared_by_profile_edits(): void
+    {
+        Notification::fake();
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $profile = ProviderProfile::factory()->create(['verification_status' => 'approved']);
+        $url = '/admin/providers/'.$profile->id.'/review';
+        $this->actingAs($profile->user)->patch($url, ['verification_status' => 'suspended', 'expected_version' => 0, 'rejection_reason' => 'Invalid evidence'])->assertForbidden();
+        $this->actingAs($admin)->patch($url, ['verification_status' => 'suspended', 'expected_version' => 0])->assertSessionHasErrors('rejection_reason');
+        $this->patch($url, ['verification_status' => 'suspended', 'expected_version' => 0, 'rejection_reason' => 'Invalid evidence'])->assertSessionHasNoErrors();
+        $this->assertSame(ProviderVerificationStatus::Suspended, $profile->fresh()->verification_status);
+        $this->assertSame('suspended', app(AdminAuditHistory::class)->row(ActivityLog::where('action', 'provider.reviewed')->firstOrFail())['transition']['to']);
+        $this->actingAs($profile->user)->get('/provider/workspace')->assertForbidden();
+        $this->get('/provider/scholarships/create')->assertForbidden();
+        $this->patch('/provider/profiles/'.$profile->id, ['organization_name' => 'Changed organization', 'contact_email' => $profile->contact_email])->assertSessionHasNoErrors();
+        $this->assertSame(ProviderVerificationStatus::Suspended, $profile->fresh()->verification_status);
+        $this->assertSame('Invalid evidence', $profile->fresh()->rejection_reason);
+        $this->actingAs($admin)->get('/admin/providers?status=suspended')->assertInertia(fn (Assert $page) => $page->where('providers.total', 1));
+        $this->patch($url, ['verification_status' => 'approved', 'expected_version' => 0])->assertSessionHasErrors('expected_version');
+        $this->patch($url, ['verification_status' => 'approved', 'expected_version' => 2])->assertSessionHasNoErrors();
+        $this->actingAs($profile->user)->get('/provider/workspace')->assertOk();
+    }
 
     public function test_provider_details_and_review_are_admin_only(): void
     {
@@ -41,7 +65,7 @@ class ProviderVerificationTest extends TestCase
                 ->assertInertia(fn (Assert $page) => $page->where('providers.total', 1)->where('providers.data.0.id', $target->id)->where('filters.q', $query));
         }
         $this->get('/admin/providers?q=Campus&status=approved')->assertInertia(fn (Assert $page) => $page->where('providers.total', 0));
-        $this->get('/admin/providers?status=suspended')->assertSessionHasErrors('status');
+        $this->get('/admin/providers?status=unknown')->assertSessionHasErrors('status');
         $this->get('/admin/providers?'.http_build_query(['q' => str_repeat('x', 201)]))->assertSessionHasErrors('q');
     }
 

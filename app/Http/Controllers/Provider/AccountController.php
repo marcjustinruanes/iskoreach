@@ -8,8 +8,12 @@ use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Provider\UpdateProviderProfileRequest;
 use App\Models\Application;
+use App\Models\BenefitRelease;
 use App\Models\ProviderProfile;
+use App\Models\Renewal;
 use App\Notifications\ProviderVerificationDecision;
+use App\Services\ProviderRegistration;
+use App\Services\StudentRegistration;
 use App\Support\InputRules;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
@@ -33,9 +37,9 @@ class AccountController extends Controller
         }
 
         return Inertia::render('provider/Dashboard', [
-            'profile' => $profile->only('id', 'organization_name', 'contact_email', 'verification_status', 'rejection_reason'),
+            'profile' => $profile->only('id', 'organization_name', 'contact_email', 'verification_status', 'rejection_reason', ...ProviderRegistration::FIELDS),
             'verificationDocuments' => collect($profile->verification_documents ?? [])->map(fn (array $document, string $kind): array => ['kind' => $kind, 'url' => route('provider-verification.show', [$profile, $kind])])->values(),
-            'verificationUpload' => $profile->registration_version > 0 ? ['url' => route('provider-verification.update', $profile), 'version' => $profile->verification_version, 'individual' => $profile->organization_type === 'individual', 'authorization_required' => $profile->authorization_required] : null,
+            'verificationUpload' => $profile->registration_version > 0 ? ['url' => route('provider-verification.update', $profile), 'version' => $profile->verification_version, 'individual' => $profile->organization_type === 'individual', 'authorization_required' => $profile->authorization_required, 'required_kinds' => app(ProviderRegistration::class)->requiredDocuments($profile->only('organization_type', 'authorization_required'))] : null,
             'verificationNotices' => $this->verificationNotices($request),
             'summary' => [
                 'scholarships' => $profile->scholarships()->count(),
@@ -48,6 +52,12 @@ class AccountController extends Controller
             'recentScholarships' => $profile->scholarships()->withCount(['applications as submitted_count' => fn ($query) => $query->whereNotNull('submitted_at')->whereIn('status', ApplicationStatus::countedValues())->whereHas('student', fn ($student) => $student->where('role', UserRole::Student))])->latest('updated_at')->orderByDesc('id')->limit(5)->get()
                 ->map(fn ($scholarship): array => ['id' => $scholarship->id, 'title' => $scholarship->title, 'status' => $scholarship->status->value,
                     'submitted_count' => $scholarship->submitted_count, 'deadline_at' => $scholarship->deadline_at?->toIso8601String(), 'updated_at' => $scholarship->updated_at->toIso8601String(), 'counts_url' => route('provider.applicant-counts.show', $scholarship)]),
+            'nextTasks' => [
+                'upcoming' => $profile->scholarships()->where('status', 'published')->where('opens_at', '>', now())->count(),
+                'deadlines' => $profile->scholarships()->where('status', 'published')->whereBetween('deadline_at', [now(), now()->addDays(7)])->count(),
+                'renewals' => Renewal::where('status', 'submitted')->whereHas('award.application.scholarship', fn ($query) => $query->where('provider_id', $profile->id))->count(),
+                'benefits' => BenefitRelease::whereIn('status', ['pending', 'processing', 'delayed'])->whereHas('award.application.scholarship', fn ($query) => $query->where('provider_id', $profile->id))->count(),
+            ],
             'reviewSummary' => $this->submittedApplications($profile)->whereNull('deleted_at')->selectRaw('status, COUNT(*) AS total')->groupBy('status')->pluck('total', 'status')->map(fn ($count): int => (int) $count),
             'recentSubmissions' => $this->submittedApplications($profile)->whereNull('deleted_at')->with(['student:id,name', 'scholarship:id,title'])->latest('submitted_at')->orderByDesc('id')->limit(6)->get()
                 ->map(fn ($item): array => ['id' => $item->id, 'student' => $item->student->name, 'scholarship' => $item->scholarship->title,
@@ -67,9 +77,9 @@ class AccountController extends Controller
         Gate::authorize('view', $profile);
 
         return Inertia::render('provider/Profile', [
-            'profile' => $profile->only('id', 'organization_name', 'contact_email', 'verification_status', 'rejection_reason'),
+            'profile' => $profile->only('id', 'organization_name', 'contact_email', 'verification_status', 'rejection_reason', ...ProviderRegistration::FIELDS),
             'verificationDocuments' => collect($profile->verification_documents ?? [])->map(fn (array $document, string $kind): array => ['kind' => $kind, 'url' => route('provider-verification.show', [$profile, $kind])])->values(),
-            'verificationUpload' => $profile->registration_version > 0 ? ['url' => route('provider-verification.update', $profile), 'version' => $profile->verification_version, 'individual' => $profile->organization_type === 'individual', 'authorization_required' => $profile->authorization_required] : null,
+            'verificationUpload' => $profile->registration_version > 0 ? ['url' => route('provider-verification.update', $profile), 'version' => $profile->verification_version, 'individual' => $profile->organization_type === 'individual', 'authorization_required' => $profile->authorization_required, 'required_kinds' => app(ProviderRegistration::class)->requiredDocuments($profile->only('organization_type', 'authorization_required'))] : null,
             'verificationNotices' => $this->verificationNotices($request),
         ]);
     }
@@ -85,9 +95,9 @@ class AccountController extends Controller
         }
 
         return Inertia::render('provider/Status', [
-            'profile' => $profile->only('id', 'organization_name', 'contact_email', 'verification_status', 'rejection_reason'),
+            'profile' => $profile->only('id', 'organization_name', 'contact_email', 'verification_status', 'rejection_reason', ...ProviderRegistration::FIELDS),
             'verificationDocuments' => collect($profile->verification_documents ?? [])->map(fn (array $document, string $kind): array => ['kind' => $kind, 'url' => route('provider-verification.show', [$profile, $kind])])->values(),
-            'verificationUpload' => $profile->registration_version > 0 ? ['url' => route('provider-verification.update', $profile), 'version' => $profile->verification_version, 'individual' => $profile->organization_type === 'individual', 'authorization_required' => $profile->authorization_required] : null,
+            'verificationUpload' => $profile->registration_version > 0 ? ['url' => route('provider-verification.update', $profile), 'version' => $profile->verification_version, 'individual' => $profile->organization_type === 'individual', 'authorization_required' => $profile->authorization_required, 'required_kinds' => app(ProviderRegistration::class)->requiredDocuments($profile->only('organization_type', 'authorization_required'))] : null,
             'verificationNotices' => $this->verificationNotices($request),
         ]);
     }
@@ -103,20 +113,23 @@ class AccountController extends Controller
             }
             $profile->fill($data);
 
-            if ($profile->isDirty(['organization_name', 'contact_email'])) {
+            if ($profile->isDirty()) {
                 $before = $profile->verification_status;
-                $profile->verification_status = ProviderVerificationStatus::Pending;
+                $profile->verification_status = $before === ProviderVerificationStatus::Suspended ? $before : ProviderVerificationStatus::Pending;
                 $profile->reviewed_by = null;
                 $profile->reviewed_at = null;
-                $profile->rejection_reason = null;
+                $profile->rejection_reason = $before === ProviderVerificationStatus::Suspended ? $profile->rejection_reason : null;
                 $profile->verification_version++;
                 $profile->save();
+                if ($profile->first_name && $profile->surname) {
+                    $profile->user->update(['name' => app(StudentRegistration::class)->name($profile->only('first_name', 'surname', 'middle_name', 'suffix'))]);
+                }
 
                 $request->user()->activityLogs()->create([
                     'action' => 'provider.details_changed',
                     'subject_type' => ProviderProfile::class,
                     'subject_id' => $profile->id,
-                    'changes' => ['from' => $before->value, 'to' => 'pending'],
+                    'changes' => ['from' => $before->value, 'to' => $profile->verification_status->value],
                     'occurred_at' => now(),
                 ]);
 
@@ -127,7 +140,7 @@ class AccountController extends Controller
         });
 
         return to_route('provider.dashboard')->with('status', $changed
-            ? 'Organization details saved. Your account is pending administrator review.'
+            ? ($providerProfile->fresh()->verification_status === ProviderVerificationStatus::Suspended ? 'Organization details saved. Your suspension remains in effect pending administrator review.' : 'Organization details saved. Your account is pending administrator review.')
             : 'No changes were made. Your verification status is unchanged.');
     }
 

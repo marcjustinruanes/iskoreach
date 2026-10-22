@@ -19,12 +19,20 @@ class SaveScholarshipRequest extends FormRequest
         return $item ? ($this->user()?->can('manage', $item) ?? false) : ($this->user()?->can('create', Scholarship::class) ?? false);
     }
 
+    protected function prepareForValidation(): void
+    {
+        if (! $this->exists('currency')) {
+            $this->merge(['currency' => 'PHP']);
+        }
+    }
+
     public function rules(): array
     {
-        return ['version' => [$this->route('scholarship') ? 'required' : 'nullable', 'integer', 'min:0'],
+        return ['purpose' => ['nullable', 'string', 'max:2000'], 'benefits_description' => ['nullable', 'string', 'max:4000'], 'slots' => ['nullable', 'integer', 'min:1', 'max:1000000'], 'application_method' => ['sometimes', Rule::in(['internal', 'external'])], 'external_application_url' => ['required_if:application_method,external', 'nullable', 'url:https', 'max:2000'],
+            'version' => [$this->route('scholarship') ? 'required' : 'nullable', 'integer', 'min:0'],
             'title' => ['required', 'string', 'min:3', 'max:180'], 'description' => ['required', 'string', 'min:10', 'max:20000', InputRules::maxBytes(65535)],
             'scholarship_type' => ['required', 'string', 'max:100'], 'benefit_amount' => ['nullable', 'numeric', 'decimal:0,2', 'min:0', 'max:9999999999.99'],
-            'currency' => ['required', Rule::in(['PHP', 'USD'])], 'academic_term_id' => ['nullable', 'integer', 'exists:academic_terms,id'],
+            'currency' => ['required', Rule::in(['PHP'])], 'academic_term_id' => ['nullable', 'integer', 'exists:academic_terms,id'],
             'opens_at' => ['nullable', 'date_format:Y-m-d\TH:i'], 'deadline_at' => ['nullable', 'date_format:Y-m-d\TH:i', ...($this->filled('opens_at') ? ['after:opens_at'] : [])],
             'existing_scholars_low_priority' => ['sometimes', 'boolean'], 'require_verified_declarations' => ['sometimes', 'boolean'], 'accepts_existing_scholars' => ['required', 'boolean'], 'eligibility_criteria' => ['nullable', 'string', 'max:6000'],
             'locations' => ['required', 'array', 'min:1', 'max:20'], 'locations.*' => ['array:scope,region_code,city_code,province_code'],

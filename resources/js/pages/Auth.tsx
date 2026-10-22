@@ -9,13 +9,13 @@ import PasswordField from '../components/ui/PasswordField';
 import { newPasswordError } from '../components/ui/inputValidation';
 
 type Mode = 'login' | 'register' | 'forgot' | 'reset' | 'confirm';
-interface AuthPageProps { mode: Mode; token?: string; email?: string; status?: string; accountType?: 'student' | 'provider'; registrationIntent?: string }
+interface AuthPageProps { mode: Mode; token?: string; email?: string; status?: string; accountType?: 'student' | 'provider'; registrationIntent?: string; verificationPolicy?: Record<string, { required: string[]; instructions: string }> }
 interface AuthForm {
     name: string; email: string; password: string; password_confirmation: string; token: string;
     remember: boolean;
 }
 
-export default function Auth(props: AuthPageProps) { if (props.mode === 'register') return <RegistrationWizard key={props.accountType ?? 'student'} accountType={props.accountType ?? 'student'} registrationIntent={props.registrationIntent ?? ''} />; return <AuthScreen key={props.mode + ':' + (props.accountType ?? 'student')} {...props} />; }
+export default function Auth(props: AuthPageProps) { if (props.mode === 'register') return <RegistrationWizard key={props.accountType ?? 'student'} accountType={props.accountType ?? 'student'} registrationIntent={props.registrationIntent ?? ''} verificationPolicy={props.verificationPolicy} />; return <AuthScreen key={props.mode + ':' + (props.accountType ?? 'student')} {...props} />; }
 
 function AuthScreen({ mode, token = '', email = '', status }: AuthPageProps) {
     const form = useForm<AuthForm>({ name: '', email, password: '', password_confirmation: '', token, remember: false });

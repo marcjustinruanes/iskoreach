@@ -39,7 +39,7 @@ export default function ProviderLayout({ title, description, actions, children }
             ] },
             { label: 'Awards & renewals', icon: Award, expandable: true, items: [
                 { label: 'Public passers', href: '/passers', icon: GraduationCap },
-                { label: 'Awards & benefits', href: '/benefits', icon: Award },
+                { label: 'Scholars & benefits', href: '/benefits', icon: Award },
                 { label: 'Semester renewals', href: '/renewals', icon: CalendarClock },
             ] },
         ] : []),

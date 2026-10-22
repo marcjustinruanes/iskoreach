@@ -1,5 +1,5 @@
 export type UserRole = 'student' | 'provider' | 'admin';
-export type ProviderVerificationStatus = 'pending' | 'approved' | 'rejected';
+export type ProviderVerificationStatus = 'pending' | 'approved' | 'rejected' | 'suspended';
 
 export interface User {
     photo_url?: string | null;
@@ -27,6 +27,7 @@ export interface StudentProfile {
 }
 
 export interface ProviderProfile {
+    first_name?: string | null; surname?: string | null; middle_name?: string | null; suffix?: string | null; position?: string | null; contact_number?: string | null; work_email?: string | null; office_address?: string | null; organization_phone?: string | null; website?: string | null; organization_description?: string | null; country?: string | null;
     id: number;
     organization_name: string | null;
     contact_email: string | null;

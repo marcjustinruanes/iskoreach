@@ -30,7 +30,7 @@ class ProviderVerificationDecision extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage
     {
         $message = (new MailMessage)->subject('IskoReach provider account review')
-            ->line('Your provider account was '.($this->status === 'approved' ? 'approved.' : 'not approved.'))
+            ->line('Your provider account was '.($this->status === 'approved' ? 'approved.' : ($this->status === 'suspended' ? 'suspended.' : 'not approved.')))
             ->line('Decision recorded: '.$this->decidedAt.' (UTC).');
         if ($this->reason !== null) {
             $message->line('Reason: '.$this->reason);

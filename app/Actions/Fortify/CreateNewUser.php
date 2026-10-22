@@ -31,10 +31,7 @@ class CreateNewUser implements CreatesNewUsers
 
         $student = ($data['account_type'] ?? 'student') === 'student';
         $name = $registration->name($data);
-        $address = $registration->address($data, $student);
-        if (! $student) {
-            unset($address['barangay_name']);
-        }
+        $address = $registration->address($data, $student || ! empty($data['barangay_code']));
         $stored = [];
         try {
 

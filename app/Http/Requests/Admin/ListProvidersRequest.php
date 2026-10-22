@@ -16,7 +16,7 @@ class ListProvidersRequest extends FormRequest
     {
         return [
             'q' => ['nullable', 'string', 'max:200'],
-            'status' => ['nullable', Rule::in(['pending', 'approved', 'rejected'])],
+            'status' => ['nullable', Rule::in(['pending', 'approved', 'rejected', 'suspended'])],
         ];
     }
 }

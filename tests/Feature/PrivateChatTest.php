@@ -34,6 +34,16 @@ class PrivateChatTest extends TestCase
         Storage::fake('documents');
     }
 
+    public function test_conversation_search_is_scoped_to_the_authenticated_participant(): void
+    {
+        $thread = Conversation::factory()->create();
+        $thread->student->update(['name' => 'Distinct Scholar']);
+        Conversation::factory()->create(['student_id' => $thread->student_id]);
+        $this->actingAs($thread->provider->user)->get('/messages?q=Distinct')->assertInertia(fn (Assert $page) => $page->where('threads.total', 1)->where('threads.data.0.id', $thread->id)->where('filters.q', 'Distinct'));
+        $this->get('/messages?q=Unmatched')->assertInertia(fn (Assert $page) => $page->where('threads.total', 0));
+        $this->get('/messages?'.http_build_query(['q' => str_repeat('x', 121)]))->assertSessionHasErrors('q');
+    }
+
     public function test_conversations_start_only_from_owned_submitted_applications_and_are_unique_per_pair(): void
     {
         $profile = ProviderProfile::factory()->create(['verification_status' => 'approved']);

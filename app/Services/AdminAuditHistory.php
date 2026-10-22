@@ -108,7 +108,7 @@ class AdminAuditHistory
         $reason = $reasonAllowed && is_string($changes['reason'] ?? null) ? mb_substr($changes['reason'], 0, 2000) : null;
         $transition = [];
         foreach (['from', 'to'] as $key) {
-            if (in_array($changes[$key] ?? null, ['pending', 'approved', 'rejected'], true)) {
+            if (in_array($changes[$key] ?? null, ['pending', 'approved', 'rejected', 'suspended'], true)) {
                 $transition[$key] = $changes[$key];
             }
         }

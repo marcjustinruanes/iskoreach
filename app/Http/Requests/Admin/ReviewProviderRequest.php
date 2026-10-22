@@ -20,8 +20,8 @@ class ReviewProviderRequest extends FormRequest
         return [
             'documents_reviewed' => ['sometimes', 'boolean'],
             'expected_version' => ['required', 'integer', 'min:0'],
-            'verification_status' => ['required', Rule::in(['approved', 'rejected'])],
-            'rejection_reason' => ['required_if:verification_status,rejected', 'nullable', 'string', 'max:2000'],
+            'verification_status' => ['required', Rule::in(['approved', 'rejected', 'suspended'])],
+            'rejection_reason' => ['required_if:verification_status,rejected,suspended', 'nullable', 'string', 'max:2000'],
         ];
     }
 }

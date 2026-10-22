@@ -40,7 +40,7 @@ class ScholarshipManagement
                 $item->$field = empty($data[$field]) ? null : CarbonImmutable::createFromFormat('!Y-m-d\TH:i', $data[$field], 'Asia/Manila')->utc();
             }
             $criteria = array_values(array_filter(array_map('trim', preg_split('/\R/', $data['eligibility_criteria'] ?? ''))));
-            $item->eligibility_rules = [...($item->eligibility_rules ?? []), 'criteria' => $criteria];
+            $item->eligibility_rules = [...($item->eligibility_rules ?? []), 'criteria' => $criteria, 'provider_settings' => array_replace($item->eligibility_rules['provider_settings'] ?? [], collect($data)->only(['purpose', 'benefits_description', 'slots', 'application_method', 'external_application_url'])->all())];
             $item->management_version = ($item->management_version ?? 0) + 1;
             $item->save();
             $item->locations()->delete();
@@ -91,7 +91,7 @@ class ScholarshipManagement
         $item->load(['locations', 'requirements']);
 
         return [...$item->only('title', 'description', 'scholarship_type', 'benefit_amount', 'currency', 'academic_term_id', 'accepts_existing_scholars', 'existing_scholars_low_priority', 'require_verified_declarations'),
-            'version' => $item->management_version, 'eligibility_criteria' => implode("\n", array_filter(is_array($item->eligibility_rules['criteria'] ?? null) ? $item->eligibility_rules['criteria'] : [], 'is_string')),
+            ...($item->eligibility_rules['provider_settings'] ?? []), 'version' => $item->management_version, 'eligibility_criteria' => implode("\n", array_filter(is_array($item->eligibility_rules['criteria'] ?? null) ? $item->eligibility_rules['criteria'] : [], 'is_string')),
             'opens_at' => $item->opens_at?->timezone('Asia/Manila')->format('Y-m-d\TH:i'),
             'deadline_at' => $item->deadline_at?->timezone('Asia/Manila')->format('Y-m-d\TH:i'),
             'locations' => $item->locations->map(fn ($location): array => $location->only('scope', 'region_code', 'city_code', 'province_code')),

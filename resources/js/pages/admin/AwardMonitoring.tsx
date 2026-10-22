@@ -17,7 +17,7 @@ interface Record {
     starts_on?: string; ends_on?: string | null; consented_at?: string | null; published_at?: string | null;
     publicly_visible?: boolean; can_publish?: boolean; publication_version?: number; publication_url?: string;
     deadline_at?: string | null; submitted_at?: string | null; reviewed_at?: string | null; overdue?: boolean;
-    amount?: string; currency?: string; scheduled_at?: string | null; released_at?: string | null; release_confirmed?: boolean;
+    amount?: string | null; currency?: string; scheduled_at?: string | null; released_at?: string | null; release_confirmed?: boolean;
 }
 interface Props extends SharedProps { section: Section; filters: Filters; records: Paginated<Record>; statuses: string[]; providers: { id: number; name: string }[]; terms: { id: number; name: string }[] }
 const titles = { awards: 'Awards and passers', renewals: 'Renewal monitoring', releases: 'Benefit releases' };
@@ -48,7 +48,7 @@ export default function AwardMonitoring({ section, filters, records, statuses, p
         columns.push({ key: 'dates', label: 'Renewal dates', render: record => <div className="space-y-1 text-xs leading-6"><p>Deadline: {date(record.deadline_at)}</p><p>Submitted: {date(record.submitted_at)}</p><p>Reviewed: {date(record.reviewed_at)}</p></div> });
     } else {
         columns.push(
-            { key: 'amount', label: 'Recorded benefit', render: record => <span className="whitespace-nowrap font-semibold tabular-nums">{record.currency} {record.amount}</span> },
+            { key: 'amount', label: 'Recorded benefit', render: record => <span className="whitespace-nowrap font-semibold tabular-nums">{record.amount == null ? 'Amount not specified' : record.currency + ' ' + record.amount}</span> },
             { key: 'dates', label: 'Release dates', render: record => <div className="space-y-1 text-xs leading-6"><p>Scheduled: {date(record.scheduled_at)}</p><p>Released: {date(record.released_at)}</p>{record.status === 'released' && !record.release_confirmed && <p className="font-semibold text-amber-800">Release timestamp missing</p>}</div> },
         );
     }

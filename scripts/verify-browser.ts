@@ -155,7 +155,7 @@ try {
         const capture = await command('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
         await writeFile(join(screenshotDirectory, 'register-mobile.png'), Buffer.from(capture.data as string, 'base64'));
     }
-    if (process.env.QA_AUDIT_CORRECTION_CHECK === 'true' || process.env.QA_PROFILE_PAGES_CHECK === 'true' || process.env.QA_PAGINATION_CHECK === 'true' || process.env.QA_DASHBOARD_REDESIGN_CHECK === 'true' || process.env.QA_SIDEBAR_RAIL_CHECK === 'true' || process.env.QA_DEMO_PROVIDERS_CHECK === 'true' || process.env.QA_SYSTEM_UI_CHECK === 'true' || process.env.QA_ACCOUNT_ENHANCEMENTS_CHECK === 'true' || process.env.QA_STUDENT_CATALOG_CHECK === 'true' || process.env.QA_LOGOUT_CHECK === 'true' || process.env.QA_STUDENT_REGISTRATION_CHECK === 'true' || process.env.QA_WORKFLOW_COMPLETION_CHECK === 'true' || process.env.QA_INPUT_VALIDATION_CHECK === 'true' || process.env.QA_ACADEMIC_TERMS_CHECK === 'true' || process.env.QA_PUBLIC_SITE_CHECK === 'true' || process.env.QA_LOGIN_REDIRECT_CHECK === 'true' || process.env.QA_STUDENT_STAGE1_CHECK === 'true' || process.env.QA_LOCATION_CHECK === 'true' || process.env.QA_HIDDEN_SCROLLBARS_CHECK === 'true' || process.env.QA_PROVIDER_UX_CHECK === 'true' || process.env.QA_BENEFITS_CHECK === 'true' || process.env.QA_RENEWALS_CHECK === 'true' || process.env.QA_CHAT_CHECK === 'true' || process.env.QA_NOTIFICATIONS_CHECK === 'true' || process.env.QA_PRIVATE_DOCUMENTS_CHECK === 'true' || process.env.QA_APPLICATION_WORKFLOW_CHECK === 'true' || process.env.QA_SCHOLARSHIP_MANAGEMENT_CHECK === 'true' || process.env.QA_PROVIDER_STAGE2_CHECK === 'true' || process.env.QA_AUTH_CHECK === 'true' || process.env.QA_SCHOLARSHIP_READONLY_CHECK === 'true' || process.env.QA_APPLICANT_COUNTS_CHECK === 'true' || process.env.QA_AWARD_STAGE6_CHECK === 'true' || process.env.QA_ADMIN_LAYOUT_CHECK === 'true' || process.env.QA_SIDEBAR_MOTION_CHECK === 'true' || process.env.QA_PROVIDER_STAGE1_CHECK === 'true') {
+    if (process.env.QA_PROVIDER_MODULE_CHECK === 'true' || process.env.QA_AUDIT_CORRECTION_CHECK === 'true' || process.env.QA_PROFILE_PAGES_CHECK === 'true' || process.env.QA_PAGINATION_CHECK === 'true' || process.env.QA_DASHBOARD_REDESIGN_CHECK === 'true' || process.env.QA_SIDEBAR_RAIL_CHECK === 'true' || process.env.QA_DEMO_PROVIDERS_CHECK === 'true' || process.env.QA_SYSTEM_UI_CHECK === 'true' || process.env.QA_ACCOUNT_ENHANCEMENTS_CHECK === 'true' || process.env.QA_STUDENT_CATALOG_CHECK === 'true' || process.env.QA_LOGOUT_CHECK === 'true' || process.env.QA_STUDENT_REGISTRATION_CHECK === 'true' || process.env.QA_WORKFLOW_COMPLETION_CHECK === 'true' || process.env.QA_INPUT_VALIDATION_CHECK === 'true' || process.env.QA_ACADEMIC_TERMS_CHECK === 'true' || process.env.QA_PUBLIC_SITE_CHECK === 'true' || process.env.QA_LOGIN_REDIRECT_CHECK === 'true' || process.env.QA_STUDENT_STAGE1_CHECK === 'true' || process.env.QA_LOCATION_CHECK === 'true' || process.env.QA_HIDDEN_SCROLLBARS_CHECK === 'true' || process.env.QA_PROVIDER_UX_CHECK === 'true' || process.env.QA_BENEFITS_CHECK === 'true' || process.env.QA_RENEWALS_CHECK === 'true' || process.env.QA_CHAT_CHECK === 'true' || process.env.QA_NOTIFICATIONS_CHECK === 'true' || process.env.QA_PRIVATE_DOCUMENTS_CHECK === 'true' || process.env.QA_APPLICATION_WORKFLOW_CHECK === 'true' || process.env.QA_SCHOLARSHIP_MANAGEMENT_CHECK === 'true' || process.env.QA_PROVIDER_STAGE2_CHECK === 'true' || process.env.QA_AUTH_CHECK === 'true' || process.env.QA_SCHOLARSHIP_READONLY_CHECK === 'true' || process.env.QA_APPLICANT_COUNTS_CHECK === 'true' || process.env.QA_AWARD_STAGE6_CHECK === 'true' || process.env.QA_ADMIN_LAYOUT_CHECK === 'true' || process.env.QA_SIDEBAR_MOTION_CHECK === 'true' || process.env.QA_PROVIDER_STAGE1_CHECK === 'true') {
         const fill = async (selector: string, value: string) => {
             await evaluate('document.querySelector(' + JSON.stringify(selector) + ').focus()');
             await command('Input.insertText', { text: value });
@@ -211,7 +211,54 @@ try {
             await evaluate("[...document.querySelectorAll('[role=dialog] button')].find(button => button.textContent.trim() === 'Yes, sign out').click()");
             await waitFor("document.querySelector('h1')?.textContent.includes('Find scholarships.')");
         };
-        if (process.env.QA_AUDIT_CORRECTION_CHECK === 'true') {
+        if (process.env.QA_PROVIDER_MODULE_CHECK === 'true') {
+            assert.ok(appUrl.endsWith(':8013'), 'Provider browser mutations require the isolated fixture server');
+            await login('logout-provider', 'Your provider account');
+            await command('Page.navigate', { url: appUrl + '/provider/scholarships/create' });
+            await waitFor("document.querySelector('input[name=title]') !== null");
+            const press = async (text: string) => {
+                await evaluate('[...document.querySelectorAll("main button")].find(button => button.textContent.trim() === ' + JSON.stringify(text) + ').click()');
+                await delay(200);
+            };
+            await press('Continue');
+            assert.equal(await evaluate("document.querySelector('input[name=title]') !== null"), true, 'Required fields block continuation');
+            const title = 'Browser provider wizard ' + Date.now();
+            await fill('input[name=title]', title);
+            await fill('textarea[name=description]', 'Development-only scholarship for testing the provider wizard.');
+            await fill('input[name=scholarship_type]', 'Education');
+            await press('Continue');
+            await waitFor("document.querySelector('input[name=benefit_amount]') !== null");
+            await fill('input[name=benefit_amount]', '1000');
+            await press('Previous');
+            assert.equal(await evaluate("document.querySelector('input[name=title]').value"), title, 'Previous preserves values');
+            await press('Continue');
+            assert.equal(await evaluate("document.querySelector('input[name=benefit_amount]').value"), '1000');
+            await press('Continue');
+            await waitFor("document.querySelector('textarea[name=eligibility_criteria]') !== null");
+            await fill('textarea[name=eligibility_criteria]', 'Currently enrolled senior high or college student.');
+            await press('Continue');
+            await waitFor("document.querySelector('input[name=opens_at]') !== null");
+            await press('Continue');
+            await waitFor("document.querySelector('#requirements-title') !== null");
+            await press('Add requirement');
+            await fill('input[name="requirements.0.name"]', 'Enrollment evidence');
+            await press('Continue');
+            await waitFor("document.querySelector('#application_method') !== null");
+            await press('Continue');
+            await waitFor("document.querySelector('main').textContent.includes('Review your draft')");
+            for (const width of [320, 768, 1440]) {
+                await command('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 768 });
+                assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true, 'Wizard review fits ' + width);
+            }
+            await press('Create draft');
+            await waitFor("/^\\/provider\\/scholarships\\/\\d+\\/edit$/.test(location.pathname) && document.querySelector('main h1')?.textContent === 'Edit scholarship'");
+            await waitFor("[...document.querySelectorAll('main a')].some(link => link.textContent === 'Preview saved scholarship')");
+            await evaluate("[...document.querySelectorAll('main a')].find(link => link.textContent === 'Preview saved scholarship').click()");
+            await waitFor("location.pathname.endsWith('/preview') && document.querySelector('main').textContent.includes('Provider preview of the saved record')");
+            assert.equal(await evaluate("document.querySelector('main').textContent.includes('Enrollment evidence')"), true, 'Saved requirements appear in preview');
+            assert.equal(errors.length, 0, 'No browser runtime errors');
+            console.log('Provider wizard: required validation, six navigation transitions, preserved values, final database save, private preview, and three responsive widths passed.');
+        } else if (process.env.QA_AUDIT_CORRECTION_CHECK === 'true') {
             assert.ok(process.env.QA_REGISTRATION_DB?.includes('iskoreach-registration-'));
             const applicationId = await new Promise<number>((resolve, reject) => {
                 const php = spawn('php', [], { windowsHide:true, env:{...process.env,DB_CONNECTION:'sqlite',DB_DATABASE:process.env.QA_REGISTRATION_DB,DB_URL:'',APP_URL:appUrl,DOCUMENT_STORAGE_ROOT:process.env.QA_REGISTRATION_DB+'-documents'},stdio:['pipe','pipe','pipe'] });
@@ -781,7 +828,7 @@ echo Illuminate\\Support\\Facades\\URL::temporarySignedRoute('verification.verif
             await fill('input[name=first_name]', 'Provider'); await fill('input[name=surname]', 'Browser');
             await fill('input[name=position]', 'Director'); await fill('input[name=contact_number]', '09171234567'); await fill('input[name=work_email]', providerEmail);
             await next('input[name=organization_name]');
-            await fill('input[name=organization_name]', 'Browser Foundation'); await fill('input[name=office_address]', '123 Test Office');
+            await fill('textarea[name=organization_description]', 'A development foundation supporting education access.'); await fill('input[name=organization_name]', 'Browser Foundation'); await fill('input[name=office_address]', '123 Test Office');
             await choose('organization_type', 'individual');
             assert.equal(await evaluate("document.querySelector('input[name=organization_name]') === null"), true);
             await choose('organization_type', 'foundation');
@@ -792,6 +839,8 @@ echo Illuminate\\Support\\Facades\\URL::temporarySignedRoute('verification.verif
             await choose('province_code', '042100000');
             await waitFor("document.querySelector('select[name=city_code]').options.length > 1");
             await choose('city_code', await evaluate("document.querySelector('select[name=city_code]').options[1].value") as string);
+            await waitFor("document.querySelector('select[name=barangay_code]').options.length > 1");
+            await choose('barangay_code', await evaluate("document.querySelector('select[name=barangay_code]').options[1].value") as string);
             await fill('input[name=organization_email]', providerEmail); await fill('input[name=organization_phone]', '09171234567');
             await next('input[name=representative_id]');
             await screenshot('registration-provider-documents');

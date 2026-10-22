@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['organization_name', 'contact_email', 'first_name', 'surname', 'middle_name', 'suffix', 'position', 'contact_number', 'work_email', 'organization_type', 'office_address', 'region_code', 'province_code', 'city_code', 'region_name', 'province_name', 'city_name', 'organization_phone', 'website', 'authorization_required'])]
+#[Fillable(['organization_description', 'country', 'barangay_code', 'barangay_name', 'organization_name', 'contact_email', 'first_name', 'surname', 'middle_name', 'suffix', 'position', 'contact_number', 'work_email', 'organization_type', 'office_address', 'region_code', 'province_code', 'city_code', 'region_name', 'province_name', 'city_name', 'organization_phone', 'website', 'authorization_required'])]
 class ProviderProfile extends Model
 {
     /** @use HasFactory<ProviderProfileFactory> */

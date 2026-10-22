@@ -33,6 +33,16 @@ class AwardBenefitsTest extends TestCase
         Queue::fake();
     }
 
+    public function test_non_cash_or_unknown_amount_releases_preserve_null_and_notify_the_correct_student(): void
+    {
+        $award = $this->award();
+        $this->actingAs($award->application->scholarship->provider->user)->post('/benefits/'.$award->id.'/releases', $this->releaseData($award, ['amount' => null, 'reason' => 'School supplies benefit; no cash valuation is recorded.']))->assertSessionHasNoErrors();
+        $release = BenefitRelease::firstOrFail();
+        $this->assertNull($release->amount);
+        $this->actingAs($award->application->student)->get('/benefits/'.$award->id)->assertInertia(fn (Assert $page) => $page->where('releases.data.0.amount', null)->where('releases.data.0.status', 'pending'));
+        $this->assertTrue($award->application->student->notifications()->where('data->release_id', $release->id)->exists());
+    }
+
     public function test_approved_renewal_terms_allow_benefits_and_retained_parents_keep_readable_history(): void
     {
         $award = $this->award();

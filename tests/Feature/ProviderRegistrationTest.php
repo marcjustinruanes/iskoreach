@@ -15,6 +15,27 @@ class ProviderRegistrationTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_organization_details_and_configured_type_specific_documents_are_validated_and_saved(): void
+    {
+        Notification::fake();
+        config(['provider-verification.documents_by_type.government.required' => ['organization_proof', 'accreditation']]);
+        $data = $this->providerRegistrationData(['organization_type' => 'government']);
+        $this->post('/register', $data)->assertSessionHasErrors('accreditation');
+        $data['accreditation'] = UploadedFile::fake()->image('mandate.jpg');
+        $this->post('/register', [...$data, 'organization_description' => null])->assertSessionHasErrors('organization_description');
+        $this->post('/register', $data)->assertSessionHasNoErrors();
+        $profile = ProviderProfile::firstOrFail();
+        $this->assertSame('PH', $profile->country);
+        $this->assertSame('Test Barangay', $profile->barangay_name);
+        $this->assertSame($data['organization_description'], $profile->organization_description);
+        $this->assertArrayHasKey('accreditation', $profile->verification_documents);
+        $profile->user->markEmailAsVerified();
+        $profile->forceFill(['verification_status' => 'suspended', 'rejection_reason' => 'Documents require investigation'])->save();
+        $this->actingAs($profile->user)->post(route('provider-verification.update', $profile), ['expected_version' => 0, 'representative_id' => UploadedFile::fake()->image('replacement.jpg')])->assertSessionHasNoErrors();
+        $this->assertSame('suspended', $profile->fresh()->verification_status->value);
+        $this->assertSame('Documents require investigation', $profile->fresh()->rejection_reason);
+    }
+
     public function test_provider_registration_stores_separate_details_private_files_and_pending_status(): void
     {
         Notification::fake();

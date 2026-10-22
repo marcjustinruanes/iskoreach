@@ -28,6 +28,6 @@ class RegisterUserRequest extends FormRequest
             'password' => InputRules::password(),
             'account_type' => ['sometimes', 'required', Rule::in(['student', 'provider'])],
             'registration_intent' => ['nullable', 'string'],
-        ] + ($this->input('account_type') === 'provider' ? app(ProviderRegistration::class)->rules() : app(StudentRegistration::class)->rules());
+        ] + ($this->input('account_type') === 'provider' ? app(ProviderRegistration::class)->rules($this->all()) : app(StudentRegistration::class)->rules());
     }
 }

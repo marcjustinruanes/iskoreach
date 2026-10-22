@@ -43,8 +43,8 @@ class ProviderVerificationDocumentController extends Controller
                     throw ValidationException::withMessages(['representative_id' => 'Select at least one replacement document.']);
                 }
                 $previousStatus = $profile->verification_status->value;
-                $profile->forceFill(['verification_documents' => $documents, 'verification_status' => 'pending', 'reviewed_by' => null, 'reviewed_at' => null, 'rejection_reason' => null, 'verification_version' => $profile->verification_version + 1])->save();
-                $request->user()->activityLogs()->create(['action' => 'provider.details_changed', 'subject_type' => ProviderProfile::class, 'subject_id' => $profile->id, 'changes' => ['from' => $previousStatus, 'to' => 'pending', 'previous_document_hashes' => collect($before)->map(fn (array $document): string => $document['sha256'])->all()], 'occurred_at' => now()]);
+                $profile->forceFill(['verification_documents' => $documents, 'verification_status' => $previousStatus === 'suspended' ? 'suspended' : 'pending', 'reviewed_by' => null, 'reviewed_at' => null, 'rejection_reason' => $previousStatus === 'suspended' ? $profile->rejection_reason : null, 'verification_version' => $profile->verification_version + 1])->save();
+                $request->user()->activityLogs()->create(['action' => 'provider.details_changed', 'subject_type' => ProviderProfile::class, 'subject_id' => $profile->id, 'changes' => ['from' => $previousStatus, 'to' => $profile->verification_status->value, 'previous_document_hashes' => collect($before)->map(fn (array $document): string => $document['sha256'])->all()], 'occurred_at' => now()]);
             });
         } catch (\Throwable $error) {
             foreach ($stored as $path) {

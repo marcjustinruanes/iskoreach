@@ -40,7 +40,7 @@ abstract class TestCase extends BaseTestCase
         return array_replace([
             'account_type' => 'provider', 'registration_intent' => $intent,
             'first_name' => 'Provider', 'surname' => 'Contact', 'position' => 'Director', 'contact_number' => '09171234567', 'work_email' => 'work@example.test',
-            'organization_name' => 'Example Foundation', 'organization_type' => 'foundation', 'office_address' => '123 Test Street', 'organization_email' => 'office@example.test', 'organization_phone' => '09171234567', 'authorization_required' => false,
+            'organization_description' => 'An education foundation providing student grants.', 'country' => 'PH', 'barangay_code' => '042101001', 'organization_name' => 'Example Foundation', 'organization_type' => 'foundation', 'office_address' => '123 Test Street', 'organization_email' => 'office@example.test', 'organization_phone' => '09171234567', 'authorization_required' => false,
             'region_code' => '040000000', 'province_code' => '042100000', 'city_code' => '042101000',
             'representative_id' => UploadedFile::fake()->image('id.jpg'), 'organization_proof' => UploadedFile::fake()->image('registration.jpg'),
             'email' => 'provider@example.test', 'password' => 'provider-password', 'password_confirmation' => 'provider-password', 'terms_accepted' => true, 'privacy_accepted' => true,

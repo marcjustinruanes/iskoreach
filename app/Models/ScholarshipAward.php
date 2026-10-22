@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable(['application_id', 'academic_term_id', 'status', 'starts_on', 'ends_on', 'revoked_at'])]
 class ScholarshipAward extends Model
@@ -26,6 +27,11 @@ class ScholarshipAward extends Model
     public function application(): BelongsTo
     {
         return $this->belongsTo(Application::class)->withTrashed();
+    }
+
+    public function renewals(): HasMany
+    {
+        return $this->hasMany(Renewal::class);
     }
 
     public function academicTerm(): BelongsTo

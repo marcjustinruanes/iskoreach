@@ -109,7 +109,7 @@ class ProviderReviewController extends Controller
             $profile->verification_status = $after;
             $profile->reviewed_by = $request->user()->id;
             $profile->reviewed_at = now();
-            $profile->rejection_reason = $after === ProviderVerificationStatus::Rejected ? $request->validated('rejection_reason') : null;
+            $profile->rejection_reason = in_array($after, [ProviderVerificationStatus::Rejected, ProviderVerificationStatus::Suspended], true) ? $request->validated('rejection_reason') : null;
             $profile->verification_version++;
             $profile->save();
 

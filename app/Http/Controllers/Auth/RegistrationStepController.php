@@ -20,7 +20,7 @@ class RegistrationStepController extends Controller
         $provider = $input['account_type'] === 'provider';
         $steps = $provider ? [
             ['first_name', 'surname', 'middle_name', 'suffix', 'position', 'contact_number', 'work_email'],
-            ['organization_name', 'organization_type', 'office_address', 'region_code', 'province_code', 'city_code', 'organization_email', 'organization_phone', 'website', 'authorization_required'],
+            ['organization_description', 'country', 'barangay_code', 'organization_name', 'organization_type', 'office_address', 'region_code', 'province_code', 'city_code', 'organization_email', 'organization_phone', 'website', 'authorization_required'],
             ProviderRegistration::DOCUMENTS,
         ] : [
             ['first_name', 'surname', 'middle_name', 'suffix', 'date_of_birth', 'sex', 'contact_number'],
@@ -32,7 +32,7 @@ class RegistrationStepController extends Controller
         $rules->replace($input);
         Validator::make($input, array_intersect_key($rules->rules(), array_flip($steps[(int) $input['step'] - 1])))->validate();
         if ((! $provider && (int) $input['step'] === 3) || ($provider && (int) $input['step'] === 2)) {
-            $students->address($input, ! $provider);
+            $students->address($input, ! $provider || ! empty($input['barangay_code']));
         }
         if ((int) $input['step'] === 1) {
             $students->name($input);

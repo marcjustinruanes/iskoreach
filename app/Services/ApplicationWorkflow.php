@@ -23,7 +23,7 @@ class ApplicationWorkflow
         $required = $program->requirements()->where('required', true)->where('requirement_stage', 'application')->orderBy('id')->pluck('id')->all();
         $profile = $student->studentProfile;
         $identity = ['name' => $student->name, 'school' => $profile?->school, 'course' => $profile?->course, 'year_level' => $profile?->year_level];
-        $open = ! $program->trashed() && $program->status->value === 'published' && $program->published_at !== null
+        $open = ($program->eligibility_rules['provider_settings']['application_method'] ?? 'internal') === 'internal' && ! $program->trashed() && $program->status->value === 'published' && $program->published_at !== null
             && $program->provider->isApproved() && $program->provider->user?->role === UserRole::Provider
             && $program->opens_at !== null && $program->opens_at->lte(now()) && $program->deadline_at !== null && $program->deadline_at->gt(now());
         $declarations = app(ScholarshipNotices::class)->declarations($student, $program);
@@ -167,7 +167,7 @@ class ApplicationWorkflow
 
     private function preparable(Scholarship $program): bool
     {
-        return ! $program->trashed() && $program->status->value === 'published' && $program->published_at !== null && $program->provider->isApproved() && $program->provider->user?->role === UserRole::Provider && $program->deadline_at?->isFuture();
+        return ($program->eligibility_rules['provider_settings']['application_method'] ?? 'internal') === 'internal' && ! $program->trashed() && $program->status->value === 'published' && $program->published_at !== null && $program->provider->isApproved() && $program->provider->user?->role === UserRole::Provider && $program->deadline_at?->isFuture();
     }
 
     private function lockProgram(Scholarship $program): Scholarship

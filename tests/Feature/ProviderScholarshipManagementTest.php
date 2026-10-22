@@ -15,6 +15,36 @@ class ProviderScholarshipManagementTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_management_filters_counts_sorting_and_private_preview_use_owned_database_records(): void
+    {
+        $provider = $this->provider();
+        $program = Scholarship::factory()->create(['provider_id' => $provider->id, 'scholarship_type' => 'Merit', 'status' => 'published', 'published_at' => now(), 'opens_at' => now()->subDay(), 'deadline_at' => now()->addWeek()]);
+        Application::factory()->create(['scholarship_id' => $program->id, 'status' => 'waitlisted', 'submitted_at' => now()]);
+        Application::factory()->create(['scholarship_id' => $program->id, 'status' => 'not_started', 'submitted_at' => null]);
+        Scholarship::factory()->create(['provider_id' => $provider->id, 'scholarship_type' => 'Other']);
+        Scholarship::factory()->create(['scholarship_type' => 'Merit']);
+        $this->actingAs($provider->user)->get('/provider/scholarships?category=Merit&availability=open&sort=applicants')->assertInertia(fn (Assert $page) => $page->where('scholarships.total', 1)->where('scholarships.data.0.id', $program->id)->where('scholarships.data.0.applicant_count', 1)->where('scholarships.data.0.pending_count', 0));
+        $draft = Scholarship::factory()->create(['provider_id' => $provider->id, 'status' => 'draft', 'published_at' => null]);
+        $this->get('/provider/scholarships/'.$draft->id.'/preview')->assertInertia(fn (Assert $page) => $page->where('preview', true)->where('scholarship.id', $draft->id));
+        $this->get('/scholarships/'.$draft->slug)->assertNotFound();
+        $this->actingAs($this->provider()->user)->get('/provider/scholarships/'.$draft->id.'/preview')->assertForbidden();
+        $this->actingAs($provider->user)->get('/provider/scholarships?sort=unsafe')->assertSessionHasErrors('sort');
+    }
+
+    public function test_currency_defaults_to_php_and_other_currencies_are_rejected_on_create_and_update(): void
+    {
+        $provider = $this->provider();
+        $data = $this->data();
+        unset($data['currency']);
+        $this->actingAs($provider->user)->post('/provider/scholarships', $data)->assertSessionHasNoErrors();
+        $item = Scholarship::firstOrFail();
+        $this->assertSame('PHP', $item->currency);
+        $this->post('/provider/scholarships', [...$data, 'currency' => 'USD'])->assertSessionHasErrors('currency');
+        $this->patch('/provider/scholarships/'.$item->id, [...$data, 'version' => $item->management_version, 'currency' => 'USD'])->assertSessionHasErrors('currency');
+        $this->assertDatabaseCount('scholarships', 1);
+        $this->assertSame('PHP', $item->fresh()->currency);
+    }
+
     public function test_creation_is_limited_to_approved_providers_and_ownership_is_enforced(): void
     {
         $this->get('/provider/scholarships')->assertRedirect('/login');

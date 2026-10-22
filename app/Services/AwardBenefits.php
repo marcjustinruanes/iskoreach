@@ -55,6 +55,9 @@ class AwardBenefits
             $this->check($item->workflow_version === $data['version'], 'The application changed. Reload before confirming an award.');
             $this->check(hash_equals($this->context($item)['token'], $data['context_token']), 'The student award context changed. Reload before confirming.');
             $this->check(! ScholarshipAward::where('application_id', $item->id)->exists(), 'This application already has an award. One award is retained per application.');
+            $slots = $item->scholarship->eligibility_rules['provider_settings']['slots'] ?? null;
+            $allocated = ScholarshipAward::whereHas('application', fn ($query) => $query->where('scholarship_id', $item->scholarship_id))->whereIn('status', ['active', 'suspended'])->count();
+            $this->check($slots === null || $allocated < $slots, 'All configured scholarship award slots are allocated.');
             $declarations = app(ScholarshipNotices::class)->declarations($item->student, $item->scholarship, $data['starts_on'], $data['ends_on'] ?? null);
             $this->check(! $item->scholarship->require_verified_declarations || collect($declarations)->every(fn (array $row): bool => $row['verification'] === 'verified'), 'Declared scholarships require verification by this provider.');
             $overlap = count($declarations) > 0 || ScholarshipAward::where('status', 'active')->whereNull('revoked_at')->whereHas('application', fn ($query) => $query->where('student_id', $item->student_id)->where('status', 'accepted')->whereNotNull('submitted_at'))
@@ -114,7 +117,7 @@ class AwardBenefits
             $item = ScholarshipAward::query()->lockForUpdate()->findOrFail($award->id);
             Gate::forUser($user)->authorize('manage', $item);
             $scheduled = empty($data['scheduled_at']) ? null : CarbonImmutable::parse($data['scheduled_at'], 'Asia/Manila')->utc();
-            $fingerprint = hash('sha256', json_encode([(int) $data['academic_term_id'], number_format((float) $data['amount'], 2, '.', ''), $data['currency'], $scheduled?->toIso8601String(), trim($data['reason'])]));
+            $fingerprint = hash('sha256', json_encode([(int) $data['academic_term_id'], isset($data['amount']) ? number_format((float) $data['amount'], 2, '.', '') : null, $data['currency'], $scheduled?->toIso8601String(), trim($data['reason'])]));
             $existing = BenefitRelease::where('scholarship_award_id', $item->id)->where('submission_token', $data['submission_token'])->first();
             if ($existing) {
                 $this->check(hash_equals($existing->creation_hash ?? '', $fingerprint), 'This retry token was used for different release details.');
@@ -125,7 +128,7 @@ class AwardBenefits
             $this->check($item->isCurrentlyActive(), 'Only a currently active award can have new benefit records.');
             $allowed = (int) $data['academic_term_id'] === $item->academic_term_id || Renewal::where('scholarship_award_id', $item->id)->where('academic_term_id', $data['academic_term_id'])->where('status', 'approved')->whereNotNull('reviewed_at')->exists();
             $this->check($allowed, 'Choose the award term or a term with an approved renewal.');
-            $release = new BenefitRelease(['scholarship_award_id' => $item->id, 'academic_term_id' => $data['academic_term_id'], 'amount' => $data['amount'], 'currency' => $data['currency'], 'scheduled_at' => $scheduled, 'status' => 'pending', 'recorded_by' => $user->id, 'notes' => trim($data['reason'])]);
+            $release = new BenefitRelease(['scholarship_award_id' => $item->id, 'academic_term_id' => $data['academic_term_id'], 'amount' => $data['amount'] ?? null, 'currency' => $data['currency'], 'scheduled_at' => $scheduled, 'status' => 'pending', 'recorded_by' => $user->id, 'notes' => trim($data['reason'])]);
             $release->submission_token = $data['submission_token'];
             $release->creation_hash = $fingerprint;
             $release->history = [];

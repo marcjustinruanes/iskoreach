@@ -22,7 +22,13 @@ class MessageController extends Controller
 {
     public function index(Request $request, PrivateChat $chat): Response
     {
-        return Inertia::render('messages/Index', ['threads' => $chat->query($request->user())->with(['provider', 'student'])->orderByDesc('last_message_at')->orderByDesc('id')->paginate(15)->through(fn ($thread) => $chat->threadData($request->user(), $thread))]);
+        $search = trim($request->validate(['q' => ['nullable', 'string', 'max:120']])['q'] ?? '');
+
+        return Inertia::render('messages/Index', ['filters' => ['q' => $search], 'threads' => $chat->query($request->user())
+            ->when($search !== '', fn ($query) => $query->where(fn ($query) => $query
+                ->whereHas('provider', fn ($query) => $query->whereLike('organization_name', '%'.$search.'%'))
+                ->orWhereHas('student', fn ($query) => $query->whereLike('name', '%'.$search.'%'))))
+            ->with(['provider', 'student'])->orderByDesc('last_message_at')->orderByDesc('id')->paginate(15)->withQueryString()->through(fn ($thread) => $chat->threadData($request->user(), $thread))]);
     }
 
     public function start(Request $request, Application $application, PrivateChat $chat): RedirectResponse

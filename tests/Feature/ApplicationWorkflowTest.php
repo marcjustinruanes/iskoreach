@@ -22,6 +22,20 @@ class ApplicationWorkflowTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_provider_search_uses_submitted_names_and_private_notes_stay_with_authorized_reviewers(): void
+    {
+        $program = $this->program();
+        $item = Application::factory()->create(['scholarship_id' => $program->id, 'submission_snapshot' => ['student' => ['name' => 'Distinct Applicant']]]);
+        $other = Application::factory()->create(['submission_snapshot' => ['student' => ['name' => 'Distinct Applicant']]]);
+        $this->actingAs($program->provider->user)->get('/provider/applications?q=Distinct')->assertInertia(fn (Assert $page) => $page->where('applications.total', 1)->where('applications.data.0.id', $item->id));
+        $this->post('/provider/applications/'.$item->id.'/notes', ['note' => 'Private evidence assessment'])->assertSessionHasNoErrors();
+        $this->get('/provider/applications/'.$item->id)->assertInertia(fn (Assert $page) => $page->where('reviewNotes.data.0.text', 'Private evidence assessment'));
+        $this->post('/provider/applications/'.$other->id.'/notes', ['note' => 'Unauthorized note'])->assertForbidden();
+        $this->actingAs($item->student)->get('/student/applications/'.$item->id)->assertInertia(fn (Assert $page) => $page->missing('reviewNotes'));
+        $this->post('/provider/applications/'.$item->id.'/notes', ['note' => 'Student injected note'])->assertForbidden();
+        $this->assertDatabaseCount('activity_logs', 1);
+    }
+
     public function test_roles_and_student_record_ownership_are_enforced(): void
     {
         $program = $this->program();

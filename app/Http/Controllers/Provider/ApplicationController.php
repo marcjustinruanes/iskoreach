@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Provider;
 use App\Enums\ApplicationStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Provider\ReviewApplicationRequest;
+use App\Models\ActivityLog;
 use App\Models\Application;
 use App\Services\ApplicationWorkflow;
 use Illuminate\Http\RedirectResponse;
@@ -24,7 +25,7 @@ class ApplicationController extends Controller
         $query = Application::query()->whereNotNull('submitted_at')->whereIn('status', ApplicationStatus::countedValues())
             ->whereHas('student', fn ($query) => $query->where('role', 'student'))
             ->whereHas('scholarship', fn ($query) => $query->where('provider_id', $request->user()->providerProfile->id))->with('scholarship.provider');
-        $query->when($filters['q'] !== '', fn ($query) => $query->whereHas('scholarship', fn ($query) => $query->whereLike('title', '%'.$filters['q'].'%')))
+        $query->when($filters['q'] !== '', fn ($query) => $query->where(fn ($query) => $query->whereLike('submission_snapshot->student->name', '%'.$filters['q'].'%')->orWhereHas('scholarship', fn ($query) => $query->whereLike('title', '%'.$filters['q'].'%'))))
             ->when($filters['status'] !== '', fn ($query) => $query->where('status', $filters['status']))
             ->when($filters['priority'] !== '', fn ($query) => $query->where('low_priority', $filters['priority'] === 'low'));
 
@@ -35,7 +36,19 @@ class ApplicationController extends Controller
     {
         Gate::authorize('review', $application);
 
-        return Inertia::render('provider/ApplicationDetails', ['application' => $workflow->details($application)]);
+        return Inertia::render('provider/ApplicationDetails', ['application' => $workflow->details($application), 'reviewNotes' => ActivityLog::where('subject_type', Application::class)->where('subject_id', $application->id)->where('action', 'application.internal_note')->with('actor:id,name')->latest('id')->paginate(10, ['*'], 'notes_page')->withQueryString()->through(fn ($note): array => ['id' => $note->id, 'text' => $note->changes['note'], 'author' => $note->actor?->name ?? 'Former reviewer', 'created_at' => $note->occurred_at->toIso8601String()])]);
+    }
+
+    public function note(Request $request, Application $application): RedirectResponse
+    {
+        Gate::authorize('review', $application);
+        $data = $request->validate(['note' => ['required', 'string', 'min:3', 'max:2000']]);
+        $request->user()->activityLogs()->create([
+            'action' => 'application.internal_note', 'subject_type' => Application::class,
+            'subject_id' => $application->id, 'changes' => ['note' => $data['note']], 'occurred_at' => now(),
+        ]);
+
+        return to_route('provider.applications.show', $application)->with('status', 'Private review note saved.');
     }
 
     public function update(ReviewApplicationRequest $request, Application $application, ApplicationWorkflow $workflow): RedirectResponse

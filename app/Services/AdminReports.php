@@ -69,7 +69,7 @@ class AdminReports
         foreach (array_keys(self::DEFINITIONS[$type]['columns']) as $key) {
             $data[$key] = match ($key) {
                 'count', 'incomplete', 'scholarship_id' => (int) $row->$key,
-                'amount' => is_string($row->$key) ? $row->$key : number_format((float) $row->$key, 2, '.', ''),
+                'amount' => $row->$key === null ? 'Not recorded' : (is_string($row->$key) ? $row->$key : number_format((float) $row->$key, 2, '.', '')),
                 default => (string) $row->$key,
             };
         }

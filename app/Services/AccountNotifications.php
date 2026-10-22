@@ -6,6 +6,7 @@ use App\Events\AccountNotificationsChanged;
 use App\Models\Application;
 use App\Models\Conversation;
 use App\Models\Renewal;
+use App\Models\Scholarship;
 use App\Models\ScholarshipAward;
 use App\Models\User;
 use App\Notifications\ApplicationActivity;
@@ -60,6 +61,10 @@ class AccountNotifications
             $title = $notice->data['title'];
             $message = $notice->data['message'];
             $url = route('scholarship-announcements.index');
+            $program = Scholarship::find($notice->data['scholarship_id'] ?? 0);
+            if ($program && $user->can('manage', $program)) {
+                $url = route('provider.scholarships.edit', $program);
+            }
             $application = Application::find($notice->data['application_id'] ?? 0);
             if ($application && $user->can('view', $application)) {
                 $url = route('student.applications.show', $application);

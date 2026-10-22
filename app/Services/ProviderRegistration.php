@@ -12,7 +12,7 @@ use Illuminate\Validation\ValidationException;
 
 class ProviderRegistration
 {
-    public const FIELDS = ['first_name', 'surname', 'middle_name', 'suffix', 'position', 'contact_number', 'work_email', 'organization_name', 'organization_type', 'office_address', 'region_code', 'province_code', 'city_code', 'organization_phone', 'website', 'authorization_required'];
+    public const FIELDS = ['organization_description', 'country', 'barangay_code', 'first_name', 'surname', 'middle_name', 'suffix', 'position', 'contact_number', 'work_email', 'organization_name', 'organization_type', 'office_address', 'region_code', 'province_code', 'city_code', 'organization_phone', 'website', 'authorization_required'];
 
     public const DOCUMENTS = ['representative_id', 'organization_proof', 'administration_evidence', 'authorization_letter', 'accreditation'];
 
@@ -25,7 +25,7 @@ class ProviderRegistration
             request()->session()->put('registration_nonce', $nonce);
         }
 
-        return ['mode' => 'register', 'accountType' => $role, 'registrationIntent' => Crypt::encryptString(json_encode(['role' => $role, 'session' => $nonce, 'expires' => now()->addHours(4)->timestamp], JSON_THROW_ON_ERROR))];
+        return ['verificationPolicy' => config('provider-verification.documents_by_type'), 'mode' => 'register', 'accountType' => $role, 'registrationIntent' => Crypt::encryptString(json_encode(['role' => $role, 'session' => $nonce, 'expires' => now()->addHours(4)->timestamp], JSON_THROW_ON_ERROR))];
     }
 
     /** @param array<string, mixed> $input */
@@ -45,7 +45,7 @@ class ProviderRegistration
     }
 
     /** @return array<string, array<int, mixed>> */
-    public function rules(): array
+    public function rules(array $input = []): array
     {
         $student = app(StudentRegistration::class)->rules();
         $rules = array_intersect_key($student, array_flip(['first_name', 'surname', 'middle_name', 'suffix', 'contact_number', 'region_code', 'province_code', 'city_code', 'terms_accepted', 'privacy_accepted']));
@@ -53,26 +53,26 @@ class ProviderRegistration
             $rules[$field] = ['required', 'string', 'max:255', InputRules::singleLine()];
         }
         $rules['organization_phone'] = $student['contact_number'];
-        $rules['organization_type'] = ['required', Rule::in(['foundation', 'government', 'school', 'organization', 'individual'])];
+        $rules['organization_description'] = ['required', 'string', 'min:10', 'max:4000'];
+        $rules['country'] = ['sometimes', Rule::in(['PH'])];
+        $rules['barangay_code'] = $student['barangay_code'];
+        $rules['organization_type'] = ['required', Rule::in(['foundation', 'government', 'school', 'organization', 'individual', 'lgu', 'nonprofit', 'corporate', 'other'])];
         $rules['organization_name'] = ['required_unless:organization_type,individual', 'nullable', 'string', 'max:255', InputRules::singleLine()];
         $rules['work_email'] = InputRules::email();
         $rules['organization_email'] = InputRules::email();
         $rules['website'] = ['nullable', 'url:http,https', 'max:255'];
         $rules['authorization_required'] = ['required', 'boolean'];
+        $values = $input ?: request()->all();
+        $requiredDocuments = $this->requiredDocuments($values);
         foreach (self::DOCUMENTS as $kind) {
-            $required = match ($kind) {
-                'representative_id' => 'required',
-                'organization_proof' => 'required_unless:organization_type,individual',
-                'administration_evidence' => 'required_if:organization_type,individual',
-                'authorization_letter' => 'required_if:authorization_required,1,true',
-                default => 'nullable',
+            $required = in_array($kind, $requiredDocuments, true) ? 'required' : 'nullable';
+            $irrelevant = ! in_array($kind, $requiredDocuments, true) && match ($kind) {
+                'organization_proof' => ($values['organization_type'] ?? '') === 'individual',
+                'administration_evidence' => ($values['organization_type'] ?? '') !== 'individual',
+                'authorization_letter' => ! ($values['authorization_required'] ?? false),
+                default => false,
             };
-            $applicability = match ($kind) {
-                'organization_proof' => 'exclude_if:organization_type,individual',
-                'administration_evidence' => 'exclude_unless:organization_type,individual',
-                'authorization_letter' => 'exclude_unless:authorization_required,1,true',
-                default => 'sometimes',
-            };
+            $applicability = $irrelevant ? 'exclude' : 'sometimes';
             $rules[$kind] = array_values(array_filter(['bail', $applicability === 'sometimes' ? null : $applicability, $required, 'nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:1024']));
         }
 
@@ -91,12 +91,21 @@ class ProviderRegistration
         return $input;
     }
 
-    public function documentsAreAvailable(ProviderProfile $profile): bool
+    /** @param array<string, mixed> $input @return list<string> */
+    public function requiredDocuments(array $input): array
     {
-        $required = ['representative_id', $profile->organization_type === 'individual' ? 'administration_evidence' : 'organization_proof'];
-        if ($profile->authorization_required) {
+        $type = $input['organization_type'] ?? 'foundation';
+        $required = config('provider-verification.documents_by_type.'.$type.'.required', [$type === 'individual' ? 'administration_evidence' : 'organization_proof']);
+        if ($input['authorization_required'] ?? false) {
             $required[] = 'authorization_letter';
         }
+
+        return array_values(array_unique(['representative_id', ...array_intersect($required, self::DOCUMENTS)]));
+    }
+
+    public function documentsAreAvailable(ProviderProfile $profile): bool
+    {
+        $required = $this->requiredDocuments($profile->only('organization_type', 'authorization_required'));
         foreach ($required as $kind) {
             $document = $profile->verification_documents[$kind] ?? null;
             if (! $document || ! Storage::disk('documents')->exists($document['path']) || ! hash_equals($document['sha256'], hash('sha256', Storage::disk('documents')->get($document['path'])))) {

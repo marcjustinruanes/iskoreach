@@ -74,7 +74,7 @@ class ScholarshipCatalog
     {
         $summary = app(ApplicantCounts::class)->summary($item);
 
-        return ['id' => $item->id, 'title' => $item->title, 'provider' => $item->provider->organization_name,
+        return [...collect($item->eligibility_rules['provider_settings'] ?? [])->only(['purpose', 'benefits_description', 'slots', 'application_method', 'external_application_url'])->all(), 'id' => $item->id, 'title' => $item->title, 'provider' => $item->provider->organization_name,
             'type' => $item->scholarship_type, 'amount' => $item->benefit_amount, 'currency' => $item->currency,
             'opens_at' => $item->opens_at?->toIso8601String(), 'deadline_at' => $item->deadline_at?->toIso8601String(),
             'availability' => $item->status->value === 'closed' || $item->deadline_at?->lte(now()) ? 'Closed' : (! $item->opens_at || ! $item->deadline_at ? 'Dates not recorded' : ($item->opens_at->isFuture() ? 'Opens later' : 'Open now')),
