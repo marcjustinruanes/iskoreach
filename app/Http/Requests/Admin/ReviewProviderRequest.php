@@ -18,6 +18,7 @@ class ReviewProviderRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'documents_reviewed' => ['sometimes', 'boolean'],
             'expected_version' => ['required', 'integer', 'min:0'],
             'verification_status' => ['required', Rule::in(['approved', 'rejected'])],
             'rejection_reason' => ['required_if:verification_status,rejected', 'nullable', 'string', 'max:2000'],

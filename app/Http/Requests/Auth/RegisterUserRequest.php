@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Services\ProviderRegistration;
+use App\Services\StudentRegistration;
 use App\Support\InputRules;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -15,17 +17,17 @@ class RegisterUserRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $this->replace(InputRules::normalize($this->all(), ['name', 'email', 'organization_name'], ['email']));
+        $this->replace(app(StudentRegistration::class)->normalize($this->all()));
     }
 
     public function rules(): array
     {
         return [
-            'name' => InputRules::name(),
+            'name' => ['exclude'],
             'email' => InputRules::email(unique: true),
             'password' => InputRules::password(),
             'account_type' => ['sometimes', 'required', Rule::in(['student', 'provider'])],
-            'organization_name' => ['required_if:account_type,provider', 'nullable', 'string', 'max:255', InputRules::singleLine()],
-        ];
+            'registration_intent' => ['nullable', 'string'],
+        ] + ($this->input('account_type') === 'provider' ? app(ProviderRegistration::class)->rules() : app(StudentRegistration::class)->rules());
     }
 }

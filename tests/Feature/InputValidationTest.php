@@ -34,8 +34,8 @@ class InputValidationTest extends TestCase
     public function test_direct_registration_normalizes_selected_text_without_trimming_passwords(): void
     {
         $password = '  valid password!  ';
-        $user = app(CreateNewUser::class)->create(['name' => "\u{00a0}Ana Cruz\u{00a0}", 'email' => '  ANA+tag@Example.test  ',
-            'password' => $password, 'password_confirmation' => $password, 'account_type' => 'provider', 'organization_name' => '  Foundation 123 & Co.  ']);
+        $user = app(CreateNewUser::class)->create($this->providerRegistrationData(['first_name' => "\u{00a0}Ana\u{00a0}", 'surname' => 'Cruz', 'email' => '  ANA+tag@Example.test  ',
+            'password' => $password, 'password_confirmation' => $password, 'organization_name' => '  Foundation 123 & Co.  ']));
         $this->assertSame('Ana Cruz', $user->name);
         $this->assertSame('ana+tag@example.test', $user->email);
         $this->assertSame('Foundation 123 & Co.', $user->providerProfile->organization_name);
@@ -47,7 +47,7 @@ class InputValidationTest extends TestCase
     {
         User::factory()->create(['email' => 'Existing@Example.test']);
         $this->post('/register', ['name' => "\u{00a0}", 'email' => 'EXISTING@example.test', 'password' => 'valid-password', 'password_confirmation' => 'valid-password'])
-            ->assertSessionHasErrors(['name', 'email']);
+            ->assertSessionHasErrors(['first_name', 'surname', 'email']);
         $this->assertDatabaseCount('users', 1);
     }
 

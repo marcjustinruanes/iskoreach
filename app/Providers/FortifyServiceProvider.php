@@ -8,6 +8,7 @@ use App\Actions\Fortify\UpdateUserPassword;
 use App\Actions\Fortify\UpdateUserProfileInformation;
 use App\Http\Responses\LoginResponse;
 use App\Http\Responses\PasswordResetLinkResponse;
+use App\Services\ProviderRegistration;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -37,11 +38,9 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Fortify::verifyEmailView(fn () => Inertia::render('VerifyEmail'));
         Fortify::loginView(fn () => Inertia::render('Auth', ['mode' => 'login']));
-        Fortify::registerView(fn (Request $request) => Inertia::render('Auth', [
-            'mode' => 'register',
-            'accountType' => $request->query('account') === 'provider' ? 'provider' : 'student',
-        ]));
+        Fortify::registerView(fn (Request $request) => Inertia::render('Auth', app(ProviderRegistration::class)->page($request->query('account') === 'provider' ? 'provider' : 'student')));
         Fortify::requestPasswordResetLinkView(fn () => Inertia::render('Auth', ['mode' => 'forgot']));
         Fortify::resetPasswordView(fn (Request $request) => Inertia::render('Auth', [
             'mode' => 'reset', 'token' => $request->route('token'), 'email' => $request->query('email', ''),

@@ -17,3 +17,12 @@ export function newPasswordError(password: string, confirmation: string): string
     if (password.includes('\0')) return 'The password must not contain a null character.';
     if (password !== confirmation) return 'The password confirmation does not match.';
 }
+
+
+export function registrationContact(value: string): string {
+    return value.replace(/[^0-9+]/g, '').replace(/(?!^)\+/g, '');
+}
+
+export function registrationName(value: string): string {
+    return value.replace(/[^\p{L}\p{M}\p{Zs}.'\u2019\u2018\u200c\u200d\u2010\u2011,\-]/gu, '');
+}

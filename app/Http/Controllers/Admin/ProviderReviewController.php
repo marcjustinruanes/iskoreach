@@ -11,6 +11,7 @@ use App\Models\ActivityLog;
 use App\Models\ProviderProfile;
 use App\Notifications\ProviderVerificationDecision;
 use App\Services\AccountNotifications;
+use App\Services\ProviderRegistration;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -52,6 +53,11 @@ class ProviderReviewController extends Controller
         return Inertia::render('admin/ProviderDetails', [
             'provider' => [
                 ...$this->providerData($providerProfile),
+                'registration_details' => $providerProfile->only(ProviderRegistration::FIELDS),
+                'registration_version' => $providerProfile->registration_version,
+                'email_verified' => $providerProfile->user->hasVerifiedEmail(),
+                'documents_available' => $providerProfile->registration_version === 0 || app(ProviderRegistration::class)->documentsAreAvailable($providerProfile),
+                'documents' => collect($providerProfile->verification_documents ?? [])->map(fn (array $document, string $kind): array => ['kind' => $kind, 'name' => $document['name'], 'url' => route('provider-verification.show', [$providerProfile, $kind])])->values(),
                 'verification_version' => $providerProfile->verification_version,
                 'reviewed_at' => $providerProfile->reviewed_at?->toIso8601String(),
                 'reviewer' => $providerProfile->reviewer?->name,
@@ -91,6 +97,9 @@ class ProviderReviewController extends Controller
                 throw ValidationException::withMessages([
                     'verification_status' => 'The provider must complete their organization name and contact email before approval.',
                 ]);
+            }
+            if ($after === ProviderVerificationStatus::Approved && $profile->registration_version > 0 && (! $profile->user->hasVerifiedEmail() || ! $request->boolean('documents_reviewed') || ! app(ProviderRegistration::class)->documentsAreAvailable($profile))) {
+                throw ValidationException::withMessages(['verification_status' => 'Verify the account email, download and review the required documents, and confirm document review before approval.']);
             }
             if ($before === $after) {
                 return false;

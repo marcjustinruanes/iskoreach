@@ -24,24 +24,21 @@ class FoundationTest extends TestCase
 
     public function test_registration_cannot_escalate_a_role(): void
     {
-        $this->post('/register', [
-            'name' => 'Student', 'email' => 'student@example.com',
-            'password' => 'test-password-123', 'password_confirmation' => 'test-password-123',
-            'role' => 'provider',
-        ])->assertRedirect('/dashboard');
+        $this->fakeRegistrationLocations();
+        $this->post('/register', $this->studentRegistrationData(['role' => 'provider']))->assertRedirect('/dashboard');
 
         $user = User::firstOrFail();
         $this->assertAuthenticatedAs($user);
         $this->assertSame(UserRole::Student, $user->role);
         $this->assertFalse(Gate::forUser($user)->allows('access-provider'));
-        $this->get('/dashboard')->assertRedirect('/student/dashboard');
-        $this->get('/student/dashboard')->assertOk();
+        $this->get('/dashboard')->assertRedirect('/email/verify');
+        $this->get('/student/dashboard')->assertRedirect('/email/verify');
     }
 
     public function test_registration_is_validated(): void
     {
         $this->post('/register', ['name' => '', 'email' => 'invalid', 'password' => 'x'])
-            ->assertSessionHasErrors(['name', 'email', 'password']);
+            ->assertSessionHasErrors(['first_name', 'surname', 'email', 'password']);
         $this->assertDatabaseCount('users', 0);
     }
 

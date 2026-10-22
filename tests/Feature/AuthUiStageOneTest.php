@@ -26,7 +26,7 @@ class AuthUiStageOneTest extends TestCase
         }
         $this->get('/register?account=provider')->assertInertia(fn (Assert $page) => $page->where('accountType', 'provider'));
         $this->get('/register?account=admin')->assertInertia(fn (Assert $page) => $page->where('accountType', 'student'));
-        $this->assertFalse(Features::enabled(Features::emailVerification()));
+        $this->assertTrue(Features::enabled(Features::emailVerification()));
     }
 
     public function test_reset_requests_do_not_disclose_registered_email_addresses(): void

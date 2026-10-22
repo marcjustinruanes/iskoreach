@@ -42,7 +42,7 @@ return new class extends Migration
             $table->string('legacy_code', 10);
             $table->string('source_ref');
             $table->foreign(['dataset_id', 'place_code'])->references(['dataset_id', 'code'])->on('geographic_places')->restrictOnDelete();
-            $table->unique(['dataset_id', 'legacy_code', 'place_code']);
+            $table->unique(['dataset_id', 'legacy_code', 'place_code'], 'geo_correspondences_dataset_legacy_place_unique');
         });
     }
 

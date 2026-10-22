@@ -1,21 +1,24 @@
+import RegistrationWizard from '../components/RegistrationWizard';
 import { Link, router, useForm } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
-import { Building2, CheckCircle2, GraduationCap, MailCheck } from 'lucide-react';
+import { CheckCircle2, MailCheck } from 'lucide-react';
 import AuthLayout from '../layouts/AuthLayout';
 import { Button, Input, buttonStyles, focusRing } from '../components/ui/DesignSystem';
 import PasswordField from '../components/ui/PasswordField';
-import { textError, emailError, newPasswordError } from '../components/ui/inputValidation';
+import { newPasswordError } from '../components/ui/inputValidation';
 
 type Mode = 'login' | 'register' | 'forgot' | 'reset' | 'confirm';
-interface AuthPageProps { mode: Mode; token?: string; email?: string; status?: string; accountType?: 'student' | 'provider' }
+interface AuthPageProps { mode: Mode; token?: string; email?: string; status?: string; accountType?: 'student' | 'provider'; registrationIntent?: string }
 interface AuthForm {
     name: string; email: string; password: string; password_confirmation: string; token: string;
-    remember: boolean; account_type: 'student' | 'provider'; organization_name: string;
+    remember: boolean;
 }
 
-export default function Auth({ mode, token = '', email = '', status, accountType = 'student' }: AuthPageProps) {
-    const form = useForm<AuthForm>({ name: '', email, password: '', password_confirmation: '', token, remember: false, account_type: accountType, organization_name: '' });
+export default function Auth(props: AuthPageProps) { if (props.mode === 'register') return <RegistrationWizard key={props.accountType ?? 'student'} accountType={props.accountType ?? 'student'} registrationIntent={props.registrationIntent ?? ''} />; return <AuthScreen key={props.mode + ':' + (props.accountType ?? 'student')} {...props} />; }
+
+function AuthScreen({ mode, token = '', email = '', status }: AuthPageProps) {
+    const form = useForm<AuthForm>({ name: '', email, password: '', password_confirmation: '', token, remember: false });
     const formRef = useRef<HTMLFormElement>(null);
     const pending = useRef(false);
     const [requestAgain, setRequestAgain] = useState(false);
@@ -52,21 +55,12 @@ export default function Auth({ mode, token = '', email = '', status, accountType
     };
     const endpoints: Record<Mode, string> = { login: '/login', register: '/register', forgot: '/forgot-password', reset: '/reset-password', confirm: '/user/confirm-password' };
     const confirmation = mode === 'forgot' && Boolean(status) && !requestAgain;
-    const provider = mode === 'register' && form.data.account_type === 'provider';
     const submit = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         setRequestError('');
         if (!navigator.onLine) { setRequestError('You’re offline. Reconnect and try again.'); return; }
-        if (mode === 'register' || mode === 'reset') {
+        if (mode === 'reset') {
             const errors: Partial<Record<keyof AuthForm, string>> = {};
-            if (mode === 'register') {
-                const name = textError(form.data.name, true);
-                const email = emailError(form.data.email);
-                const organization = provider ? textError(form.data.organization_name, true) : undefined;
-                if (name) errors.name = name;
-                if (email) errors.email = email;
-                if (organization) errors.organization_name = organization;
-            }
             const password = newPasswordError(form.data.password, form.data.password_confirmation);
             if (password) errors.password = password;
             form.clearErrors();
@@ -102,31 +96,15 @@ export default function Auth({ mode, token = '', email = '', status, accountType
             {requestError && <div role="alert" className="mb-5 rounded-lg border border-red-200 bg-red-50 p-3 text-sm leading-6 text-red-900"><p>{requestError}</p><button type="button" onClick={() => window.location.reload()} className={'mt-2 min-h-11 rounded underline ' + focusRing}>Reload page</button></div>}
             {mode === 'reset' && Object.keys(form.errors).length > 0 && <div role="alert" className="mb-5 rounded-lg border border-red-200 bg-red-50 p-3 text-sm leading-6 text-red-900"><p>We couldn’t reset your password. Check the details below.</p><Link href="/forgot-password" className={'mt-1 inline-flex min-h-11 items-center rounded font-semibold underline ' + focusRing}>Request a new reset link</Link></div>}
             <form ref={formRef} onSubmit={submit} noValidate aria-busy={form.processing} className="space-y-5">
-                {mode === 'register' && <>
-                    <fieldset disabled={form.processing}>
-                        <legend className="mb-2 text-sm font-semibold text-civic-ink">Account type</legend>
-                        <div className="grid grid-cols-2 gap-3">{(['student', 'provider'] as const).map(type => {
-                            const Icon = type === 'student' ? GraduationCap : Building2;
-                            return <label key={type} className={'flex min-h-14 cursor-pointer items-center gap-2 rounded-lg border px-3 py-3 text-sm font-semibold ' + (form.data.account_type === type ? 'border-civic-teal bg-civic-panel text-civic-teal' : 'border-civic-control text-civic-muted')}>
-                                <input name="account_type" type="radio" value={type} checked={form.data.account_type === type} onChange={() => { form.setData('account_type', type); form.clearErrors('organization_name', 'account_type'); }} className="size-4 shrink-0 accent-civic-teal focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-civic-teal" />
-                                <Icon aria-hidden="true" className="hidden size-4 shrink-0 sm:block" />{type === 'student' ? 'Student' : 'Provider'}
-                            </label>;
-                        })}</div>
-                        <p className="mt-3 text-sm leading-6 text-civic-muted">{provider ? 'Administrator approval is required before you can use the provider workspace.' : 'Student accounts can access their profile immediately. No administrator approval is needed.'}</p>
-                        {form.errors.account_type && <p role="alert" className="mt-2 text-sm text-civic-danger">{form.errors.account_type}</p>}
-                    </fieldset>
-                    <Input label={provider ? "Contact person’s name" : 'Full name'} name="name" value={form.data.name} onChange={e => form.setData('name', e.target.value)} autoComplete="name" error={form.errors.name} required maxLength={255} />
-                    {provider && <Input label="Organization name" name="organization_name" value={form.data.organization_name} onChange={e => form.setData('organization_name', e.target.value)} autoComplete="organization" error={form.errors.organization_name} required maxLength={255} />}
-                </>}
-                {mode !== 'confirm' && <Input label={provider ? 'Contact email' : 'Email address'} name="email" type="email" value={form.data.email} onChange={e => form.setData('email', e.target.value)} autoComplete="email" error={form.errors.email} required maxLength={255} />}
-                {mode !== 'forgot' && <PasswordField label="Password" name="password" value={form.data.password} onChange={e => form.setData('password', e.target.value)} autoComplete={mode === 'login' || mode === 'confirm' ? 'current-password' : 'new-password'} error={form.errors.password} hint={mode === 'register' || mode === 'reset' ? 'Use at least 8 characters and at most 72 UTF-8 bytes. Spaces and symbols are allowed; accented letters and emoji can use several bytes.' : undefined} required />}
-                {(mode === 'register' || mode === 'reset') && <PasswordField label="Confirm password" name="password_confirmation" value={form.data.password_confirmation} onChange={e => form.setData('password_confirmation', e.target.value)} autoComplete="new-password" error={form.errors.password_confirmation} required />}
+                {mode !== 'confirm' && <Input label="Email address" name="email" type="email" value={form.data.email} onChange={e => form.setData('email', e.target.value)} autoComplete="email" error={form.errors.email} required maxLength={255} />}
+                {mode !== 'forgot' && <PasswordField label="Password" name="password" value={form.data.password} onChange={e => form.setData('password', e.target.value)} autoComplete={mode === 'login' || mode === 'confirm' ? 'current-password' : 'new-password'} error={form.errors.password} hint={mode === 'reset' ? 'Use at least 8 characters and at most 72 UTF-8 bytes. Spaces and symbols are allowed; accented letters and emoji can use several bytes.' : undefined} required />}
+                {(mode === 'reset') && <PasswordField label="Confirm password" name="password_confirmation" value={form.data.password_confirmation} onChange={e => form.setData('password_confirmation', e.target.value)} autoComplete="new-password" error={form.errors.password_confirmation} required />}
                 {form.errors.token && <p role="alert" className="text-sm text-civic-danger">{form.errors.token}</p>}
                 {mode === 'login' && <div className="flex flex-wrap items-center justify-between gap-2">
                     <label className="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm text-civic-muted"><input name="remember" type="checkbox" checked={form.data.remember} onChange={e => form.setData('remember', e.target.checked)} className="size-4 accent-civic-teal focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-civic-teal" />Remember me</label>
                     <Link href="/forgot-password" className={'inline-flex min-h-11 items-center rounded text-sm font-semibold text-civic-teal ' + focusRing}>Forgot password?</Link>
                 </div>}
-                <Button type="submit" loading={form.processing} className="w-full">{form.processing ? 'Please wait…' : mode === 'forgot' ? 'Send reset instructions' : mode === 'register' ? provider ? 'Register organization' : 'Create student account' : mode === 'reset' ? 'Save new password' : titles[mode]}</Button>
+                <Button type="submit" loading={form.processing} className="w-full">{form.processing ? 'Please wait…' : mode === 'forgot' ? 'Send reset instructions' : mode === 'reset' ? 'Save new password' : titles[mode]}</Button>
             </form>
             <div className="mt-6 border-t border-neutral-200 pt-5 text-center text-sm leading-6 text-civic-muted">
                 {mode === 'login' ? <>New to IskoReach? <Link href="/register" className={'rounded font-semibold text-civic-teal ' + focusRing}>Create an account</Link></>

@@ -17,18 +17,18 @@ class PhaseOneTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_student_registration_is_immediate_and_creates_a_profile(): void
+    public function test_student_registration_creates_a_profile_and_requires_email_verification(): void
     {
-        $this->post('/register', [
-            'name' => 'Student Account', 'email' => 'student@example.test',
-            'password' => 'student-password', 'password_confirmation' => 'student-password',
-            'account_type' => 'student',
-        ])->assertRedirect('/dashboard');
+        $this->fakeRegistrationLocations();
+        $this->post('/register', $this->studentRegistrationData())->assertRedirect('/dashboard');
 
         $user = User::firstOrFail();
         $this->assertSame(UserRole::Student, $user->role);
         $this->assertNotNull($user->studentProfile);
         $this->assertNull($user->providerProfile);
+        $this->get('/dashboard')->assertRedirect('/email/verify');
+        $user->markEmailAsVerified();
+        $this->actingAs($user->fresh());
         $this->get('/dashboard')->assertRedirect('/student/dashboard');
         $this->get('/student/dashboard')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('student/Dashboard')->where('auth.user.role', 'student'));
@@ -36,16 +36,14 @@ class PhaseOneTest extends TestCase
 
     public function test_provider_registration_is_pending_and_cannot_enter_the_workspace(): void
     {
-        $this->post('/register', [
-            'name' => 'Provider Account', 'email' => 'provider@example.test',
-            'password' => 'provider-password', 'password_confirmation' => 'provider-password',
-            'account_type' => 'provider', 'organization_name' => 'Example Foundation',
-            'verification_status' => 'approved', 'role' => 'admin',
-        ])->assertRedirect('/dashboard');
+        $this->post('/register', $this->providerRegistrationData(['verification_status' => 'approved', 'role' => 'admin']))->assertRedirect('/dashboard');
 
         $user = User::firstOrFail();
         $this->assertSame(UserRole::Provider, $user->role);
         $this->assertSame(ProviderVerificationStatus::Pending, $user->providerProfile->verification_status);
+        $this->get('/dashboard')->assertRedirect('/email/verify');
+        $user->markEmailAsVerified();
+        $this->actingAs($user->fresh());
         $this->get('/dashboard')->assertRedirect('/provider/status');
         $this->get('/provider/dashboard')->assertRedirect('/provider/status');
         $this->get('/provider/status')->assertOk()->assertInertia(fn (Assert $page) => $page
@@ -71,11 +69,7 @@ class PhaseOneTest extends TestCase
             ->component('Auth')->where('accountType', 'provider'));
         $this->get('/register?account=admin')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Auth')->where('accountType', 'student'));
-        $this->post('/register', [
-            'name' => 'Provider', 'email' => 'provider@example.test',
-            'password' => 'test-password', 'password_confirmation' => 'test-password',
-            'account_type' => 'provider',
-        ])->assertSessionHasErrors('organization_name');
+        $this->post('/register', $this->providerRegistrationData(['organization_name' => '']))->assertSessionHasErrors('organization_name');
         $this->assertDatabaseCount('users', 0);
     }
 
