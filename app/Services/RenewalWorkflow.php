@@ -21,11 +21,11 @@ use Illuminate\Validation\ValidationException;
 
 class RenewalWorkflow
 {
-    public function eligible(ScholarshipAward $award): bool
+    public function eligible(ScholarshipAward $award, bool $allowExpired = false): bool
     {
         $application = $award->application;
 
-        return $award->isCurrentlyActive() && ! $application->trashed() && ! $application->scholarship->trashed()
+        return ($award->isCurrentlyActive() || ($allowExpired && $award->status->value === 'active' && $award->revoked_at === null && $application->status->value === 'accepted' && $application->submitted_at !== null && $application->student->role->value === 'student' && $award->starts_on->toDateString() <= now('Asia/Manila')->toDateString())) && ! $application->trashed() && ! $application->scholarship->trashed()
         && $application->scholarship->provider->verification_status->value === 'approved'
         && $application->scholarship->provider->user->role->value === 'provider';
     }
@@ -70,11 +70,23 @@ class RenewalWorkflow
             $item = Renewal::query()->lockForUpdate()->findOrFail($renewal->id);
             Gate::forUser($user)->authorize('view', $item);
             $this->check($item->workflow_version === $data['version'], 'This renewal changed. Reload before continuing.');
-            $this->check($this->eligible($item->award), 'This award is not currently eligible for renewal changes.');
+            $this->check($this->eligible($item->award, true), 'This award is not currently eligible for renewal changes.');
             $action = $data['action'];
             if (in_array($action, ['approved', 'rejected'], true)) {
                 abort_unless($user->role->value === 'provider', 403);
                 $this->check($item->status === RenewalStatus::Submitted && $item->submitted_at !== null, 'Only submitted renewals can be reviewed. Decisions are final.');
+                if ($action === 'approved') {
+                    $term = $item->academicTerm;
+                    $this->check($term->ends_on !== null && $term->ends_on->toDateString() >= now('Asia/Manila')->toDateString(), 'The renewal term has ended.');
+                    $award = $item->award;
+                    if ($award->ends_on !== null && $award->ends_on->lt($term->ends_on)) {
+                        $award->ends_on = $term->ends_on;
+                        $award->workflow_version++;
+                        $award->publication_version++;
+                        $award->history = [...($award->history ?? []), ['event' => 'renewal.extended', 'at' => now()->toIso8601String(), 'reason' => trim($data['reason'])]];
+                        $award->save();
+                    }
+                }
                 $item->status = RenewalStatus::from($action);
                 $item->reviewed_by = $user->id;
                 $item->reviewed_at = now();
@@ -140,7 +152,7 @@ class RenewalWorkflow
                 $item = Renewal::query()->lockForUpdate()->findOrFail($renewal->id);
                 $days = (int) CarbonImmutable::now('Asia/Manila')->startOfDay()->diffInDays($item->deadline_at->toImmutable()->setTimezone('Asia/Manila')->startOfDay(), false);
                 $sent = $item->reminder_days ?? [];
-                if ($item->status !== RenewalStatus::Pending || ! $item->deadline_at->isFuture() || ! $this->eligible($item->award) || $item->requirements_snapshot === null || ! in_array($days, [30, 14, 7], true) || in_array($days, $sent, true)) {
+                if ($item->status !== RenewalStatus::Pending || ! $item->deadline_at->isFuture() || ! $this->eligible($item->award, true) || $item->requirements_snapshot === null || ! in_array($days, [30, 14, 7], true) || in_array($days, $sent, true)) {
                     return;
                 }
                 $this->notify($item->award->application->student, $item, 'reminder');

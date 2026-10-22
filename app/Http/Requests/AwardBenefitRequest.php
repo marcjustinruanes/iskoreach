@@ -14,7 +14,7 @@ class AwardBenefitRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'action' => ['required', 'in:award_create,award_complete,award_revoke,release_create,release_process,release_release'],
+            'action' => ['required', 'in:award_create,award_complete,award_revoke,award_suspend,award_resume,release_create,release_process,release_delay,release_fail,release_release'],
             'version' => ['required', 'integer', 'min:0'], 'confirmed' => ['required', 'accepted'], 'reason' => ['required', 'string', 'min:5', 'max:2000'],
             'academic_term_id' => ['required_if:action,award_create,release_create', 'nullable', 'integer', 'exists:academic_terms,id'],
             'starts_on' => ['required_if:action,award_create', 'nullable', 'date_format:Y-m-d'],

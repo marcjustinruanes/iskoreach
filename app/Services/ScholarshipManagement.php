@@ -35,7 +35,7 @@ class ScholarshipManagement
             if (! empty($data['academic_term_id'])) {
                 AcademicTerm::query()->lockForUpdate()->findOrFail($data['academic_term_id']);
             }
-            $item->fill(collect($data)->only(['title', 'description', 'scholarship_type', 'benefit_amount', 'currency', 'academic_term_id', 'accepts_existing_scholars'])->all());
+            $item->fill(collect($data)->only(['title', 'description', 'scholarship_type', 'benefit_amount', 'currency', 'academic_term_id', 'accepts_existing_scholars', 'existing_scholars_low_priority', 'require_verified_declarations'])->all());
             foreach (['opens_at', 'deadline_at'] as $field) {
                 $item->$field = empty($data[$field]) ? null : CarbonImmutable::createFromFormat('!Y-m-d\TH:i', $data[$field], 'Asia/Manila')->utc();
             }
@@ -46,7 +46,7 @@ class ScholarshipManagement
             $item->locations()->delete();
             foreach ($data['locations'] as $location) {
                 $item->locations()->create([...app(PhilippineLocations::class)->resolve($location), 'scope' => $location['scope'], 'region_code' => $location['scope'] === 'nationwide' ? null : ($location['region_code'] ?? null),
-                    'city_code' => $location['scope'] === 'city' ? ($location['city_code'] ?? null) : null]);
+                    'city_code' => $location['scope'] === 'city' ? ($location['city_code'] ?? null) : null, ...($location['scope'] === 'province' ? ['province_code' => $location['province_code']] : [])]);
             }
             $item->requirements()->delete();
             foreach ($data['requirements'] as $index => $requirement) {
@@ -90,11 +90,11 @@ class ScholarshipManagement
     {
         $item->load(['locations', 'requirements']);
 
-        return [...$item->only('title', 'description', 'scholarship_type', 'benefit_amount', 'currency', 'academic_term_id', 'accepts_existing_scholars'),
+        return [...$item->only('title', 'description', 'scholarship_type', 'benefit_amount', 'currency', 'academic_term_id', 'accepts_existing_scholars', 'existing_scholars_low_priority', 'require_verified_declarations'),
             'version' => $item->management_version, 'eligibility_criteria' => implode("\n", array_filter(is_array($item->eligibility_rules['criteria'] ?? null) ? $item->eligibility_rules['criteria'] : [], 'is_string')),
             'opens_at' => $item->opens_at?->timezone('Asia/Manila')->format('Y-m-d\TH:i'),
             'deadline_at' => $item->deadline_at?->timezone('Asia/Manila')->format('Y-m-d\TH:i'),
-            'locations' => $item->locations->map(fn ($location): array => $location->only('scope', 'region_code', 'city_code')),
+            'locations' => $item->locations->map(fn ($location): array => $location->only('scope', 'region_code', 'city_code', 'province_code')),
             'requirements' => $item->requirements->map(fn ($requirement): array => $requirement->only('name', 'description', 'required', 'requirement_stage', 'allowed_mime_types', 'max_size_kb'))];
     }
 

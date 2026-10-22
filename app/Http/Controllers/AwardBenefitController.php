@@ -22,7 +22,7 @@ class AwardBenefitController extends Controller
         $user = $request->user();
         $provider = $user->role->value === 'provider';
         abort_if($provider && ! $user->providerProfile?->isApproved(), 403);
-        $filters = $request->validate(['status' => ['nullable', 'in:active,completed,revoked'], 'q' => ['nullable', 'string', 'max:120']]);
+        $filters = $request->validate(['status' => ['nullable', 'in:active,suspended,completed,revoked'], 'q' => ['nullable', 'string', 'max:120']]);
         $query = ScholarshipAward::whereHas('application', fn ($query) => $provider ? $query->whereHas('scholarship.provider', fn ($query) => $query->where('user_id', $user->id)) : $query->where('student_id', $user->id));
 
         return Inertia::render('benefits/Index', ['awards' => $query->when($filters['status'] ?? null, fn ($query, $value) => $query->where('status', $value))->when($filters['q'] ?? null, fn ($query, $value) => $query->whereHas('application.scholarship', fn ($query) => $query->whereLike('title', '%'.$value.'%')))->with('application.scholarship.provider', 'academicTerm')->latest('id')->paginate(10)->withQueryString()->through($this->awardData(...)), 'filters' => ['status' => $filters['status'] ?? '', 'q' => $filters['q'] ?? '']]);
@@ -62,7 +62,7 @@ class AwardBenefitController extends Controller
 
     public function update(AwardBenefitRequest $request, ScholarshipAward $award, AwardBenefits $workflow): RedirectResponse
     {
-        abort_unless(in_array($request->validated('action'), ['award_complete', 'award_revoke'], true), 422);
+        abort_unless(in_array($request->validated('action'), ['award_complete', 'award_revoke', 'award_suspend', 'award_resume'], true), 422);
         $workflow->transition($request->user(), $award, $request->validated());
 
         return to_route('benefits.show', $award)->with('status', 'Award status updated. Any public listing has been removed.');
@@ -78,7 +78,7 @@ class AwardBenefitController extends Controller
 
     public function updateRelease(AwardBenefitRequest $request, BenefitRelease $release, AwardBenefits $workflow): RedirectResponse
     {
-        abort_unless(in_array($request->validated('action'), ['release_process', 'release_release'], true), 422);
+        abort_unless(in_array($request->validated('action'), ['release_process', 'release_delay', 'release_fail', 'release_release'], true), 422);
         $workflow->releaseTransition($request->user(), $release, $request->validated());
 
         return to_route('benefits.show', $release->scholarship_award_id)->with('status', 'Benefit status recorded.');

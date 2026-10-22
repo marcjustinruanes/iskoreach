@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['scholarship_id', 'region_code', 'city_code', 'region_name', 'city_name', 'scope'])]
+#[Fillable(['scholarship_id', 'region_code', 'city_code', 'region_name', 'city_name', 'province_name', 'province_code', 'scope'])]
 class ScholarshipLocation extends Model
 {
     /** @use HasFactory<ScholarshipLocationFactory> */

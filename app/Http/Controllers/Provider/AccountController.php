@@ -34,6 +34,8 @@ class AccountController extends Controller
 
         return Inertia::render('provider/Dashboard', [
             'profile' => $profile->only('id', 'organization_name', 'contact_email', 'verification_status', 'rejection_reason'),
+            'verificationDocuments' => collect($profile->verification_documents ?? [])->map(fn (array $document, string $kind): array => ['kind' => $kind, 'url' => route('provider-verification.show', [$profile, $kind])])->values(),
+            'verificationUpload' => $profile->registration_version > 0 ? ['url' => route('provider-verification.update', $profile), 'version' => $profile->verification_version, 'individual' => $profile->organization_type === 'individual', 'authorization_required' => $profile->authorization_required] : null,
             'verificationNotices' => $this->verificationNotices($request),
             'summary' => [
                 'scholarships' => $profile->scholarships()->count(),
@@ -62,6 +64,8 @@ class AccountController extends Controller
 
         return Inertia::render('provider/Profile', [
             'profile' => $profile->only('id', 'organization_name', 'contact_email', 'verification_status', 'rejection_reason'),
+            'verificationDocuments' => collect($profile->verification_documents ?? [])->map(fn (array $document, string $kind): array => ['kind' => $kind, 'url' => route('provider-verification.show', [$profile, $kind])])->values(),
+            'verificationUpload' => $profile->registration_version > 0 ? ['url' => route('provider-verification.update', $profile), 'version' => $profile->verification_version, 'individual' => $profile->organization_type === 'individual', 'authorization_required' => $profile->authorization_required] : null,
             'verificationNotices' => $this->verificationNotices($request),
         ]);
     }
@@ -78,6 +82,8 @@ class AccountController extends Controller
 
         return Inertia::render('provider/Status', [
             'profile' => $profile->only('id', 'organization_name', 'contact_email', 'verification_status', 'rejection_reason'),
+            'verificationDocuments' => collect($profile->verification_documents ?? [])->map(fn (array $document, string $kind): array => ['kind' => $kind, 'url' => route('provider-verification.show', [$profile, $kind])])->values(),
+            'verificationUpload' => $profile->registration_version > 0 ? ['url' => route('provider-verification.update', $profile), 'version' => $profile->verification_version, 'individual' => $profile->organization_type === 'individual', 'authorization_required' => $profile->authorization_required] : null,
             'verificationNotices' => $this->verificationNotices($request),
         ]);
     }

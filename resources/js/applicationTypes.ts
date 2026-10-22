@@ -10,10 +10,10 @@ export interface ApplicationDetails extends ApplicationRecord {
     history: { id: number; from: string | null; to: string; reason: string | null; occurred_at: string }[];
 }
 export interface ApplicationContext {
-    open: boolean; active_award_count: number; conflict_blocked: boolean; low_priority: boolean;
+    declarations: { id: number; name: string; verification: string }[]; verification_blocked: boolean; open: boolean; active_award_count: number; conflict_blocked: boolean; low_priority: boolean;
     required_documents: number; missing_documents: number; context_token: string; profile: StudentSubmissionProfile;
 }
 export const applicationLabels: Record<string, string> = {
-    not_started: 'Draft', requirements_pending: 'Requirements pending', submitted: 'Submitted',
+    not_started: 'Preparing requirements', requirements_pending: 'Incomplete requirements', submitted: 'Submitted',
     under_review: 'Under review', accepted: 'Accepted', rejected: 'Rejected', waitlisted: 'Waitlisted',
 };

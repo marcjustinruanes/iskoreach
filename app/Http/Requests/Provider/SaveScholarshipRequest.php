@@ -26,10 +26,10 @@ class SaveScholarshipRequest extends FormRequest
             'scholarship_type' => ['required', 'string', 'max:100'], 'benefit_amount' => ['nullable', 'numeric', 'decimal:0,2', 'min:0', 'max:9999999999.99'],
             'currency' => ['required', Rule::in(['PHP', 'USD'])], 'academic_term_id' => ['nullable', 'integer', 'exists:academic_terms,id'],
             'opens_at' => ['nullable', 'date_format:Y-m-d\TH:i'], 'deadline_at' => ['nullable', 'date_format:Y-m-d\TH:i', ...($this->filled('opens_at') ? ['after:opens_at'] : [])],
-            'accepts_existing_scholars' => ['required', 'boolean'], 'eligibility_criteria' => ['nullable', 'string', 'max:6000'],
-            'locations' => ['required', 'array', 'min:1', 'max:20'], 'locations.*' => ['array:scope,region_code,city_code'],
-            'locations.*.scope' => ['required', Rule::in(['nationwide', 'region', 'city'])],
-            'locations.*.region_code' => ['nullable', 'string', 'max:32'], 'locations.*.city_code' => ['nullable', 'string', 'max:32'],
+            'existing_scholars_low_priority' => ['sometimes', 'boolean'], 'require_verified_declarations' => ['sometimes', 'boolean'], 'accepts_existing_scholars' => ['required', 'boolean'], 'eligibility_criteria' => ['nullable', 'string', 'max:6000'],
+            'locations' => ['required', 'array', 'min:1', 'max:20'], 'locations.*' => ['array:scope,region_code,city_code,province_code'],
+            'locations.*.scope' => ['required', Rule::in(['nationwide', 'region', 'province', 'city'])],
+            'locations.*.province_code' => ['nullable', 'string', 'max:32'], 'locations.*.region_code' => ['nullable', 'string', 'max:32'], 'locations.*.city_code' => ['nullable', 'string', 'max:32'],
             'requirements' => ['present', 'array', 'max:30'], 'requirements.*' => ['array:name,description,required,requirement_stage,allowed_mime_types,max_size_kb'],
             'requirements.*.name' => ['required', 'string', 'max:255'], 'requirements.*.description' => ['nullable', 'string', 'max:2000'],
             'requirements.*.required' => ['required', 'boolean'], 'requirements.*.requirement_stage' => ['required', Rule::in(['application', 'renewal'])],
@@ -62,7 +62,7 @@ class SaveScholarshipRequest extends FormRequest
                         $validator->errors()->add("locations.$index.region_code", 'Location verification is unavailable. Retry when location options are available.');
                     }
                 }
-                $key = $scope.'|'.($scope === 'nationwide' ? '' : ($location['region_code'] ?? '')).'|'.($scope === 'city' ? ($location['city_code'] ?? '') : '');
+                $key = ($location['province_code'] ?? '').'|'.$scope.'|'.($scope === 'nationwide' ? '' : ($location['region_code'] ?? '')).'|'.($scope === 'city' ? ($location['city_code'] ?? '') : '');
                 if (in_array($key, $seen, true)) {
                     $validator->errors()->add("locations.$index.scope", 'This location is already listed.');
                 }

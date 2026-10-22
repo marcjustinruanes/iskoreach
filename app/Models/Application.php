@@ -18,7 +18,7 @@ class Application extends Model
 
     protected function casts(): array
     {
-        return ['workflow_version' => 'integer', 'submission_snapshot' => 'array', 'status' => ApplicationStatus::class, 'has_existing_scholarship' => 'boolean', 'low_priority' => 'boolean', 'conflict_rule_snapshot' => 'array', 'submitted_at' => 'datetime', 'reviewed_at' => 'datetime'];
+        return ['workflow_version' => 'integer', 'submission_snapshot' => 'array', 'declaration_snapshot' => 'array', 'reminder_days' => 'array', 'status' => ApplicationStatus::class, 'has_existing_scholarship' => 'boolean', 'low_priority' => 'boolean', 'conflict_rule_snapshot' => 'array', 'submitted_at' => 'datetime', 'reviewed_at' => 'datetime'];
     }
 
     public function scholarship(): BelongsTo

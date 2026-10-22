@@ -15,6 +15,7 @@ use App\Policies\ScholarshipAwardPolicy;
 use App\Policies\ScholarshipPolicy;
 use App\Policies\StudentProfilePolicy;
 use App\Policies\UserPolicy;
+use Illuminate\Foundation\DevCommands;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -33,6 +34,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if ($this->app->environment('local')) {
+            DevCommands::artisan('schedule:work', 'scheduler');
+        }
         Gate::policy(AcademicTerm::class, AcademicTermPolicy::class);
         Gate::policy(StudentProfile::class, StudentProfilePolicy::class);
         Gate::policy(ProviderProfile::class, ProviderProfilePolicy::class);

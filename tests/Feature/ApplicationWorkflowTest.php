@@ -105,7 +105,7 @@ class ApplicationWorkflowTest extends TestCase
         $active = Application::factory()->create(['student_id' => $item->student_id, 'status' => 'accepted']);
         ScholarshipAward::factory()->create(['application_id' => $active->id]);
         $this->actingAs($item->student)->patch('/student/applications/'.$item->id.'/submit', $this->submission($item))->assertSessionHasErrors('application');
-        $item->scholarship->update(['accepts_existing_scholars' => true]);
+        $item->scholarship->update(['accepts_existing_scholars' => true, 'existing_scholars_low_priority' => true]);
         $item->refresh();
         $this->patch('/student/applications/'.$item->id.'/submit', $this->submission($item))->assertSessionHasErrors('conflict_confirmed');
         $this->patch('/student/applications/'.$item->id.'/submit', [...$this->submission($item), 'conflict_confirmed' => true])->assertSessionHasNoErrors();

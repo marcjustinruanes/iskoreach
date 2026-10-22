@@ -18,7 +18,7 @@ function ApplicationEditor({ application: item, context, checklist, vault }: Pro
     const [open, setOpen] = useState(false);
     const form = useForm({ version: item.version, context_token: context.context_token, confirmed: false, conflict_confirmed: false });
     const request = useRequestFeedback(form.cancel);
-    const blocked = !context.open || context.conflict_blocked || context.missing_documents > 0 || item.retained;
+    const blocked = context.verification_blocked || !context.open || context.conflict_blocked || context.missing_documents > 0 || item.retained;
     const draft = !item.submitted_at && ['not_started', 'requirements_pending'].includes(item.status);
     const submit = (event: FormEvent) => { event.preventDefault(); if (!request.begin()) return; form.patch('/student/applications/' + item.id + '/submit', { preserveScroll: true, onSuccess: () => setOpen(false), onFinish: request.finish }); };
     return <AppLayout title="Application details" description="Review your application information and follow recorded status changes.">
@@ -27,6 +27,8 @@ function ApplicationEditor({ application: item, context, checklist, vault }: Pro
         {draft && <Card className="mt-6"><h2 className="text-lg font-bold">Review before submitting</h2><p className="mt-2 mb-5 text-sm leading-6 text-civic-muted">Submission shares the following profile details with this scholarship provider. The saved snapshot stays with your application.</p><SubmissionProfile profile={context.profile} /><Link href="/student/profile" className={'mt-4 inline-flex min-h-11 items-center text-sm font-semibold text-civic-teal underline ' + focusRing}>Update my school details</Link>
             {!context.open && <p role="status" className="mt-4 rounded-lg bg-amber-50 p-4 text-sm leading-6 text-amber-900">This program is not accepting applications now. Your draft remains available.</p>}
             {context.conflict_blocked && <p role="status" className="mt-4 rounded-lg bg-amber-50 p-4 text-sm leading-6 text-amber-900">You have an active scholarship award. This program does not accept existing scholars, so submission is blocked.</p>}
+            {context.declarations.length > 0 && <div className="mt-4 rounded border p-4"><h3 className="font-semibold">Declared outside scholarships</h3>{context.declarations.map(item => <p key={item.id} className="mt-2 text-sm">{item.name}: {item.verification}</p>)}<Link href="/declarations" className="inline-flex min-h-11 items-center text-civic-teal underline">Manage declarations</Link></div>}
+            {context.verification_blocked && <p role="status" className="mt-4 text-amber-900">Your provider must verify declared scholarships before you can submit.</p>}
             {context.low_priority && <p role="status" className="mt-4 rounded-lg bg-amber-50 p-4 text-sm leading-6 text-amber-900">You have an active scholarship award. This program allows existing scholars; your application will be marked low priority.</p>}
             {context.missing_documents > 0 && <p role="status" className="mt-4 rounded-lg bg-amber-50 p-4 text-sm leading-6 text-amber-900">Complete {context.missing_documents} missing or incompatible document attachment(s) in the checklist before submitting.</p>}
             <Button disabled={blocked} onClick={() => setOpen(true)} className="mt-5">Review and submit</Button>

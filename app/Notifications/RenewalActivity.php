@@ -42,6 +42,6 @@ class RenewalActivity extends Notification implements ShouldQueue
             return false;
         }
 
-        return $this->event !== 'reminder' || ($renewal->status->value === 'pending' && $renewal->deadline_at?->isFuture() && app(RenewalWorkflow::class)->eligible($renewal->award));
+        return $this->event !== 'reminder' || ($renewal->status->value === 'pending' && $renewal->deadline_at?->isFuture() && app(RenewalWorkflow::class)->eligible($renewal->award, true));
     }
 }

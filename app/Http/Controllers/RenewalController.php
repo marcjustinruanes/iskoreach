@@ -49,7 +49,7 @@ class RenewalController extends Controller
         Gate::authorize('view', $renewal);
         $student = $request->user()->role->value === 'student';
         $data = $this->summary($renewal);
-        $data += ['version' => $renewal->workflow_version, 'eligible' => $workflow->eligible($renewal->award), 'history' => $renewal->history ?? [], 'notes' => $renewal->review_notes,
+        $data += ['version' => $renewal->workflow_version, 'eligible' => $workflow->eligible($renewal->award, true), 'history' => $renewal->history ?? [], 'notes' => $renewal->review_notes,
             'checklist_recorded' => $renewal->requirements_snapshot !== null, 'checklist' => $workflow->checklist($renewal)];
         if (! $student) {
             foreach ($data['checklist'] as &$row) {

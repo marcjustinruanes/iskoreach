@@ -23,7 +23,9 @@ class AwardBenefits
     {
         $awards = ScholarshipAward::whereHas('application', fn ($query) => $query->where('student_id', $application->student_id))->orderBy('id')->get(['id', 'status', 'starts_on', 'ends_on', 'revoked_at', 'workflow_version']);
 
-        return ['count' => $awards->where('status', AwardStatus::Active)->count(), 'token' => hash_hmac('sha256', json_encode([$application->id, $application->workflow_version, $application->scholarship->accepts_existing_scholars, $awards->toArray()]), config('app.key'))];
+        $declarations = app(ScholarshipNotices::class)->declarations($application->student, $application->scholarship);
+
+        return ['declared_count' => count($declarations), 'count' => $awards->where('status', AwardStatus::Active)->count(), 'token' => hash_hmac('sha256', json_encode([$application->id, $application->workflow_version, $application->scholarship->accepts_existing_scholars, $awards->toArray(), $declarations]), config('app.key'))];
     }
 
     private function check(bool $condition, string $message): void
@@ -53,7 +55,9 @@ class AwardBenefits
             $this->check($item->workflow_version === $data['version'], 'The application changed. Reload before confirming an award.');
             $this->check(hash_equals($this->context($item)['token'], $data['context_token']), 'The student award context changed. Reload before confirming.');
             $this->check(! ScholarshipAward::where('application_id', $item->id)->exists(), 'This application already has an award. One award is retained per application.');
-            $overlap = ScholarshipAward::where('status', 'active')->whereNull('revoked_at')->whereHas('application', fn ($query) => $query->where('student_id', $item->student_id)->where('status', 'accepted')->whereNotNull('submitted_at'))
+            $declarations = app(ScholarshipNotices::class)->declarations($item->student, $item->scholarship, $data['starts_on'], $data['ends_on'] ?? null);
+            $this->check(! $item->scholarship->require_verified_declarations || collect($declarations)->every(fn (array $row): bool => $row['verification'] === 'verified'), 'Declared scholarships require verification by this provider.');
+            $overlap = count($declarations) > 0 || ScholarshipAward::where('status', 'active')->whereNull('revoked_at')->whereHas('application', fn ($query) => $query->where('student_id', $item->student_id)->where('status', 'accepted')->whereNotNull('submitted_at'))
                 ->where(fn ($query) => $query->whereNull('ends_on')->orWhereDate('ends_on', '>=', $data['starts_on']))
                 ->when($data['ends_on'] ?? null, fn ($query, $end) => $query->whereDate('starts_on', '<=', $end))->exists();
             $this->check(! $overlap || $item->scholarship->accepts_existing_scholars, 'This program disallows an overlapping award for an existing scholar.');
@@ -76,16 +80,29 @@ class AwardBenefits
             $item = ScholarshipAward::query()->lockForUpdate()->findOrFail($award->id);
             Gate::forUser($user)->authorize('manage', $item);
             $this->check($item->workflow_version === $data['version'], 'The award changed. Reload before continuing.');
-            $this->check($item->status->value === 'active' && $item->revoked_at === null, 'Only an active award record can be completed or revoked. These decisions are final.');
-            $this->check(in_array($data['action'], ['award_complete', 'award_revoke'], true), 'Choose a valid award action.');
-            $item->status = $data['action'] === 'award_complete' ? 'completed' : 'revoked';
+            $this->check(in_array($item->status->value, ['active', 'suspended'], true) && $item->revoked_at === null, 'Only active or suspended award records can change. Completed and revoked awards are final.');
+            $this->check(in_array($data['action'], ['award_complete', 'award_revoke', 'award_suspend', 'award_resume'], true), 'Choose a valid award action.');
+            if ($data['action'] === 'award_suspend') {
+                $this->check($item->status->value === 'active', 'Only an active award can be suspended.');
+            }
+            if ($data['action'] === 'award_resume') {
+                $this->check($item->status->value === 'suspended', 'Only a suspended award can resume.');
+                $context = app(ApplicationWorkflow::class)->context($item->application->student, $item->application->scholarship);
+                $this->check(! $context['conflict_blocked'] && ! $context['verification_blocked'], 'Resolve scholarship compatibility and declaration verification before resuming.');
+                $this->check($item->ends_on === null || $item->ends_on->toDateString() >= now('Asia/Manila')->toDateString(), 'An expired award cannot resume without an approved coverage period.');
+            }
+            $item->status = match ($data['action']) {
+                'award_complete' => 'completed', 'award_suspend' => 'suspended', 'award_resume' => 'active', default => 'revoked'
+            };
             $item->revoked_at = $data['action'] === 'award_revoke' ? now() : null;
             $item->public_name = null;
             $item->published_at = null;
             $item->published_by = null;
             $item->publication_version++;
             $item->workflow_version++;
-            $this->record($user, $item, $data['action'] === 'award_complete' ? 'award.completed' : 'award.revoked', $data['reason']);
+            $this->record($user, $item, match ($data['action']) {
+                'award_complete' => 'award.completed', 'award_suspend' => 'award.suspended', 'award_resume' => 'award.resumed', default => 'award.revoked'
+            }, $data['reason']);
             $this->notify($item, 'award_updated');
         });
     }
@@ -130,7 +147,7 @@ class AwardBenefits
             $this->check($item->workflow_version === $data['version'], 'The release record changed. Reload before continuing.');
             $this->check($award->isCurrentlyActive(), 'Benefit updates require a currently active award.');
             $this->check($item->status->value !== 'released', 'Released records are final and cannot be changed.');
-            $this->check($data['action'] === 'release_release' || ($data['action'] === 'release_process' && $item->status->value === 'pending'), 'Choose a valid release transition.');
+            $this->check(in_array($data['action'], ['release_release', 'release_delay', 'release_fail'], true) || ($data['action'] === 'release_process' && in_array($item->status->value, ['pending', 'delayed', 'failed'], true)), 'Choose a valid release transition.');
             if ($data['action'] === 'release_release') {
                 $date = CarbonImmutable::parse($data['released_at'], 'Asia/Manila')->utc();
                 $this->check($date->lte(now()), 'An actual release timestamp cannot be in the future.');
@@ -138,11 +155,13 @@ class AwardBenefits
                 $item->released_at = $date;
                 $item->status = 'released';
             } else {
-                $item->status = 'processing';
+                $item->status = match ($data['action']) {
+                    'release_delay' => 'delayed', 'release_fail' => 'failed', default => 'processing'
+                };
             }
             $item->recorded_by = $user->id;
             $item->workflow_version++;
-            $this->record($user, $item, $data['action'] === 'release_release' ? 'release.released' : 'release.processing', $data['reason']);
+            $this->record($user, $item, 'release.'.$item->status->value, $data['reason']);
             $this->notify($award, 'release_updated', $item);
         });
     }

@@ -58,9 +58,9 @@ class ScholarshipCatalog
             'opens_at' => $item->opens_at?->toIso8601String(), 'deadline_at' => $item->deadline_at?->toIso8601String(),
             'availability' => $item->status->value === 'closed' || $item->deadline_at?->lte(now()) ? 'Closed' : (! $item->opens_at || ! $item->deadline_at ? 'Dates not recorded' : ($item->opens_at->isFuture() ? 'Opens later' : 'Open now')),
             'accepts_existing_scholars' => $item->accepts_existing_scholars,
-            'locations' => $item->locations->map(fn ($location): array => $location->only('id', 'scope', 'region_code', 'city_code', 'region_name', 'city_name')),
+            'locations' => $item->locations->map(fn ($location): array => $location->only('id', 'scope', 'region_code', 'city_code', 'region_name', 'city_name', 'province_code', 'province_name')),
             'academic_term' => $item->academicTerm ? $item->academicTerm->academic_year.' · '.$item->academicTerm->semester : null,
             'internal_count' => $summary['internal_count'], 'external_count' => $summary['verified_external_count'], 'applicant_count' => $summary['public_count'],
-            'verified_source_as_of' => $summary['verified_source_as_of'], 'show_url' => route('scholarships.show', $item->slug)];
+            'external_count_needs_reverification' => $summary['needs_reverification'], 'verified_source_as_of' => $summary['verified_source_as_of'], 'show_url' => route('scholarships.show', $item->slug)];
     }
 }

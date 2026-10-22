@@ -37,7 +37,7 @@ class DashboardController extends Controller
                 'applications' => Application::withTrashed()->whereNotNull('submitted_at')->whereIn('status', ['submitted', 'under_review', 'accepted', 'rejected', 'waitlisted'])->whereHas('student', fn ($query) => $query->where('role', UserRole::Student))->count(),
                 'active_awards' => ScholarshipAward::query()->active()->count(),
                 'pending_renewals' => Renewal::query()->where('status', 'submitted')->count(),
-                'pending_releases' => BenefitRelease::query()->whereIn('status', ['pending', 'processing'])->count(),
+                'pending_releases' => BenefitRelease::query()->whereIn('status', ['pending', 'processing', 'delayed', 'failed'])->count(),
                 'scholarships' => Scholarship::withTrashed()->count(),
                 'published_scholarships' => Scholarship::query()->where('status', 'published')->count(),
                 'students' => $studentCount,

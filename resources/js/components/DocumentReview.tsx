@@ -1,0 +1,7 @@
+import { useForm } from '@inertiajs/react';
+import type { AttachedDocument } from '../documentTypes';
+import { Button, Input } from './ui/DesignSystem';
+export default function DocumentReview({ document }: { document: AttachedDocument }) {
+    const form = useForm({ status: 'approved', reason: '', confirmed: false });
+    return <form className="mt-4 space-y-3 border-t pt-4" onSubmit={event => { event.preventDefault(); form.patch('/document-reviews/' + document.id, { preserveScroll: true }); }}><p className="font-semibold">{document.name}: {document.review_status ?? 'pending'}</p><label className="block">Decision<select aria-label={'Review ' + document.name} value={form.data.status} onChange={e => form.setData('status', e.target.value)} className="ml-3 min-h-11 rounded border p-2"><option value="approved">Approved</option><option value="rejected">Rejected</option></select></label><Input label="Review explanation" required minLength={5} maxLength={2000} value={form.data.reason} onChange={e => form.setData('reason', e.target.value)} /><label className="flex gap-2"><input type="checkbox" checked={form.data.confirmed} onChange={e => form.setData('confirmed', e.target.checked)} />Confirm this document review</label>{Object.entries(form.errors).map(([key, error]) => <p key={key} role="alert" className="text-civic-danger">{error}</p>)}<Button type="submit" loading={form.processing} disabled={!form.data.confirmed}>Save review</Button></form>;
+}

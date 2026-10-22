@@ -18,7 +18,7 @@ class ScholarshipLocationSearch
                 foreach (explode(' ', mb_strtolower($search)) as $token) {
                     $pattern = '%'.strtr($token, ['!' => '!!', '%' => '!%', '_' => '!_']).'%';
                     $local->where(function (Builder $fields) use ($pattern): void {
-                        foreach (['region_code', 'city_code', 'region_name', 'city_name'] as $column) {
+                        foreach (['region_code', 'city_code', 'region_name', 'city_name', 'province_code', 'province_name'] as $column) {
                             $fields->orWhereRaw("LOWER({$column}) LIKE ? ESCAPE '!'", [$pattern]);
                         }
                     });

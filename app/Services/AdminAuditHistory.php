@@ -5,12 +5,14 @@ namespace App\Services;
 use App\Models\AcademicTerm;
 use App\Models\ActivityLog;
 use App\Models\Application;
+use App\Models\ApplicationDocument;
 use App\Models\BenefitRelease;
 use App\Models\ExternalApplicantCount;
 use App\Models\ProviderProfile;
 use App\Models\Renewal;
 use App\Models\Scholarship;
 use App\Models\ScholarshipAward;
+use App\Models\ScholarshipDeclaration;
 use App\Models\StudentDocument;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -18,13 +20,19 @@ use Illuminate\Database\Eloquent\Builder;
 
 class AdminAuditHistory
 {
-    public const TYPES = ['academic_term' => AcademicTerm::class, 'provider' => ProviderProfile::class, 'external_count' => ExternalApplicantCount::class, 'award' => ScholarshipAward::class, 'account' => User::class, 'scholarship' => Scholarship::class, 'application' => Application::class, 'document' => StudentDocument::class, 'renewal' => Renewal::class, 'release' => BenefitRelease::class];
+    public const TYPES = ['declaration' => ScholarshipDeclaration::class, 'application_document' => ApplicationDocument::class, 'academic_term' => AcademicTerm::class, 'provider' => ProviderProfile::class, 'external_count' => ExternalApplicantCount::class, 'award' => ScholarshipAward::class, 'account' => User::class, 'scholarship' => Scholarship::class, 'application' => Application::class, 'document' => StudentDocument::class, 'renewal' => Renewal::class, 'release' => BenefitRelease::class];
 
     public const ACTIONS = [
         'academic_term.created' => ['Academic term created', 'academic_term'],
         'academic_term.updated' => ['Academic term updated', 'academic_term'],
         'award.created' => ['Confirmed award recorded', 'award'],
         'award.completed' => ['Award completed', 'award'],
+        'declaration.reviewed' => ['Outside scholarship reviewed', 'declaration'],
+        'application.document_reviewed' => ['Application document reviewed', 'application_document'],
+        'award.suspended' => ['Award suspended', 'award'],
+        'award.resumed' => ['Award resumed', 'award'],
+        'release.delayed' => ['Benefit delay recorded', 'release'],
+        'release.failed' => ['Benefit failure recorded', 'release'],
         'award.revoked' => ['Award revoked', 'award'],
         'release.created' => ['Benefit record created', 'release'],
         'release.processing' => ['Benefit processing recorded', 'release'],

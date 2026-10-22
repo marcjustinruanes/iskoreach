@@ -1,3 +1,4 @@
+import DocumentReview from '../../components/DocumentReview';
 import StartConversation from '../../components/StartConversation';
 import { Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
@@ -21,7 +22,7 @@ function ApplicationReview({ application: item }: { application: Details }) {
     const submit = (event: FormEvent) => { event.preventDefault(); if (!request.begin()) return; form.patch('/provider/applications/' + item.id, { preserveScroll: true, onSuccess: () => setOpen(false), onFinish: request.finish }); };
     return <ProviderLayout title="Applicant review" description="Review the submitted profile and record a reason for each status change.">
         <Link href="/provider/applications" className={buttonStyles('outline') + ' mb-6'}>Back to applicants</Link>
-        <ApplicationRecordDetails application={item} />{item.submitted_at && !item.retained && !item.program_retained && <StartConversation applicationId={item.id} />}
+        <ApplicationRecordDetails application={item} />{['submitted', 'under_review', 'waitlisted'].includes(item.status) && !item.program_retained && <Card className="mt-5"><h2 className="font-bold">Review submitted requirements</h2>{item.documents.map(document => <DocumentReview key={document.id + (document.review_status ?? 'pending')} document={document} />)}</Card>}<Link href="/declarations" className={buttonStyles('outline') + ' mt-5'}>Review declared scholarships</Link>{item.submitted_at && !item.retained && !item.program_retained && <StartConversation applicationId={item.id} />}
         {item.status === 'accepted' && !item.retained && !item.program_retained && <Link href={'/benefits/applications/' + item.id + '/create'} className={buttonStyles('primary') + ' mt-5'}>Manage confirmed award</Link>}
         <Card className="mt-6"><h2 className="text-lg font-bold">Review actions</h2><p className="mt-2 text-sm leading-6 text-civic-muted">Accepted and rejected decisions are final in this stage. Acceptance does not create an award or publish a passer. Conflict flags describe the submission-time check.</p>
             {available.length ? <div className="mt-5 flex flex-wrap gap-3">{available.map(status => <Button key={status} variant="outline" onClick={() => { form.clearErrors(); form.setData({ version: item.version, status, reason: '', confirmed: false }); setOpen(true); }}>{applicationLabels[status]}</Button>)}</div> : <p role="status" className="mt-4 text-sm leading-6 text-civic-muted">No further review actions are available for this record.</p>}
