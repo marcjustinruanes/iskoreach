@@ -8,7 +8,7 @@ export const motion = 'transition duration-200 ease-out motion-reduce:transition
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline';
 const variants: Record<ButtonVariant, string> = {
     primary: 'bg-civic-navy text-white hover:bg-civic-navy-soft',
-    secondary: 'bg-civic-gold text-civic-navy hover:bg-civic-gold-soft',
+    secondary: 'border border-civic-border bg-white text-civic-navy hover:bg-civic-panel',
     ghost: 'text-civic-navy hover:bg-civic-panel',
     danger: 'bg-civic-danger text-white hover:bg-red-950',
     outline: 'border border-civic-border bg-white text-civic-ink hover:bg-civic-panel',
@@ -29,14 +29,14 @@ export function Input({ label, error, hint, id, className = '', ...props }: Inpu
     </div>;
 }
 export function Card({ className = '', ...props }: HTMLAttributes<HTMLDivElement>) {
-    return <div {...props} className={'civic-card rounded-lg border border-civic-panel-strong bg-white p-5 sm:p-6 ' + className} />;
+    return <div {...props} className={'civic-card rounded-lg border border-neutral-200 bg-white p-4 sm:p-5 ' + className} />;
 }
 export type BadgeTone = 'neutral' | 'blue' | 'indigo' | 'green' | 'amber' | 'red' | 'purple';
 export const badgeColors: Record<BadgeTone, string> = {
     neutral: 'border-slate-200 bg-slate-100 text-slate-700', blue: 'border-blue-200 bg-blue-50 text-blue-800',
-    indigo: 'border-indigo-200 bg-indigo-50 text-indigo-800', green: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+    indigo: 'border-blue-200 bg-blue-50 text-civic-navy', green: 'border-emerald-200 bg-emerald-50 text-emerald-800',
     amber: 'border-amber-200 bg-amber-50 text-amber-900', red: 'border-red-200 bg-red-50 text-red-800',
-    purple: 'border-purple-200 bg-purple-50 text-purple-800',
+    purple: 'border-amber-200 bg-amber-50 text-amber-900',
 };
 export function Badge({ tone = 'neutral', icon: Icon = Circle, children }: { tone?: BadgeTone; icon?: LucideIcon; children: ReactNode }) {
     return <span className={'inline-flex max-w-full items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-semibold leading-4 ' + badgeColors[tone]}><Icon aria-hidden="true" className="size-3 shrink-0" /><span>{children}</span></span>;
@@ -85,8 +85,8 @@ export function Skeleton({ className = '' }: { className?: string }) {
     return <div aria-hidden="true" className={'animate-pulse rounded-lg bg-neutral-200 motion-reduce:animate-none ' + className} />;
 }
 export function EmptyState({ title, description, action }: { title: string; description: string; action?: ReactNode }) {
-    return <div className="rounded-lg border border-dashed border-civic-border bg-civic-canvas/50 px-5 py-7 text-center">
-        <span className="mx-auto mb-3 flex size-10 items-center justify-center rounded-full bg-civic-panel"><SearchX aria-hidden="true" className="size-5 text-civic-teal" /></span>
+    return <div className="rounded-lg border border-dashed border-civic-border bg-civic-canvas/50 px-4 py-5 text-center">
+        <span className="mx-auto mb-2 flex size-9 items-center justify-center rounded-full bg-civic-panel"><SearchX aria-hidden="true" className="size-5 text-civic-teal" /></span>
         <h3 className="text-base font-semibold text-civic-navy">{title}</h3><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-civic-muted">{description}</p>{action && <div className="mt-5">{action}</div>}
     </div>;
 }

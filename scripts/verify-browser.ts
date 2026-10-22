@@ -137,7 +137,7 @@ try {
     assert.equal(await evaluate('window.__inertiaNavigationCheck'), true, 'Inertia navigation should preserve the page context');
     assert.equal(await evaluate("document.querySelectorAll('input[type=password]').length"), 1);
     assert.equal(await evaluate("getComputedStyle(document.querySelector('input[type=email]')).fontSize"), '16px');
-    assert.equal(await evaluate("getComputedStyle(document.querySelector('h1')).fontSize"), '30px');
+    assert.equal(await evaluate("getComputedStyle(document.querySelector('h1')).fontSize"), '24px');
     if (screenshotDirectory) {
         await mkdir(screenshotDirectory, { recursive: true });
         const capture = await command('Page.captureScreenshot', { format: 'png' });
@@ -247,6 +247,25 @@ $attachment->forceFill(['submitted_at'=>now(),'review_status'=>'rejected','revie
             await evaluate("document.querySelector('main input[type=file]').closest('form').requestSubmit()");
             await waitFor("document.body.textContent.includes('Document uploaded and attached to this application.') && document.body.textContent.includes('corrected-cor.png')");
             assert.equal(await evaluate("document.body.textContent.includes('Under review') && !document.body.textContent.includes('Resubmit correction')"),true);
+            await evaluate("[...document.querySelectorAll('main button')].find(button=>button.textContent==='Open conversation').click()");
+            await waitFor("document.querySelector('h1')?.textContent === 'Conversation' && Boolean(document.querySelector('#message-body'))");
+            assert.equal(await evaluate("document.querySelector('#message-body').closest('.chat-workspace') !== null"),true,'Composer and messages share one panel');
+            const message='Layout verification '+Date.now();
+            await fill('#message-body',message);
+            await evaluate("document.querySelector('#message-body').closest('form').requestSubmit()");
+            await waitFor("document.querySelector('main ol')?.textContent.includes("+JSON.stringify(message)+")");
+            const conversationUrl=await evaluate('location.pathname');
+            for(const width of [320,768,1440]) {
+                await command('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:1,mobile:width<768});
+                assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'),true,'Conversation fits '+width);
+                await screenshot('refined-conversation-'+width);
+            }
+            await logout();
+            await login('logout-provider','Your provider account');
+            await command('Page.navigate',{url:appUrl+conversationUrl});
+            await waitFor("document.querySelector('main ol')?.textContent.includes("+JSON.stringify(message)+")");
+            await evaluate("[...document.querySelectorAll('main button')].find(button=>button.textContent==='Mark as read').click()");
+            await waitFor("[...document.querySelectorAll('main button')].find(button=>button.textContent==='Mark as read').disabled");
             await logout();
             await login('logout-student','Your student account');
             await command('Page.navigate',{url:appUrl+'/student/email-code'});
@@ -499,7 +518,12 @@ $attachment->forceFill(['submitted_at'=>now(),'review_status'=>'rejected','revie
                 await command('Page.navigate', { url: appUrl + path });
                 await waitFor('location.pathname === ' + JSON.stringify(path) + " && document.querySelector('main h1') !== null");
                 await evaluate('document.fonts.ready.then(() => true)');
+                if (path === '/passers' || path === '/scholarships') {
+                    assert.equal(await evaluate("Boolean(document.querySelector('aside.workspace-sidebar')) && !document.querySelector('nav[aria-label=\"Main navigation\"]')"),true,path+' retains the role workspace');
+                    assert.equal(await evaluate("Boolean(document.querySelector('aside.workspace-sidebar nav a[aria-current=\"page\"]'))"),true,path+' has an active sidebar link');
+                }
                 assert.equal(await evaluate("/^(403|404|500|Server Error)/.test(document.querySelector('h1').textContent)"), false, path + ' renders its authorized page');
+                assert.equal(await evaluate("parseFloat(getComputedStyle(document.querySelector('main')).paddingLeft)>=16"),true,path+' keeps a content gutter');
                 for (const width of [320, 768, 1440]) {
                     await command('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 768 });
                     await delay(80);
@@ -512,11 +536,16 @@ $attachment->forceFill(['submitted_at'=>now(),'review_status'=>'rejected','revie
                 return links.filter(href => /^\/(student\/applications\/\d+|student\/scholarships\/[^/]+|provider\/applications\/\d+|provider\/scholarships\/\d+\/edit|admin\/(providers|users|scholarships|student-verifications)\/\d+|messages\/\d+|benefits\/\d+|renewals\/\d+)$/.test(href));
             };
             for (const [role, heading, paths] of [
-                [process.env.QA_UI_STUDENT ?? 'logout-student', 'Your student account', ['/student/dashboard', '/student/profile', '/student/scholarships', '/student/applications', '/student/requirements', '/student/documents', '/student/awards', '/messages', '/notifications', '/renewals', '/benefits', '/declarations', '/scholarship-announcements']],
-                ['logout-provider', 'Your provider account', ['/provider/dashboard', '/provider/workspace', '/provider/profile', '/provider/scholarships', '/provider/scholarships/create', '/provider/applications', '/provider/applicant-counts', '/messages', '/notifications', '/renewals', '/benefits', '/scholarship-announcements']],
-                ['logout-admin', 'Dashboard', ['/admin/dashboard', '/admin/providers', '/admin/users', '/admin/scholarships', '/admin/student-verifications', '/admin/applicant-counts', '/admin/awards', '/admin/renewals', '/admin/releases', '/admin/academic-terms', '/admin/reports', '/admin/activity-logs', '/notifications']],
+                [process.env.QA_UI_STUDENT ?? 'logout-student', 'Your student account', ['/student/dashboard', '/passers', '/scholarships', '/student/profile', '/student/scholarships', '/student/applications', '/student/requirements', '/student/documents', '/student/awards', '/messages', '/notifications', '/renewals', '/benefits', '/declarations', '/scholarship-announcements']],
+                ['logout-provider', 'Your provider account', ['/provider/dashboard', '/passers', '/scholarships', '/provider/workspace', '/provider/profile', '/provider/scholarships', '/provider/scholarships/create', '/provider/applications', '/provider/applicant-counts', '/messages', '/notifications', '/renewals', '/benefits', '/scholarship-announcements']],
+                ['logout-admin', 'Dashboard', ['/admin/dashboard', '/passers', '/scholarships', '/admin/providers', '/admin/users', '/admin/scholarships', '/admin/student-verifications', '/admin/applicant-counts', '/admin/awards', '/admin/renewals', '/admin/releases', '/admin/academic-terms', '/admin/reports', '/admin/activity-logs', '/notifications']],
             ] as [string, string, string[]][]) {
                 await login(role, heading);
+                const navigationLinks = await evaluate("[...document.querySelectorAll('aside.workspace-sidebar nav a[href]')].map(link=>link.getAttribute('href'))") as string[];
+                for(const href of new Set(navigationLinks)) {
+                    const status=await evaluate('fetch('+JSON.stringify(href)+',{credentials:"same-origin"}).then(response=>response.status)');
+                    assert.equal(status,200,role+' sidebar destination '+href);
+                }
                 const details = new Set<string>();
                 for (const path of paths) {
                     const links = await inspect(path);
@@ -1716,7 +1745,7 @@ echo 'Chat fixture action complete.';
             assert.equal(await evaluate('fetch(' + JSON.stringify(attachmentUrl) + ').then(response => response.status)'), 200);
             await fixture('typing');
             await waitFor("document.body.textContent.includes('The other participant is typing')");
-            await click('Mark received messages read');
+            await click('Mark as read');
             await fill('textarea[name=body]', 'Provider browser reply');
             await click('Send message');
             await waitFor("document.querySelector('ol[aria-label=\"Conversation messages\"]').textContent.includes('Provider browser reply')");
@@ -1944,8 +1973,8 @@ echo 'Notification fixture ready.';
             assert.equal(await evaluate("document.querySelector('ol[aria-label=\"Conversation messages\"] b') !== null"), false);
             const chatDownload = await evaluate("document.querySelector('main a[href*=\"/messages/attachments/\"]').href") as string;
             assert.equal(await evaluate('fetch(' + JSON.stringify(chatDownload) + ').then(response => response.status)'), 200);
-            await click('Mark received messages read');
-            await waitFor("[...document.querySelectorAll('button')].find(item => item.textContent === 'Mark received messages read').disabled");
+            await click('Mark as read');
+            await waitFor("[...document.querySelectorAll('button')].find(item => item.textContent === 'Mark as read').disabled");
             await fill('textarea[name=body]', 'Student reply from the acceptance run.');
             await click('Send message');
             await waitFor("document.querySelector('ol[aria-label=\"Conversation messages\"]')?.textContent.includes('Student reply')");
@@ -1957,8 +1986,8 @@ echo 'Notification fixture ready.';
             await login('provider', 'Your provider account');
             await navigate(conversationUrl, 'Conversation');
             assert.equal(await evaluate("document.querySelector('ol[aria-label=\"Conversation messages\"]')?.textContent.includes('Student reply')"), true);
-            await click('Mark received messages read');
-            await waitFor("[...document.querySelectorAll('button')].find(item => item.textContent === 'Mark received messages read').disabled");
+            await click('Mark as read');
+            await waitFor("[...document.querySelectorAll('button')].find(item => item.textContent === 'Mark as read').disabled");
             await logout();
             assert.equal(await evaluate('fetch(' + JSON.stringify(attachmentDownload) + ').then(response => response.redirected && response.url.endsWith("/login"))'), true);
             console.log('PASS: student discovery/filter/offline recovery, application tracker/review, real PDF upload and retained private downloads, notification read-all/cancel, two-way chat/attachments/receipts, provider/guest restrictions, and responsive layouts at 320/768/1440px.');

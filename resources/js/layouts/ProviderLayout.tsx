@@ -1,8 +1,9 @@
+import WorkspaceBreadcrumbs from '../components/WorkspaceBreadcrumbs';
 import SidebarNavigation, { type SidebarGroup } from '../components/SidebarNavigation';
 import SidebarAccount from '../components/SidebarAccount';
 import NotificationBell, { useNotificationSummary } from '../components/NotificationBell';
 import { Head, Link, usePage } from '@inertiajs/react';
-import { Megaphone, FileText, ShieldCheck, Building2, LayoutDashboard, Menu as MenuIcon, GraduationCap, UsersRound, MessagesSquare, CalendarClock, Award, ChartNoAxesCombined, PanelsTopLeft, ArrowUpRight } from 'lucide-react';
+import { Bell, Megaphone, FileText, ShieldCheck, Building2, LayoutDashboard, Menu as MenuIcon, GraduationCap, UsersRound, MessagesSquare, CalendarClock, Award, ChartNoAxesCombined, PanelsTopLeft, ArrowUpRight } from 'lucide-react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import type { SharedProps } from '../types';
@@ -22,14 +23,11 @@ export default function ProviderLayout({ title, description, actions, children }
     if (!auth.user || auth.user.role !== 'provider' || !context) return null;
     const approved = context.verification_status === 'approved';
     const currentPath = url.split('?')[0];
-    const isActive = (href: string) => {
-        const path = new URL(href, window.location.origin).pathname;
-        return currentPath === path || (['/provider/applicant-counts', '/provider/scholarships', '/provider/applications', '/messages', '/renewals', '/benefits'].includes(path) && currentPath.startsWith(path + '/'));
-    };
     const groups: SidebarGroup[] = [
         { label: 'Overview', items: [{ label: approved ? 'Dashboard' : 'Account status', href: approved ? context.dashboard : context.status, icon: LayoutDashboard }] },
         ...(approved ? [
             { label: 'Scholarships & applicants', icon: GraduationCap, expandable: true, items: [
+                { label: 'Browse scholarships', href: '/scholarships', icon: GraduationCap },
                 { label: 'My scholarships', href: '/provider/scholarships', icon: GraduationCap },
                 { label: 'Applicants', href: '/provider/applications', icon: UsersRound },
                 { label: 'Applicant counts', href: context.counts, icon: ChartNoAxesCombined },
@@ -40,16 +38,17 @@ export default function ProviderLayout({ title, description, actions, children }
                 { label: 'Announcements', href: '/scholarship-announcements', icon: Megaphone },
             ] },
             { label: 'Awards & renewals', icon: Award, expandable: true, items: [
+                { label: 'Public passers', href: '/passers', icon: GraduationCap },
                 { label: 'Awards & benefits', href: '/benefits', icon: Award },
                 { label: 'Semester renewals', href: '/renewals', icon: CalendarClock },
             ] },
         ] : []),
         { label: 'Organization', items: [
+            { label: 'Notifications', href: '/notifications', icon: Bell, count: unreadNotifications },
             { label: 'Organization profile', href: context.profile, icon: Building2 },
             ...(approved ? [{ label: 'All provider tools', href: context.workspace, icon: PanelsTopLeft }] : []),
         ] },
     ];
-    const activeItem = groups.flatMap(group => group.items).find(item => isActive(item.href));
     const links = (mobile = false) => <SidebarNavigation label="Provider navigation" groups={groups} currentPath={currentPath} collapsed={!mobile && collapsed} onExpand={toggle} onNavigate={() => setMobileOpen(false)} />;
     return <div className="provider-shell min-h-dvh bg-civic-canvas font-stitch text-civic-ink"><Head title={title + ' · Provider'} />
         <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[90] focus:rounded-lg focus:bg-white focus:p-4">Skip to content</a>
@@ -62,12 +61,12 @@ export default function ProviderLayout({ title, description, actions, children }
         </aside>
         <div className={'min-w-0 transition-[padding-left] duration-200 ease-out motion-reduce:transition-none ' + (collapsed ? 'lg:pl-20' : 'lg:pl-60')}>
             <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-2 border-b border-neutral-200 bg-white px-3 sm:px-6 lg:px-8">
-                <div className="flex min-w-0 items-center gap-2"><SidebarToggle collapsed={collapsed} onToggle={toggle} controls="provider-sidebar" /><button type="button" aria-label="Open provider navigation" aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)} className={'flex size-11 shrink-0 items-center justify-center rounded-lg hover:bg-civic-panel lg:hidden ' + focusRing}><MenuIcon aria-hidden="true" className="size-5" /></button><nav aria-label="Breadcrumb" className="min-w-0 text-xs sm:text-sm"><ol className="flex min-w-0 items-center gap-2"><li className="hidden shrink-0 text-civic-muted sm:block">Provider</li><li aria-hidden="true" className="hidden text-civic-border sm:block">/</li><li aria-current="page" title={title} className="truncate font-semibold">{activeItem?.label || title}</li></ol></nav></div>
+                <div className="flex min-w-0 items-center gap-2"><SidebarToggle collapsed={collapsed} onToggle={toggle} controls="provider-sidebar" /><button type="button" aria-label="Open provider navigation" aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)} className={'flex size-11 shrink-0 items-center justify-center rounded-lg hover:bg-civic-panel lg:hidden ' + focusRing}><MenuIcon aria-hidden="true" className="size-5" /></button><WorkspaceBreadcrumbs role="provider" title={title} path={url.split('?')[0]} /></div>
                 <div className="flex shrink-0 items-center gap-1 sm:gap-2"><NotificationBell unread={unreadNotifications} /><button type="button" aria-label="Recent verification decisions" onClick={() => setNoticesOpen(true)} className={'flex size-11 items-center justify-center rounded-lg hover:bg-civic-panel ' + focusRing}><ShieldCheck aria-hidden="true" className="size-5" /></button>
 
                 </div>
             </header>
-            <main id="main-content" className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8"><div className="mb-6 flex flex-wrap items-start justify-between gap-4"><div className="min-w-0 max-w-3xl"><h1 className="text-2xl font-bold leading-8 tracking-tight text-civic-navy sm:text-[28px] sm:leading-9">{title}</h1><p className="mt-2 text-sm leading-6 text-civic-muted">{description}</p></div>{actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}</div>
+            <main id="main-content" className="workspace-content mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8 lg:py-6"><div className="mb-6 flex flex-wrap items-start justify-between gap-4"><div className="min-w-0 max-w-3xl"><h1 className="text-2xl font-bold leading-8 tracking-tight text-civic-navy">{title}</h1><p className="mt-2 text-sm leading-6 text-civic-muted">{description}</p></div>{actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}</div>
                 {status && <p role="status" className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm leading-6 text-emerald-900">{status}</p>}{children}
             </main>
         </div>

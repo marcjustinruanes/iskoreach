@@ -17,8 +17,8 @@ export default {
                 civic: {
                     navy: '#123563', 'navy-soft': '#566e87', teal: '#123563',
                     'teal-hover': '#234b77', mint: '#ffe7ad', canvas: '#f5f8f8',
-                    panel: '#edf2f5', 'panel-strong': '#a3b6c9', ink: '#123563',
-                    muted: '#4d6278', border: '#a3b6c9', control: '#566e87',
+                    panel: '#edf2f5', 'panel-strong': '#dce3e9', ink: '#123563',
+                    muted: '#4d6278', border: '#a3b6c9', control: '#a3b6c9',
                     gold: '#fbad23', 'gold-soft': '#e5bd69', cream: '#ffe7ad',
                     'blue-gray': '#a3b6c9', slate: '#566e87',
                     success: '#065f46', warning: '#92400e', danger: '#93000a',

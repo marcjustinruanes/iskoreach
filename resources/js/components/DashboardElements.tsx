@@ -7,8 +7,8 @@ import { focusRing } from './ui/DesignSystem';
 export function DashboardSection({ title, description, action, children, className = '' }: { title: string; description?: string; action?: ReactNode; children: ReactNode; className?: string }) {
     const id = useId();
     return <section aria-labelledby={id} className={'min-w-0 rounded-xl border border-neutral-200 bg-white ' + className}>
-        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-neutral-200 px-5 py-4 sm:px-6"><div><h2 id={id} className="text-base font-bold text-civic-navy">{title}</h2>{description && <p className="mt-1 max-w-prose text-xs leading-5 text-civic-muted">{description}</p>}</div>{action}</div>
-        <div className="p-5 sm:p-6">{children}</div>
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-neutral-200 px-4 py-3 sm:px-5"><div><h2 id={id} className="text-base font-bold text-civic-navy">{title}</h2>{description && <p className="mt-1 max-w-prose text-xs leading-5 text-civic-muted">{description}</p>}</div>{action}</div>
+        <div className="p-4 sm:p-5">{children}</div>
     </section>;
 }
 export function DashboardLink({ href, children }: { href: string; children: ReactNode }) {

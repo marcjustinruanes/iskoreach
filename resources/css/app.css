@@ -109,7 +109,7 @@ nav[aria-label="Student navigation"] a:focus-visible, nav[aria-label="Provider n
 .sidebar-sign-out:focus-visible { outline-color: #fca5a5; }
 
 /* Dashboard data visuals use the same accessible labels as their linked lists. */
-.dashboard-discovery label { color: #fff; }
+.dashboard-discovery label { color: #123563; }
 .dashboard-discovery input::placeholder { color: #566e87; }
 .dashboard-distribution { appearance: none; border: 0; background: #edf2f5; }
 .dashboard-distribution::-webkit-progress-bar { background: #edf2f5; }
@@ -145,3 +145,9 @@ nav[aria-label="Student navigation"] a:focus-visible, nav[aria-label="Provider n
         padding-inline: 0;
     }
 }
+
+/* Shared workspace rhythm keeps all role pages aligned. */
+:root { --workspace-gutter: clamp(1rem, 2.5vw, 2rem); --section-divider: #dce3e9; }
+.workspace-content { padding-inline: var(--workspace-gutter); padding-block: 1.5rem; }
+.chat-history { scrollbar-width: thin; scrollbar-color: #a3b6c9 transparent; }
+@media (max-width: 639px) { .workspace-content { padding-block: 1.25rem; } }

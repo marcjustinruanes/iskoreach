@@ -1,3 +1,4 @@
+import WorkspaceBreadcrumbs from '../components/WorkspaceBreadcrumbs';
 import SidebarNavigation, { type SidebarGroup } from '../components/SidebarNavigation';
 import SidebarAccount from '../components/SidebarAccount';
 import { Head, Link, usePage } from '@inertiajs/react';
@@ -17,7 +18,8 @@ export default function StudentLayout({ title, description, children }: { title:
     const { collapsed, toggle } = useSidebarCollapsed('student');
     const [open, setOpen] = useState(false);
     if (!auth.user || auth.user.role !== 'student') return null;
-    const path = url.split('?')[0];
+    const rawPath = url.split('?')[0];
+    const path = rawPath === '/scholarships' || rawPath.startsWith('/scholarships/') ? '/student'+rawPath : rawPath;
     const groups: SidebarGroup[] = [
         { label: 'Discover', items: [
             { label: 'Dashboard', href: '/student/dashboard', icon: LayoutDashboard },
@@ -36,6 +38,7 @@ export default function StudentLayout({ title, description, children }: { title:
         { label: 'Awards & renewals', icon: Award, expandable: true, items: [
             { label: 'Awards & benefits', href: '/benefits', icon: Award },
             { label: 'Semester renewals', href: '/renewals', icon: CalendarClock },
+            { label: 'Public passers', href: '/passers', icon: GraduationCap },
             { label: 'Public listing consent', href: '/student/awards', icon: ShieldCheck },
         ] },
         { label: 'Account', items: [
@@ -53,8 +56,8 @@ export default function StudentLayout({ title, description, children }: { title:
             </div><SidebarAccount user={auth.user} />
         </aside>
         <div className={'min-w-0 transition-[padding-left] duration-200 ease-out motion-reduce:transition-none ' + (collapsed ? 'lg:pl-20' : 'lg:pl-60')}>
-            <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-2 border-b border-neutral-200 bg-white px-3 sm:px-6 lg:px-8"><div className="flex min-w-0 items-center gap-2"><SidebarToggle collapsed={collapsed} onToggle={toggle} controls="student-sidebar" /><button type="button" aria-label="Open student navigation" aria-expanded={open} onClick={() => setOpen(true)} className={'flex size-11 shrink-0 items-center justify-center rounded-lg hover:bg-civic-panel lg:hidden ' + focusRing}><MenuIcon aria-hidden="true" className="size-5" /></button><span className="hidden text-xs text-civic-muted sm:block">Student /</span><span className="truncate text-xs font-semibold sm:text-sm">{title}</span></div><div className="flex shrink-0 items-center gap-1"><NotificationBell unread={unread} /></div></header>
-            <main id="main-content" className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8"><div className="mb-6"><h1 className="text-2xl font-bold leading-8 tracking-tight text-civic-navy sm:text-[28px] sm:leading-9">{title}</h1><p className="mt-2 max-w-3xl text-sm leading-6 text-civic-muted">{description}</p></div>{status && <p role="status" className="mb-6 rounded-lg border border-civic-blue-gray bg-civic-panel p-4 text-sm text-civic-navy">{status}</p>}{children}</main>
+            <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-2 border-b border-neutral-200 bg-white px-3 sm:px-6 lg:px-8"><div className="flex min-w-0 items-center gap-2"><SidebarToggle collapsed={collapsed} onToggle={toggle} controls="student-sidebar" /><button type="button" aria-label="Open student navigation" aria-expanded={open} onClick={() => setOpen(true)} className={'flex size-11 shrink-0 items-center justify-center rounded-lg hover:bg-civic-panel lg:hidden ' + focusRing}><MenuIcon aria-hidden="true" className="size-5" /></button><WorkspaceBreadcrumbs role="student" title={title} path={url.split('?')[0]} /></div><div className="flex shrink-0 items-center gap-1"><NotificationBell unread={unread} /></div></header>
+            <main id="main-content" className="workspace-content mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8 lg:py-6"><div className="mb-6"><h1 className="text-2xl font-bold leading-8 tracking-tight text-civic-navy">{title}</h1><p className="mt-1 max-w-3xl text-sm leading-6 text-civic-muted">{description}</p></div>{status && <p role="status" className="mb-6 rounded-lg border border-civic-blue-gray bg-civic-panel p-4 text-sm text-civic-navy">{status}</p>}{children}</main>
         </div>
         <Drawer open={open} onClose={() => setOpen(false)} hideScrollbar footer={<div className="rounded-lg bg-civic-navy px-3 pb-2"><SidebarAccount user={auth.user} onSignOut={()=>setOpen(false)} /></div>} title="Student navigation" description="Your scholarship activities and account."><div className="rounded-xl bg-civic-navy p-3">{links(true)}</div><Link href="/" className={'mt-4 flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold ' + focusRing}><span>View public site</span><ArrowUpRight aria-hidden="true" className="size-4" /></Link></Drawer>
     </div>;

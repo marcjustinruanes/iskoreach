@@ -1,8 +1,9 @@
+import WorkspaceBreadcrumbs from '../components/WorkspaceBreadcrumbs';
 import SidebarNavigation, { type SidebarGroup } from '../components/SidebarNavigation';
 import SidebarAccount from '../components/SidebarAccount';
 import NotificationBell, { useNotificationSummary } from '../components/NotificationBell';
 import { Head, Link, usePage } from '@inertiajs/react';
-import { ArrowUpRight, Award, BookOpen, Building2, CalendarClock, CalendarDays, ChartNoAxesCombined, CircleDollarSign, History, LayoutDashboard, ListChecks, Menu as MenuIcon, ShieldCheck, Users } from 'lucide-react';
+import { Bell, ArrowUpRight, Award, BookOpen, Building2, CalendarClock, CalendarDays, ChartNoAxesCombined, CircleDollarSign, History, LayoutDashboard, ListChecks, Menu as MenuIcon, ShieldCheck, Users } from 'lucide-react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import type { SharedProps } from '../types';
@@ -35,9 +36,9 @@ export default function AdminLayout({ title, description, children }: { title: s
         { label: 'Activity logs', href: navigation.activity, icon: History },
     ];
     const groups: SidebarGroup[] = [
-        { label: 'Overview', items: [items[0], items[3]] },
+        { label: 'Overview', items: [items[0], items[3], { label: 'Notifications', href: '/notifications', icon: Bell, count: unreadNotifications }] },
         { label: 'Verification', icon: ShieldCheck, expandable: true, items: [{ ...items[1], count: navigation.pendingProviders }, items[2], items[5]] },
-        { label: 'Scholarship operations', icon: BookOpen, expandable: true, items: [items[4], items[6], items[7], items[8], items[9]] },
+        { label: 'Scholarship operations', icon: BookOpen, expandable: true, items: [items[4], { label: 'Browse scholarships', href: '/scholarships', icon: BookOpen }, { label: 'Public passers', href: '/passers', icon: Award }, items[6], items[7], items[8], items[9]] },
         { label: 'Reports & activity', icon: ChartNoAxesCombined, expandable: true, items: items.slice(10) },
     ];
     const links = (mobile = false) => <SidebarNavigation label="Administrative navigation" groups={groups} currentPath={url.split('?')[0]} collapsed={!mobile && collapsed} onExpand={toggle} onNavigate={() => setSidebarOpen(false)} />;
@@ -52,14 +53,14 @@ export default function AdminLayout({ title, description, children }: { title: s
         </aside>
         <div className={'min-w-0 transition-[padding-left] duration-200 ease-out motion-reduce:transition-none ' + (collapsed ? 'lg:pl-20' : 'lg:pl-60')}>
             <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-2 border-b border-neutral-200 bg-white px-3 sm:px-6 lg:px-8">
-                <div className="flex min-w-0 items-center gap-2"><SidebarToggle collapsed={collapsed} onToggle={toggle} controls="admin-sidebar" /><button type="button" onClick={() => setSidebarOpen(true)} aria-label="Open admin navigation" aria-expanded={sidebarOpen} className={'flex size-11 shrink-0 items-center justify-center rounded-lg hover:bg-civic-panel lg:hidden ' + focusRing}><MenuIcon aria-hidden="true" className="size-5" /></button><nav aria-label="Breadcrumb" className="min-w-0 text-xs text-civic-muted sm:text-sm"><ol className="flex min-w-0 items-center gap-2"><li className="hidden shrink-0 sm:block"><Link href={navigation.dashboard} className={'rounded hover:text-civic-teal ' + focusRing}>Administration</Link></li><li aria-hidden="true" className="hidden shrink-0 text-civic-border sm:block">/</li><li aria-current="page" title={title} className="truncate font-semibold text-civic-navy">{title}</li></ol></nav></div>
+                <div className="flex min-w-0 items-center gap-2"><SidebarToggle collapsed={collapsed} onToggle={toggle} controls="admin-sidebar" /><button type="button" onClick={() => setSidebarOpen(true)} aria-label="Open admin navigation" aria-expanded={sidebarOpen} className={'flex size-11 shrink-0 items-center justify-center rounded-lg hover:bg-civic-panel lg:hidden ' + focusRing}><MenuIcon aria-hidden="true" className="size-5" /></button><WorkspaceBreadcrumbs role="admin" title={title} path={url.split('?')[0]} /></div>
                 <div className="flex shrink-0 items-center gap-1 sm:gap-2">
                     <NotificationBell unread={unreadNotifications} /><button type="button" onClick={() => setWorkOpen(true)} aria-label={'Pending work: ' + navigation.pendingProviders + ' providers and ' + navigation.pendingCounts + ' external count reports awaiting review'} className={'relative flex size-11 items-center justify-center rounded-lg hover:bg-civic-panel ' + focusRing}><ListChecks aria-hidden="true" className="size-5" />{(navigation.pendingProviders > 0 || navigation.pendingCounts > 0) && <span aria-hidden="true" className="absolute top-1 right-1 size-2 rounded-full bg-civic-teal" />}</button>
 
                 </div>
             </header>
-            <main id="main-content" className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-7">
-                <div className="mb-6"><h1 className="text-2xl font-bold leading-8 tracking-tight text-civic-navy sm:text-[28px] sm:leading-9">{title}</h1><p className="mt-2 max-w-3xl text-sm leading-6 text-civic-muted">{description}</p></div>
+            <main id="main-content" className="workspace-content mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
+                <div className="mb-6"><h1 className="text-2xl font-bold leading-8 tracking-tight text-civic-navy">{title}</h1><p className="mt-1 max-w-3xl text-sm leading-6 text-civic-muted">{description}</p></div>
                 {status && <div role="status" className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-900">{status}</div>}
                 {children}
             </main>
