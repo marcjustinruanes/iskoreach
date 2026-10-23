@@ -40,19 +40,6 @@
 .landing-footer-brand > a > span:first-child { width: 4rem; height: 4rem; }
 .landing-footer-brand .brand-wordmark > span:first-child { font-size: 1.5rem; line-height: 1.8rem; }
 .landing-footer-brand .brand-wordmark > span:last-child { font-size: .95rem; line-height: 1.3rem; }
-.landing-search-panel > h2 { font-size: 1.35rem; line-height: 1.5rem; }
-.landing-search-panel > p:not(.landing-search-note) { font-size: 1rem; }
-.landing-search-panel label, .landing-search-panel legend { font-size: .95rem; }
-.landing-search-panel input, .landing-search-panel select { min-height: 3.4rem; border-radius: .65rem; border-color: #b7cadd; }
-.landing-search-panel .landing-search-note { border-top: 1px solid #dce6ef; padding-top: 1rem; font-size: .875rem; }
-@media (min-width: 640px) { .landing-hero-grid { padding-block: 3.5rem; } }
-@media (min-width: 1024px) {
-    .landing-hero-grid { min-height: 500px; grid-template-columns: minmax(0, 1.05fr) minmax(250px, .8fr) minmax(390px, 1.05fr); align-items: center; gap: 0; padding-block: 2.5rem; }
-    .landing-hero-art { display: block; align-self: stretch; min-height: 420px; margin-inline: -3rem -5rem; }
-    .landing-hero-search { grid-column: 3; }
-}
-@media (min-width: 1280px) { .landing-hero-grid { min-height: 520px; } .landing-hero-art { margin-inline: -4rem -6rem; } }
-@media (max-width: 1023px) { .landing-hero-art { display: block; height: clamp(210px, 45vw, 340px); margin: -1rem -1rem 0; } .landing-hero-students { bottom: -2.5rem; width: min(88%, 380px); max-height: calc(100% + 2.5rem); left: 50%; right: auto; transform: translateX(-50%); } .landing-hero-sun { width: min(68%, 290px); left: 50%; transform: translateX(-50%); top: 10%; } .landing-hero-dots { left: 15%; top: 0; } }
 .scholarship-discovery-page { padding-top: 3.25rem; padding-bottom: 2rem; }
 .scholarship-discovery-page > div:first-child { position: relative; max-width: none; margin-bottom: 1.5rem; }
 .scholarship-discovery-page > div:first-child h1 { position: relative; width: fit-content; font-size: clamp(2.25rem, 4vw, 3rem); line-height: 1.1; font-weight: 800; letter-spacing: -.03em; }
@@ -70,11 +57,14 @@
 .scholarship-empty-search { position: absolute; right: .25rem; bottom: .6rem; stroke-width: 2.5; }
 .scholarship-empty-decoration { position: absolute; top: 1.3rem; left: calc(50% - 4.7rem); display: flex; align-items: center; gap: 5rem; color: #cce0f1; }
 .scholarship-empty-decoration svg:last-child { color: #ffb21c; transform: translateY(-.5rem); }
+.landing-search-panel > h2 { font-size: 1.35rem; line-height: 1.5rem; }
+.landing-search-panel > p:not(.landing-search-note) { font-size: 1rem; }
+.landing-search-panel label, .landing-search-panel legend { font-size: .95rem; }
+.landing-search-panel input, .landing-search-panel select { min-height: 3.4rem; border-radius: .65rem; border-color: #b7cadd; }
+.landing-search-panel .landing-search-note { border-top: 1px solid #dce6ef; padding-top: 1rem; font-size: .875rem; }
 .location-lookup-warning { display: flex; align-items: center; gap: .75rem; color: #ad4d00; font-size: .95rem; line-height: 1.5rem; }
 .location-lookup-warning-icon { display: flex; width: 2.75rem; height: 2.75rem; flex: 0 0 auto; align-items: center; justify-content: center; border-radius: 9999px; background: #ffbf36; color: #624000; }
 .location-lookup-retry { display: inline-flex; min-height: 2.75rem; align-items: center; gap: .5rem; border-radius: .5rem; padding-inline: .25rem; color: #123563; font-size: 1rem; font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
-@media (min-width: 640px) { .scholarship-search-card { padding: 2rem; } }
-@media (max-width: 639px) { .scholarship-discovery-page { padding-top: 2rem; } .scholarship-heading-rays { top: -1.8rem; left: 0; width: 1.6rem; height: 1.6rem; } }
 .auth-login-layout { position: relative; isolation: isolate; overflow: visible; background: radial-gradient(circle 9rem at 85% 22%, #e9f4fc 99%, transparent 100%), radial-gradient(circle 8rem at 14% 78%, #edf6fc 99%, transparent 100%); }
 .auth-login-layout::before { position: absolute; z-index: -1; top: 27%; left: 0; width: 8rem; height: 10rem; content: ''; opacity: .6; background-image: radial-gradient(#d8e8f6 4px, transparent 4px); background-size: 2rem 2rem; }
 .auth-login-layout::after { position: absolute; z-index: -1; right: 1rem; bottom: 1rem; width: 12rem; height: 12rem; border-radius: 9999px; background: linear-gradient(135deg, #ffd77d, #ffb72d); content: ''; }
@@ -105,6 +95,17 @@
 .auth-login-card > div:last-child { margin-top: 1.5rem; padding-top: 1.25rem; font-size: .875rem; }
 .auth-login-aside ~ .auth-login-card h1 + p { color: #7085a2; }
 @media (max-width: 1023px) { .auth-login-layout { background: radial-gradient(circle 7rem at 84% 12%, #e9f4fc 99%, transparent 100%), radial-gradient(circle 6rem at 15% 84%, #edf6fc 99%, transparent 100%); } .auth-login-layout::after { right: 1rem; bottom: 1rem; left: auto; width: 8rem; height: 8rem; } .auth-login-card { margin-top: 1rem; } }
+@media (min-width: 640px) { .scholarship-search-card { padding: 2rem; } }
+@media (max-width: 639px) { .scholarship-discovery-page { padding-top: 2rem; } .scholarship-heading-rays { top: -1.8rem; left: 0; width: 1.6rem; height: 1.6rem; } }
+@media (min-width: 640px) { .landing-hero-grid { padding-block: 3.5rem; } }
+@media (min-width: 1024px) {
+    .landing-hero-grid { min-height: 500px; grid-template-columns: minmax(0, 1.05fr) minmax(250px, .8fr) minmax(390px, 1.05fr); align-items: center; gap: 0; padding-block: 2.5rem; }
+    .landing-hero-art { display: block; align-self: stretch; min-height: 420px; margin-inline: -3rem -5rem; }
+    .landing-hero-search { grid-column: 3; }
+}
+@media (min-width: 1280px) { .landing-hero-grid { min-height: 520px; } .landing-hero-art { margin-inline: -4rem -6rem; } }
+@media (max-width: 1023px) { .landing-hero-art { display: block; height: clamp(210px, 45vw, 340px); margin: -1rem -1rem 0; } .landing-hero-students { bottom: -2.5rem; width: min(88%, 380px); max-height: calc(100% + 2.5rem); left: 50%; right: auto; transform: translateX(-50%); } .landing-hero-sun { width: min(68%, 290px); left: 50%; transform: translateX(-50%); top: 10%; } .landing-hero-dots { left: 15%; top: 0; } }
+
 .password-field::-ms-reveal,
 .password-field::-ms-clear {
     display: none;
@@ -218,6 +219,7 @@
     .registration-info-panel { padding: 1.25rem; }
     .registration-card { padding: 1.25rem; }
 }
+
 /* A visible focus boundary on the dark role navigation. */
 nav[aria-label="Student navigation"] a:focus-visible, nav[aria-label="Provider navigation"] a:focus-visible, nav[aria-label="Administrative navigation"] a:focus-visible { outline-color: #fbad23; }
 
@@ -239,7 +241,6 @@ nav[aria-label="Student navigation"] a:focus-visible, nav[aria-label="Provider n
     .workspace-sidebar[data-collapsed=true] .sidebar-sign-out { justify-content: center; gap: 0; padding-inline: 0; }
 }
 .sidebar-sign-out:focus-visible { outline-color: #fca5a5; }
-
 .student-sidebar { border-color: #e2eaf1; background: #fff; color: #123563; box-shadow: 2px 0 12px rgb(18 53 99 / .035); }
 .student-sidebar [data-sidebar-brand] { position: relative; isolation: isolate; height: 5.25rem; overflow: hidden; margin-inline: -.75rem; padding-inline: .75rem; background: #fff; }
 .student-sidebar [data-sidebar-brand]::before,
@@ -272,6 +273,7 @@ nav[aria-label="Student navigation"] a:focus-visible, nav[aria-label="Provider n
 .student-sidebar .student-sidebar-collapse { border: 1px solid #e2eaf1; background: #f4f8fb; color: #31577d; }
 .student-sidebar .student-sidebar-collapse:hover { background: #e8f2fa; }
 @media (min-width: 1024px) { .student-sidebar[data-collapsed=true] .student-sidebar-collapse { display: none; } }
+
 /* Dashboard data visuals use the same accessible labels as their linked lists. */
 .dashboard-discovery label { color: #123563; }
 .dashboard-discovery input::placeholder { color: #566e87; }
