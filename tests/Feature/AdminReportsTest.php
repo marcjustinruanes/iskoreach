@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Enums\UserRole;
 use App\Models\Application;
 use App\Models\BenefitRelease;
-use App\Models\ExternalApplicantCount;
 use App\Models\ProviderProfile;
 use App\Models\Renewal;
 use App\Models\Scholarship;
@@ -50,7 +49,7 @@ class AdminReportsTest extends TestCase
         foreach (array_keys(AdminReports::DEFINITIONS) as $type) {
             $query = $this->filters($type);
             $this->get('/admin/reports?'.$query)->assertOk()->assertInertia(fn (Assert $page) => $page
-                ->component('admin/Reports')->where('rows.total', 0)->where('filters.type', $type)->has('options', 9));
+                ->component('admin/Reports')->where('rows.total', 0)->where('filters.type', $type)->has('options', 8));
             $this->get('/admin/reports/export?'.$query)->assertOk()->assertHeader('Content-Type', 'text/csv; charset=UTF-8')
                 ->assertDownload('iskoreach-'.$type.'-2026-10-19-to-2026-10-19.csv');
         }
@@ -135,14 +134,9 @@ class AdminReportsTest extends TestCase
             ->where('rows.data.2.status', 'released')->where('rows.data.2.incomplete', 1));
     }
 
-    public function test_external_report_distinguishes_original_reports_from_correction_history(): void
+    public function test_retired_external_aggregate_report_cannot_be_requested(): void
     {
-        $this->actingAs($this->admin());
-        $original = ExternalApplicantCount::factory()->create(['status' => 'approved']);
-        ExternalApplicantCount::factory()->create(['scholarship_id' => $original->scholarship_id, 'correction_of_id' => $original->id, 'status' => 'approved']);
-        $this->get('/admin/reports?'.$this->filters('external_counts'))->assertInertia(fn (Assert $page) => $page
-            ->where('rows.total', 2)->where('rows.data.0.kind', 'correction_or_reverification')->where('rows.data.0.count', 1)
-            ->where('rows.data.1.kind', 'original')->where('rows.data.1.count', 1)->missing('rows.data.0.reported_count'));
+        $this->actingAs($this->admin())->get('/admin/reports?'.$this->filters('external_counts'))->assertSessionHasErrors('type');
     }
 
     public function test_export_includes_all_groups_and_escapes_spreadsheet_formulas_without_private_student_data(): void

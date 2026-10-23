@@ -12,7 +12,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
 use Inertia\Testing\AssertableInertia as Assert;
-use Laravel\Fortify\Features;
 use Tests\TestCase;
 
 class AuthUiStageOneTest extends TestCase
@@ -26,14 +25,13 @@ class AuthUiStageOneTest extends TestCase
         }
         $this->get('/register?account=provider')->assertInertia(fn (Assert $page) => $page->where('accountType', 'provider'));
         $this->get('/register?account=admin')->assertInertia(fn (Assert $page) => $page->where('accountType', 'student'));
-        $this->assertTrue(Features::enabled(Features::emailVerification()));
     }
 
     public function test_reset_requests_do_not_disclose_registered_email_addresses(): void
     {
         Notification::fake();
         $user = User::factory()->create();
-        foreach ([$user->email, 'unknown@example.test'] as $email) {
+        foreach ([$user->email, 'unknown@gmail.com'] as $email) {
             $this->post('/forgot-password', ['email' => $email])
                 ->assertRedirect('/forgot-password')->assertSessionHasNoErrors()
                 ->assertSessionHas('status', PasswordResetLinkResponse::MESSAGE);
@@ -57,7 +55,7 @@ class AuthUiStageOneTest extends TestCase
             'name' => 'Duplicate', 'email' => $existing->email, 'account_type' => 'student',
             'password' => 'example-password', 'password_confirmation' => 'example-password',
         ])->assertSessionHasErrors('email');
-        $this->assertDatabaseCount('users', 1);
+        $this->assertDatabaseCount('accounts', 1);
         $this->assertSame($existing->name, $existing->fresh()->name);
     }
 
@@ -120,7 +118,7 @@ class AuthUiStageOneTest extends TestCase
             'rejection_reason' => 'Please correct the organization name.',
         ]);
         $this->actingAs($profile->user)->patch('/provider/profiles/'.$profile->id, [
-            'organization_name' => 'Corrected Organization', 'contact_email' => 'updated@example.test',
+            'organization_name' => 'Corrected Organization', 'contact_email' => 'updated@gmail.com',
             'verification_status' => 'approved',
         ])->assertRedirect('/provider/dashboard');
         $this->assertSame(ProviderVerificationStatus::Pending, $profile->fresh()->verification_status);

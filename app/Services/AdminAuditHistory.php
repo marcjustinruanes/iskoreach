@@ -7,12 +7,10 @@ use App\Models\ActivityLog;
 use App\Models\Application;
 use App\Models\ApplicationDocument;
 use App\Models\BenefitRelease;
-use App\Models\ExternalApplicantCount;
 use App\Models\ProviderProfile;
 use App\Models\Renewal;
 use App\Models\Scholarship;
 use App\Models\ScholarshipAward;
-use App\Models\ScholarshipDeclaration;
 use App\Models\StudentDocument;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -20,14 +18,13 @@ use Illuminate\Database\Eloquent\Builder;
 
 class AdminAuditHistory
 {
-    public const TYPES = ['declaration' => ScholarshipDeclaration::class, 'application_document' => ApplicationDocument::class, 'academic_term' => AcademicTerm::class, 'provider' => ProviderProfile::class, 'external_count' => ExternalApplicantCount::class, 'award' => ScholarshipAward::class, 'account' => User::class, 'scholarship' => Scholarship::class, 'application' => Application::class, 'document' => StudentDocument::class, 'renewal' => Renewal::class, 'release' => BenefitRelease::class];
+    public const TYPES = ['application_document' => ApplicationDocument::class, 'academic_term' => AcademicTerm::class, 'provider' => ProviderProfile::class, 'award' => ScholarshipAward::class, 'account' => User::class, 'scholarship' => Scholarship::class, 'application' => Application::class, 'document' => StudentDocument::class, 'renewal' => Renewal::class, 'release' => BenefitRelease::class];
 
     public const ACTIONS = [
         'academic_term.created' => ['Academic term created', 'academic_term'],
         'academic_term.updated' => ['Academic term updated', 'academic_term'],
         'award.created' => ['Confirmed award recorded', 'award'],
         'award.completed' => ['Award completed', 'award'],
-        'declaration.reviewed' => ['Outside scholarship reviewed', 'declaration'],
         'application.document_reviewed' => ['Application document reviewed', 'application_document'],
         'award.suspended' => ['Award suspended', 'award'],
         'award.resumed' => ['Award resumed', 'award'],
@@ -60,11 +57,6 @@ class AdminAuditHistory
         'admin.created_locally' => ['Administrator provisioned locally', 'account'],
         'provider.reviewed' => ['Provider review saved', 'provider'],
         'provider.details_changed' => ['Organization details changed', 'provider'],
-        'external_count.reported' => ['External count reported', 'external_count'],
-        'external_count.approve' => ['External count verified', 'external_count'],
-        'external_count.reject' => ['External count rejected', 'external_count'],
-        'external_count.correct' => ['External count corrected', 'external_count'],
-        'external_count.reverify' => ['External count re-verified', 'external_count'],
         'award.publish' => ['Award published', 'award'],
         'award.unpublish' => ['Award listing removed', 'award'],
         'award.consent_given' => ['Public listing consent recorded', 'award'],
@@ -103,7 +95,7 @@ class AdminAuditHistory
     {
         [$label, $type] = self::ACTIONS[$log->action];
         $actor = $log->actor;
-        $reasonAllowed = str_starts_with($log->action, 'scholarship.') || in_array($log->action, ['provider.reviewed', 'external_count.approve', 'external_count.reject', 'external_count.correct', 'external_count.reverify', 'award.publish', 'award.unpublish'], true);
+        $reasonAllowed = str_starts_with($log->action, 'scholarship.') || in_array($log->action, ['provider.reviewed', 'award.publish', 'award.unpublish'], true);
         $changes = $log->changes ?? [];
         $reason = $reasonAllowed && is_string($changes['reason'] ?? null) ? mb_substr($changes['reason'], 0, 2000) : null;
         $transition = [];

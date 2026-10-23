@@ -117,7 +117,7 @@ class AcademicTermAdministrationTest extends TestCase
             $record = match ($table) {
                 'scholarships' => Scholarship::factory()->create(['academic_term_id' => $term->id]),
                 'applications' => Application::factory()->create(['academic_term_id' => $term->id]),
-                'scholarship_awards' => ScholarshipAward::factory()->create(['academic_term_id' => $term->id]),
+                'scholarship_grants' => ScholarshipAward::factory()->create(['academic_term_id' => $term->id]),
                 'renewals' => Renewal::factory()->create(['academic_term_id' => $term->id]),
                 'payments' => BenefitRelease::factory()->create(['academic_term_id' => $term->id]),
             };

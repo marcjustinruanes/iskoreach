@@ -7,12 +7,10 @@ use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\Application;
 use App\Models\BenefitRelease;
-use App\Models\ExternalApplicantCount;
 use App\Models\ProviderProfile;
 use App\Models\Renewal;
 use App\Models\Scholarship;
 use App\Models\ScholarshipAward;
-use App\Models\StudentVerification;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
@@ -35,8 +33,7 @@ class DashboardController extends Controller
 
         return Inertia::render('admin/Dashboard', [
             'summary' => [
-                'pending_student_verifications' => StudentVerification::where('status', 'pending')->whereHas('user', fn ($query) => $query->where('role', UserRole::Student))->count(),
-                'applications' => Application::withTrashed()->whereNotNull('submitted_at')->whereIn('status', ['submitted', 'under_review', 'accepted', 'rejected', 'waitlisted'])->whereHas('student', fn ($query) => $query->where('role', UserRole::Student))->count(),
+                'applications' => Application::withTrashed()->whereNotNull('submitted_at')->whereIn('status', ['submitted', 'under_review', 'accepted', 'rejected', 'waitlisted'])->withValidApplicant()->count(),
                 'active_awards' => ScholarshipAward::query()->active()->count(),
                 'pending_renewals' => Renewal::query()->where('status', 'submitted')->count(),
                 'pending_releases' => BenefitRelease::query()->whereIn('status', ['pending', 'processing', 'delayed', 'failed'])->count(),
@@ -54,8 +51,6 @@ class DashboardController extends Controller
             'reviewQueues' => [
                 'providers' => (clone $providers)->where('verification_status', 'pending')->oldest('created_at')->orderBy('id')->limit(3)->get()
                     ->map(fn ($item): array => ['id' => $item->id, 'label' => $item->organization_name ?: 'Organization details incomplete', 'created_at' => $item->created_at->toIso8601String(), 'url' => route('admin.providers.show', $item)]),
-                'students' => StudentVerification::where('status', 'pending')->whereHas('user', fn ($query) => $query->where('role', UserRole::Student))->with('user:id,name')->oldest('created_at')->orderBy('id')->limit(3)->get()
-                    ->map(fn ($item): array => ['id' => $item->id, 'label' => $item->user->name, 'created_at' => $item->created_at->toIso8601String(), 'url' => route('admin.student-verifications.show', $item)]),
             ],
             'recentProviders' => (clone $providers)->latest('created_at')->orderByDesc('id')->limit(5)->get()
                 ->map(fn (ProviderProfile $profile): array => [
@@ -84,7 +79,6 @@ class DashboardController extends Controller
                     'reference' => match ($log->subject_type) {
                         ProviderProfile::class => 'Provider account #'.$log->subject_id,
                         User::class => 'Account #'.$log->subject_id,
-                        ExternalApplicantCount::class => 'External count report #'.$log->subject_id,
                         ScholarshipAward::class => 'Award #'.$log->subject_id,
                         default => 'Platform record',
                     },

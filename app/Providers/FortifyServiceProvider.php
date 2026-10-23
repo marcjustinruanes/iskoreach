@@ -38,7 +38,6 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Fortify::verifyEmailView(fn () => Inertia::render('VerifyEmail'));
         Fortify::loginView(fn () => Inertia::render('Auth', ['mode' => 'login']));
         Fortify::registerView(fn (Request $request) => Inertia::render('Auth', app(ProviderRegistration::class)->page($request->query('account') === 'provider' ? 'provider' : 'student')));
         Fortify::requestPasswordResetLinkView(fn () => Inertia::render('Auth', ['mode' => 'forgot']));
@@ -51,6 +50,9 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::updateUserPasswordsUsing(UpdateUserPassword::class);
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
         Fortify::redirectUserForTwoFactorAuthenticationUsing(RedirectIfTwoFactorAuthenticatable::class);
+
+        RateLimiter::for('google-auth', fn (Request $request) => Limit::perMinute(20)->by('google-auth|'.$request->ip()));
+        RateLimiter::for('google-link', fn (Request $request) => Limit::perMinute(5)->by('google-link|'.$request->ip()));
 
         RateLimiter::for('login', function (Request $request) {
             $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());

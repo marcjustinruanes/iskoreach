@@ -53,9 +53,8 @@ class ProviderReviewController extends Controller
         return Inertia::render('admin/ProviderDetails', [
             'provider' => [
                 ...$this->providerData($providerProfile),
-                'registration_details' => $providerProfile->only(ProviderRegistration::FIELDS),
+                'registration_details' => $providerProfile->only(ProviderRegistration::FIELDS) + ['coverage_areas' => collect($providerProfile->coverage_areas ?? [])->map(fn (array $area): string => $area['scope'] === 'nationwide' ? 'Nationwide' : implode(' / ', array_filter([$area['region_name'] ?? null, $area['province_name'] ?? null, $area['city_name'] ?? null])))->implode('; ')],
                 'registration_version' => $providerProfile->registration_version,
-                'email_verified' => $providerProfile->user->hasVerifiedEmail(),
                 'documents_available' => $providerProfile->registration_version === 0 || app(ProviderRegistration::class)->documentsAreAvailable($providerProfile),
                 'documents' => collect($providerProfile->verification_documents ?? [])->map(fn (array $document, string $kind): array => ['kind' => $kind, 'name' => $document['name'], 'url' => route('provider-verification.show', [$providerProfile, $kind])])->values(),
                 'verification_version' => $providerProfile->verification_version,
@@ -98,8 +97,8 @@ class ProviderReviewController extends Controller
                     'verification_status' => 'The provider must complete their organization name and contact email before approval.',
                 ]);
             }
-            if ($after === ProviderVerificationStatus::Approved && $profile->registration_version > 0 && (! $profile->user->hasVerifiedEmail() || ! $request->boolean('documents_reviewed') || ! app(ProviderRegistration::class)->documentsAreAvailable($profile))) {
-                throw ValidationException::withMessages(['verification_status' => 'Verify the account email, download and review the required documents, and confirm document review before approval.']);
+            if ($after === ProviderVerificationStatus::Approved && $profile->registration_version > 0 && (! $request->boolean('documents_reviewed') || ! app(ProviderRegistration::class)->documentsAreAvailable($profile))) {
+                throw ValidationException::withMessages(['verification_status' => 'Download and review the required documents, and confirm document review before approval.']);
             }
             if ($before === $after) {
                 return false;

@@ -21,10 +21,10 @@ export function Button({ variant = 'primary', size = 'md', loading = false, chil
         {loading && <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />}{children}
     </button>;
 }
-export function Input({ label, error, hint, id, className = '', ...props }: InputHTMLAttributes<HTMLInputElement> & { label: string; error?: string; hint?: string }) {
+export function Input({ label, error, hint, id, className = '', prefix, ...props }: InputHTMLAttributes<HTMLInputElement> & { label: string; error?: string; hint?: string; prefix?: string }) {
     const generatedId = useId(); const fieldId = id || generatedId;
     return <div><label htmlFor={fieldId} className="mb-2 block text-sm font-semibold leading-5 text-civic-ink">{label}</label>
-        <input {...props} id={fieldId} aria-invalid={Boolean(error)} aria-describedby={error || hint ? fieldId + '-help' : undefined} className={'min-h-11 w-full rounded-lg border bg-white px-3.5 py-2.5 text-base leading-6 text-civic-ink focus:border-civic-teal focus:outline-2 focus:outline-offset-2 focus:outline-civic-teal disabled:bg-civic-panel ' + (error ? 'border-civic-danger bg-red-50/30 ' : 'border-civic-border ') + className} />
+        <div className="relative">{prefix && <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center border-r border-civic-border px-3 text-base text-civic-ink">{prefix}</span>}<input {...props} id={fieldId} aria-invalid={Boolean(error)} aria-describedby={error || hint ? fieldId + '-help' : undefined} className={'min-h-11 w-full rounded-lg border bg-white py-2.5 text-base leading-6 text-civic-ink focus:border-civic-teal focus:outline-2 focus:outline-offset-2 focus:outline-civic-teal disabled:bg-civic-panel ' + (prefix ? 'pl-16 pr-3.5 ' : 'px-3.5 ') + (error ? 'border-civic-danger bg-red-50/30 ' : 'border-civic-border ') + className} /></div>
         {(error || hint) && <p id={fieldId + '-help'} role={error ? 'alert' : undefined} className={'mt-2 text-sm leading-6 ' + (error ? 'text-civic-danger' : 'text-civic-muted')}>{error || hint}</p>}
     </div>;
 }

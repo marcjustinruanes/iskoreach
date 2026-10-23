@@ -9,6 +9,16 @@ use Illuminate\Validation\Rules\Password;
 
 class InputRules
 {
+    public static function contactNumber(string $value): string
+    {
+        $value = preg_replace('/[ ()-]/', '', $value);
+        if (preg_match('/^0([0-9]{10})$/D', $value, $matches) || preg_match('/^(?:63)?([0-9]{10})$/D', $value, $matches)) {
+            return '+63'.$matches[1];
+        }
+
+        return $value;
+    }
+
     /** Normalize only explicitly selected text fields; passwords are never included. */
     public static function normalize(array $input, array $fields, array $emails = []): array
     {
@@ -33,7 +43,7 @@ class InputRules
         }];
     }
 
-    public static function email(?int $ignoreUser = null, bool $unique = false): array
+    public static function email(?int $ignoreUser = null, bool $unique = false, bool $gmail = false): array
     {
         $rules = ['bail', 'required', 'string', 'max:255', 'email', function (string $attribute, mixed $value, Closure $fail): void {
             $domain = substr(strrchr($value, '@') ?: '', 1);
@@ -41,6 +51,13 @@ class InputRules
                 $fail('Enter an email address without spaces and with a complete domain, such as name@example.com.');
             }
         }];
+        if ($gmail) {
+            $rules[] = function (string $attribute, mixed $value, Closure $fail): void {
+                if (! Str::endsWith(Str::lower($value), '@gmail.com')) {
+                    $fail('Use an @gmail.com email address.');
+                }
+            };
+        }
         if ($unique) {
             $rules[] = function (string $attribute, mixed $value, Closure $fail) use ($ignoreUser): void {
                 if (User::query()->when($ignoreUser !== null, fn ($query) => $query->whereKeyNot($ignoreUser))

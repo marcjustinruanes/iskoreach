@@ -15,13 +15,12 @@ class StudentScholarshipBrowseTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_student_catalog_routes_require_a_verified_student_account(): void
+    public function test_student_catalog_routes_require_a_student_account(): void
     {
         foreach (['/student/scholarships', '/student/scholarships/example'] as $path) {
             $this->get($path)->assertRedirect('/login');
             $this->actingAs(User::factory()->create(['role' => UserRole::Admin]))->get($path)->assertForbidden();
             $this->actingAs(ProviderProfile::factory()->create()->user)->get($path)->assertForbidden();
-            $this->actingAs(User::factory()->unverified()->create(['requires_email_verification' => true]))->get($path)->assertRedirect('/email/verify');
             $this->post('/logout');
         }
     }

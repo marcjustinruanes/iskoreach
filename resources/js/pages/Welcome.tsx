@@ -1,3 +1,4 @@
+import LocationSearchPicker from '../components/LocationSearchPicker';
 import { Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
 import { ArrowRight, Search } from 'lucide-react';
@@ -23,7 +24,7 @@ export default function Welcome({ auth, recentScholarships, publicStats }: Share
             <LandingHero stats={publicStats}>
                 <form aria-label="Find scholarships" className="space-y-4" onSubmit={event => { event.preventDefault(); if (!request.begin()) return; form.get('/scholarships', { onFinish: request.finish }); }}>
                     <Input label="Scholarship or provider" id="scholarship-search" name="q" type="search" maxLength={200} value={form.data.q} onChange={event => form.setData('q', event.target.value)} placeholder="Search programs or organizations" error={form.errors.q} />
-                    <Input label="Region or city / municipality" name="location" maxLength={100} value={form.data.location} onChange={event => form.setData('location', event.target.value)} placeholder="Explore any location" error={form.errors.location} />
+                    <LocationSearchPicker value={form.data.location} onChange={value => form.setData('location', value)} error={form.errors.location} />
                     <Button type="submit" loading={form.processing} className="w-full"><Search aria-hidden="true" className="size-4" />Find scholarships</Button>
                     {request.error && <p role="alert" className="text-sm text-civic-danger">{request.error}</p>}
                 </form>
@@ -36,7 +37,7 @@ export default function Welcome({ auth, recentScholarships, publicStats }: Share
             </div></section>
             <LandingJourney /><LandingStudentTools /><LandingProviders accountHref={providerHref} onReview={() => setVerificationOpen(true)} />
         </main>
-        <Modal open={verificationOpen} onClose={() => setVerificationOpen(false)} title="Provider approval process" description="The account approval process already available in IskoReach."><ol className="list-decimal space-y-3 pl-5 text-sm leading-6"><li>Register as a provider and enter your organization details.</li><li>Your account starts with pending approval.</li><li>An administrator reviews your organization and approves or rejects access.</li><li>After approval, you can publish scholarships, review submitted applications, and manage confirmed awards in the provider workspace.</li></ol></Modal>
+        <Modal open={verificationOpen} onClose={() => setVerificationOpen(false)} title="Provider approval process" description="The account approval process already available in IskoReach."><ol className="list-decimal space-y-3 pl-5 text-sm leading-6"><li>Register as a provider and enter your organization details.</li><li>Your account starts with pending approval.</li><li>An administrator reviews your organization and approves or rejects access.</li><li>After approval, you can publish scholarships, review submitted applications, and manage confirmed grants in the provider workspace.</li></ol></Modal>
     </PublicLayout>;
 }
 

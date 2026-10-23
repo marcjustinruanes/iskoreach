@@ -31,14 +31,14 @@ class PublicPassersSeederTest extends TestCase
         $award = ScholarshipAward::firstOrFail();
         $award->forceFill(['public_listing_consented_at' => null])->save();
         $this->seed(PublicPassersSeeder::class);
-        $this->assertDatabaseCount('scholarship_awards', 50);
-        $this->assertDatabaseCount('users', 70);
+        $this->assertDatabaseCount('scholarship_grants', 50);
+        $this->assertDatabaseCount('accounts', 70);
         $this->assertDatabaseCount('applications', 68);
-        $this->assertDatabaseHas('users', ['name' => 'Alessandra Cabrera']);
+        $this->assertDatabaseHas('accounts', ['name' => 'Alessandra Cabrera']);
         $this->assertSame(10, Application::where('status', 'rejected')->count());
         $this->assertSame(8, Application::where('status', 'submitted')->whereNull('reviewed_at')->count());
         $this->assertSame(0, ScholarshipAward::whereHas('application', fn ($query) => $query->whereIn('status', ['rejected', 'submitted']))->count());
-        $this->assertDatabaseHas('users', ['id' => $existing->id]);
+        $this->assertDatabaseHas('accounts', ['id' => $existing->id]);
         $this->assertNull($award->fresh()->public_listing_consented_at);
         $this->assertSame(49, ScholarshipAward::publiclyListed()->count());
     }
@@ -52,7 +52,7 @@ class PublicPassersSeederTest extends TestCase
         } catch (RuntimeException $exception) {
             $this->assertStringContainsString('conflicts', $exception->getMessage());
         }
-        $this->assertDatabaseCount('users', 1);
+        $this->assertDatabaseCount('accounts', 1);
         $this->assertDatabaseCount('scholarships', 0);
         $this->assertSame($user->name, $user->fresh()->name);
     }

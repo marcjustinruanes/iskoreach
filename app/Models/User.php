@@ -4,7 +4,6 @@ namespace App\Models;
 
 use App\Enums\UserRole;
 use Database\Factories\UserFactory;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,18 +13,15 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 #[Fillable(['name', 'email', 'password'])]
-#[Hidden(['password', 'remember_token', 'email_code_hash', 'email_code_expires_at', 'email_code_sent_at', 'email_code_attempts'])]
-class User extends Authenticatable implements MustVerifyEmail
+#[Hidden(['password', 'google_subject'])]
+class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
-    public function sendEmailVerificationNotification(): void
-    {
-        if ($this->requires_email_verification) {
-            parent::sendEmailVerificationNotification();
-        }
-    }
+    protected $rememberTokenName = '';
+
+    protected $table = 'accounts';
 
     public function studentProfile(): HasOne
     {
@@ -51,7 +47,6 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return [
             'role' => UserRole::class,
-            'email_verified_at' => 'datetime', 'requires_email_verification' => 'boolean', 'terms_accepted_at' => 'datetime', 'privacy_accepted_at' => 'datetime',
             'password' => 'hashed',
         ];
     }

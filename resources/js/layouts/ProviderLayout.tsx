@@ -32,13 +32,12 @@ export default function ProviderLayout({ title, description, actions, children }
                 { label: 'My scholarships', href: '/provider/scholarships', icon: GraduationCap },
                 { label: 'Applicants', href: '/provider/applications', icon: UsersRound },
                 { label: 'Applicant counts', href: context.counts, icon: ChartNoAxesCombined },
-                { label: 'Existing scholarships', href: '/declarations', icon: FileText },
             ] },
             { label: 'Communication', icon: MessagesSquare, expandable: true, items: [
                 { label: 'Messages', href: '/messages', icon: MessagesSquare },
                 { label: 'Announcements', href: '/scholarship-announcements', icon: Megaphone },
             ] },
-            { label: 'Awards & renewals', icon: Award, expandable: true, items: [
+            { label: 'Grants & renewals', icon: Award, expandable: true, items: [
                 { label: 'Public passers', href: '/passers', icon: GraduationCap },
                 { label: 'Scholars & benefits', href: '/benefits', icon: Award },
                 { label: 'Semester renewals', href: '/renewals', icon: CalendarClock },

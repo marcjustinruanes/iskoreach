@@ -6,26 +6,21 @@ use App\Models\AcademicTerm;
 use App\Models\Application;
 use App\Models\ApplicationDocument;
 use App\Models\BenefitRelease;
-use App\Models\ExternalApplicantCount;
 use App\Models\ProviderProfile;
 use App\Models\Scholarship;
 use App\Models\ScholarshipAward;
-use App\Models\ScholarshipDeclaration;
 use App\Models\ScholarshipRequirement;
 use App\Models\StudentDocument;
 use App\Models\StudentProfile;
 use App\Models\User;
 use App\Notifications\RenewalActivity;
-use App\Services\ApplicantCounts;
 use App\Services\ApplicationWorkflow;
-use App\Services\AwardBenefits;
 use App\Services\PhilippineLocations;
 use App\Services\PrivateDocuments;
 use App\Services\RenewalWorkflow;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Notifications\SendQueuedNotifications;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -54,10 +49,6 @@ class ScholarshipWorkflowCompletionTest extends TestCase
 
     public function test_new_workflows_require_authentication_before_reading_or_changing_records(): void
     {
-        $this->get('/declarations')->assertRedirect('/login');
-        $this->get('/declarations/1/evidence')->assertRedirect('/login');
-        $this->post('/declarations')->assertRedirect('/login');
-        $this->patch('/declarations/1')->assertRedirect('/login');
         $this->get('/scholarship-announcements')->assertRedirect('/login');
         $this->post('/scholarship-announcements/1')->assertRedirect('/login');
         $this->patch('/document-reviews/1')->assertRedirect('/login');
@@ -100,52 +91,6 @@ class ScholarshipWorkflowCompletionTest extends TestCase
             $base.'/regions/040000000/provinces/' => Http::response([['code' => '042100000', 'name' => 'Cavite', 'regionCode' => '040000000']])]);
         $this->getJson('/locations/regions/040000000/provinces')->assertOk()->assertJsonPath('data.0.name', 'Cavite');
         $this->getJson('/locations/regions/990000000/provinces')->assertUnprocessable();
-    }
-
-    public function test_declarations_are_private_provider_scoped_verified_and_do_not_impose_unconfigured_priority(): void
-    {
-        Storage::fake('documents');
-        $student = StudentProfile::factory()->create()->user;
-        $program = $this->program(['accepts_existing_scholars' => true, 'require_verified_declarations' => true]);
-        $document = $this->document($student);
-        $payload = ['name' => 'Outside Scholarship', 'provider_name' => 'External Foundation', 'starts_on' => now()->subMonth()->toDateString(), 'student_document_id' => $document->id];
-        $this->actingAs($student)->post('/declarations', $payload + ['status' => 'verified'])->assertSessionHasNoErrors();
-        $declaration = ScholarshipDeclaration::firstOrFail();
-        $this->post('/declarations', $payload)->assertSessionHasErrors('name');
-        $application = app(ApplicationWorkflow::class)->start($student, $program);
-        $this->patch('/student/applications/'.$application->id.'/submit', $this->submit($application))->assertSessionHasErrors('application');
-        $this->actingAs(StudentProfile::factory()->create()->user)->get('/declarations/'.$declaration->id.'/evidence')->assertForbidden();
-        $outsider = ProviderProfile::factory()->create(['verification_status' => 'approved'])->user;
-        $review = ['status' => 'verified', 'reason' => 'Checked original evidence', 'confirmed' => true];
-        $this->actingAs($outsider)->patch('/declarations/'.$declaration->id, $review)->assertForbidden();
-        $this->get('/declarations/'.$declaration->id.'/evidence')->assertForbidden();
-        $provider = $program->provider->user;
-        $this->actingAs($provider)->get('/declarations/'.$declaration->id.'/evidence')->assertOk();
-        $this->patch('/declarations/'.$declaration->id, $review)->assertSessionHasNoErrors();
-        $this->patch('/declarations/'.$declaration->id, $review)->assertSessionHasNoErrors();
-        $this->assertSame(1, $student->notifications()->count());
-        $this->assertDatabaseHas('scholarship_declaration_reviews', ['provider_id' => $program->provider_id, 'status' => 'verified']);
-        $this->actingAs($student)->patch('/student/applications/'.$application->id.'/submit', $this->submit($application->fresh()))->assertSessionHasNoErrors();
-        $this->assertFalse($application->fresh()->low_priority);
-        $this->assertTrue($application->fresh()->has_existing_scholarship);
-        $this->assertSame('verified', $application->fresh()->declaration_snapshot[0]['verification']);
-        $different = $this->program(['accepts_existing_scholars' => true, 'require_verified_declarations' => true]);
-        $this->assertTrue(app(ApplicationWorkflow::class)->context($student, $different)['verification_blocked']);
-    }
-
-    public function test_outside_scholarships_block_incompatible_programs_and_explicit_priority_requires_confirmation(): void
-    {
-        Storage::fake('documents');
-        $student = StudentProfile::factory()->create()->user;
-        $document = $this->document($student);
-        $this->actingAs($student)->post('/declarations', ['name' => 'Existing award', 'provider_name' => 'Awarding organization', 'starts_on' => now()->subDay()->toDateString(), 'student_document_id' => $document->id])->assertSessionHasNoErrors();
-        $blocked = app(ApplicationWorkflow::class)->start($student, $this->program());
-        $this->patch('/student/applications/'.$blocked->id.'/submit', $this->submit($blocked))->assertSessionHasErrors('application');
-        $allowed = app(ApplicationWorkflow::class)->start($student, $this->program(['accepts_existing_scholars' => true, 'existing_scholars_low_priority' => true]));
-        $this->patch('/student/applications/'.$allowed->id.'/submit', $this->submit($allowed))->assertSessionHasErrors('conflict_confirmed');
-        $this->patch('/student/applications/'.$allowed->id.'/submit', $this->submit($allowed) + ['conflict_confirmed' => true])->assertSessionHasNoErrors();
-        $this->assertTrue($allowed->fresh()->low_priority);
-        $this->assertNull($blocked->fresh()->submitted_at);
     }
 
     public function test_announcements_notify_students_once_and_reject_other_providers_and_students(): void
@@ -194,7 +139,7 @@ class ScholarshipWorkflowCompletionTest extends TestCase
         $this->actingAs($application->student)->patch('/document-reviews/'.$attachment->id, $data)->assertForbidden();
         $this->actingAs(ProviderProfile::factory()->create(['verification_status' => 'approved'])->user)->patch('/document-reviews/'.$attachment->id, $data)->assertForbidden();
         $this->actingAs($program->provider->user)->patch('/document-reviews/'.$attachment->id, $data)->assertSessionHasNoErrors();
-        $this->assertDatabaseHas('application_documents', ['id' => $attachment->id, 'review_status' => 'rejected']);
+        $this->assertDatabaseHas('document_submissions', ['id' => $attachment->id, 'review_status' => 'rejected']);
         $this->assertSame(1, $application->student->notifications()->count());
         $this->patch('/provider/applications/'.$application->id, ['version' => $application->fresh()->workflow_version, 'status' => 'accepted', 'reason' => 'Acceptance with invalid document', 'confirmed' => true])->assertSessionHasErrors('status');
         $this->patch('/document-reviews/'.$attachment->id, ['status' => 'approved', 'reason' => 'Verified correct semester', 'confirmed' => true])->assertSessionHasNoErrors();
@@ -220,44 +165,6 @@ class ScholarshipWorkflowCompletionTest extends TestCase
         $this->post('/benefits/'.$award->id.'/releases', ['action' => 'release_create', 'version' => $award->fresh()->workflow_version, 'academic_term_id' => $term->id, 'amount' => '1000.00', 'currency' => 'PHP', 'submission_token' => (string) Str::uuid(), 'reason' => 'Approved renewed term benefit', 'confirmed' => true])->assertSessionHasNoErrors();
         $this->assertDatabaseHas('payments', ['academic_term_id' => $term->id, 'status' => 'pending']);
         Queue::assertPushed(SendQueuedNotifications::class);
-    }
-
-    public function test_csv_import_deduplicates_and_excludes_internal_waitlisted_applicants_without_retaining_identities(): void
-    {
-        $program = $this->program();
-        $internal = Application::factory()->create(['scholarship_id' => $program->id, 'status' => 'waitlisted']);
-        $data = ['source_label' => 'Authorized form CSV export', 'source_as_of' => now()->toDateString(), 'submission_token' => (string) Str::uuid(), 'confirmed' => true];
-        $csv = "email,ignored_column\n".$internal->student->email.",private\nexternal@example.test,private\nEXTERNAL@example.test,private\nother@example.test,private\n";
-        $this->actingAs($program->provider->user)->post('/provider/applicant-counts/'.$program->id.'/import', $data + ['file' => UploadedFile::fake()->createWithContent('responses.csv', $csv)])->assertSessionHasNoErrors();
-        $this->post('/provider/applicant-counts/'.$program->id.'/import', $data + ['file' => UploadedFile::fake()->createWithContent('responses.csv', $csv)])->assertSessionHasNoErrors();
-        $this->assertDatabaseCount('external_applicant_counts', 1);
-        $report = ExternalApplicantCount::firstOrFail();
-        $this->assertSame(2, $report->reported_count);
-        $this->assertSame('pending', $report->status);
-        $this->get('/provider/applicant-counts/'.$program->id)->assertInertia(fn (Assert $page) => $page->where('reports.data.0.import_summary', ['source_rows' => 4, 'unique_emails' => 3, 'duplicate_rows' => 1, 'internal_matches' => 1, 'external_count' => 2]));
-        $this->assertSame(1, app(ApplicantCounts::class)->summary($program)['public_count']);
-        $this->assertDatabaseCount('applications', 1);
-        $this->assertStringNotContainsString('external@example.test', json_encode($report->toArray()));
-        $this->assertStringNotContainsString('external@example.test', json_encode(DB::table('activity_logs')->get()));
-        $summary = app(ApplicantCounts::class)->summary($program);
-        $this->actingAs(User::factory()->create(['role' => 'admin']))->patch('/admin/external-counts/'.$report->id, ['decision' => 'approve', 'duplicates_checked' => true, 'expected_snapshot' => $summary['review_token']])->assertSessionHasNoErrors();
-        $this->assertSame(3, app(ApplicantCounts::class)->summary($program)['public_count']);
-        $this->get('/scholarships/'.$program->slug)->assertInertia(fn (Assert $page) => $page->where('scholarship.applicant_count', 3)->where('scholarship.external_count', 2));
-
-        $this->actingAs(ProviderProfile::factory()->create(['verification_status' => 'approved'])->user)->post('/provider/applicant-counts/'.$program->id.'/import', $data + ['file' => UploadedFile::fake()->createWithContent('responses.csv', $csv)])->assertForbidden();
-        $this->actingAs($internal->student)->post('/provider/applicant-counts/'.$program->id.'/import', $data)->assertForbidden();
-    }
-
-    public function test_csv_import_rejects_invalid_emails_headers_and_missing_confirmation_without_a_report(): void
-    {
-        $program = $this->program();
-        $this->actingAs($program->provider->user);
-        $data = ['source_label' => 'Form source', 'source_as_of' => now()->toDateString(), 'submission_token' => (string) Str::uuid(), 'confirmed' => true];
-        foreach (["name\nSomeone\n", "email\nnot-an-email\n", "email,email\na@example.test,b@example.test\n"] as $csv) {
-            $this->post('/provider/applicant-counts/'.$program->id.'/import', $data + ['file' => UploadedFile::fake()->createWithContent('responses.csv', $csv)])->assertSessionHasErrors('file');
-        }
-        $this->post('/provider/applicant-counts/'.$program->id.'/import', array_replace($data, ['confirmed' => false, 'file' => UploadedFile::fake()->createWithContent('responses.csv', "email\na@example.test\n")]))->assertSessionHasErrors('confirmed');
-        $this->assertDatabaseCount('external_applicant_counts', 0);
     }
 
     public function test_city_coverage_keeps_verified_province_metadata_for_province_search(): void
@@ -311,18 +218,6 @@ class ScholarshipWorkflowCompletionTest extends TestCase
         $this->get('/passers')->assertInertia(fn (Assert $page) => $page->where('passers.total', 0));
         $this->assertDatabaseCount('payments', 0);
         Queue::assertPushed(SendQueuedNotifications::class);
-    }
-
-    public function test_award_creation_rechecks_future_declared_scholarship_overlap(): void
-    {
-        Storage::fake('documents');
-        $program = $this->program();
-        $application = Application::factory()->create(['scholarship_id' => $program->id, 'status' => 'accepted']);
-        $file = $this->document($application->student);
-        $this->actingAs($application->student)->post('/declarations', ['name' => 'Future outside award', 'provider_name' => 'Other foundation', 'starts_on' => now()->addMonth()->toDateString(), 'student_document_id' => $file->id])->assertSessionHasNoErrors();
-        $term = AcademicTerm::factory()->create();
-        $this->actingAs($program->provider->user)->post('/benefits/applications/'.$application->id, ['action' => 'award_create', 'version' => $application->fresh()->workflow_version, 'academic_term_id' => $term->id, 'starts_on' => now()->toDateString(), 'ends_on' => now()->addMonths(3)->toDateString(), 'reason' => 'Attempt overlapping award', 'context_token' => app(AwardBenefits::class)->context($application)['token'], 'confirmed' => true])->assertSessionHasErrors('workflow');
-        $this->assertDatabaseCount('scholarship_awards', 0);
     }
 
     public function test_delayed_and_failed_releases_can_retry_but_released_records_are_final_and_private(): void

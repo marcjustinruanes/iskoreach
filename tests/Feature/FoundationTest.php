@@ -31,15 +31,15 @@ class FoundationTest extends TestCase
         $this->assertAuthenticatedAs($user);
         $this->assertSame(UserRole::Student, $user->role);
         $this->assertFalse(Gate::forUser($user)->allows('access-provider'));
-        $this->get('/dashboard')->assertRedirect('/email/verify');
-        $this->get('/student/dashboard')->assertRedirect('/email/verify');
+        $this->get('/dashboard')->assertRedirect('/student/registration-status');
+        $this->get('/student/dashboard')->assertRedirect('/student/registration-status');
     }
 
     public function test_registration_is_validated(): void
     {
         $this->post('/register', ['name' => '', 'email' => 'invalid', 'password' => 'x'])
             ->assertSessionHasErrors(['first_name', 'surname', 'email', 'password']);
-        $this->assertDatabaseCount('users', 0);
+        $this->assertDatabaseCount('accounts', 0);
     }
 
     public function test_login_logout_and_invalid_credentials(): void

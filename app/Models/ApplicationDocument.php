@@ -4,13 +4,20 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable(['application_id', 'scholarship_requirement_id', 'student_document_id', 'version', 'requirement_snapshot', 'checklist_completed_at'])]
-class ApplicationDocument extends Model
+class ApplicationDocument extends DocumentSubmission
 {
     use HasFactory;
+
+    protected $attributes = ['submission_type' => 'new_application'];
+
+    protected static function booted(): void
+    {
+        parent::booted();
+        static::addGlobalScope('submission_type', fn ($query) => $query->where('document_submissions.submission_type', 'new_application'));
+    }
 
     protected function casts(): array
     {

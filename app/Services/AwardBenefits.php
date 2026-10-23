@@ -23,9 +23,7 @@ class AwardBenefits
     {
         $awards = ScholarshipAward::whereHas('application', fn ($query) => $query->where('student_id', $application->student_id))->orderBy('id')->get(['id', 'status', 'starts_on', 'ends_on', 'revoked_at', 'workflow_version']);
 
-        $declarations = app(ScholarshipNotices::class)->declarations($application->student, $application->scholarship);
-
-        return ['declared_count' => count($declarations), 'count' => $awards->where('status', AwardStatus::Active)->count(), 'token' => hash_hmac('sha256', json_encode([$application->id, $application->workflow_version, $application->scholarship->accepts_existing_scholars, $awards->toArray(), $declarations]), config('app.key'))];
+        return ['count' => $awards->where('status', AwardStatus::Active)->count(), 'token' => hash_hmac('sha256', json_encode([$application->id, $application->workflow_version, $application->scholarship->accepts_existing_scholars, $awards->toArray()]), config('app.key'))];
     }
 
     private function check(bool $condition, string $message): void
@@ -41,6 +39,7 @@ class AwardBenefits
         $provider = ProviderProfile::query()->lockForUpdate()->findOrFail($program->provider_id);
         abort_unless($user->role->value === 'provider' && $provider->user_id === $user->id && $provider->isApproved(), 403);
         $program = Scholarship::withTrashed()->lockForUpdate()->findOrFail($program->id);
+        $this->check($application->applicant_source === 'internal', 'A scholarship grant requires a registered student account.');
         User::query()->lockForUpdate()->findOrFail($application->student_id);
         $item = Application::withTrashed()->lockForUpdate()->findOrFail($application->id);
         $this->check(! $item->trashed() && ! $program->trashed() && $item->status->value === 'accepted' && $item->submitted_at !== null && $item->student->role->value === 'student', 'This operation requires a current accepted student application and current scholarship.');
@@ -58,9 +57,7 @@ class AwardBenefits
             $slots = $item->scholarship->eligibility_rules['provider_settings']['slots'] ?? null;
             $allocated = ScholarshipAward::whereHas('application', fn ($query) => $query->where('scholarship_id', $item->scholarship_id))->whereIn('status', ['active', 'suspended'])->count();
             $this->check($slots === null || $allocated < $slots, 'All configured scholarship award slots are allocated.');
-            $declarations = app(ScholarshipNotices::class)->declarations($item->student, $item->scholarship, $data['starts_on'], $data['ends_on'] ?? null);
-            $this->check(! $item->scholarship->require_verified_declarations || collect($declarations)->every(fn (array $row): bool => $row['verification'] === 'verified'), 'Declared scholarships require verification by this provider.');
-            $overlap = count($declarations) > 0 || ScholarshipAward::where('status', 'active')->whereNull('revoked_at')->whereHas('application', fn ($query) => $query->where('student_id', $item->student_id)->where('status', 'accepted')->whereNotNull('submitted_at'))
+            $overlap = ScholarshipAward::where('status', 'active')->whereNull('revoked_at')->whereHas('application', fn ($query) => $query->where('student_id', $item->student_id)->where('status', 'accepted')->whereNotNull('submitted_at'))
                 ->where(fn ($query) => $query->whereNull('ends_on')->orWhereDate('ends_on', '>=', $data['starts_on']))
                 ->when($data['ends_on'] ?? null, fn ($query, $end) => $query->whereDate('starts_on', '<=', $end))->exists();
             $this->check(! $overlap || $item->scholarship->accepts_existing_scholars, 'This program disallows an overlapping award for an existing scholar.');
@@ -91,7 +88,7 @@ class AwardBenefits
             if ($data['action'] === 'award_resume') {
                 $this->check($item->status->value === 'suspended', 'Only a suspended award can resume.');
                 $context = app(ApplicationWorkflow::class)->context($item->application->student, $item->application->scholarship);
-                $this->check(! $context['conflict_blocked'] && ! $context['verification_blocked'], 'Resolve scholarship compatibility and declaration verification before resuming.');
+                $this->check(! $context['conflict_blocked'], 'Resolve scholarship compatibility before resuming.');
                 $this->check($item->ends_on === null || $item->ends_on->toDateString() >= now('Asia/Manila')->toDateString(), 'An expired award cannot resume without an approved coverage period.');
             }
             $item->status = match ($data['action']) {

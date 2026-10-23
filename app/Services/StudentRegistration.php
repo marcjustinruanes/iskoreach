@@ -2,39 +2,38 @@
 
 namespace App\Services;
 
+use App\Enums\EducationLevel;
+use App\Enums\NameSuffix;
+use App\Enums\Sex;
+use App\Enums\YearLevel;
 use App\Support\InputRules;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class StudentRegistration
 {
-    public const POLICY_VERSION = '2026-10-22-draft-3';
-
-    public const SUFFIXES = ['Jr.', 'Sr.', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
-
-    public const YEAR_LEVELS = [11, 12, 1, 2, 3, 4, 5, 6];
-
-    public const FIELDS = ['first_name', 'surname', 'middle_name', 'suffix', 'date_of_birth', 'sex', 'contact_number', 'student_number', 'school', 'campus', 'college', 'course', 'year_level', 'enrollment_status', 'region_code', 'province_code', 'city_code', 'barangay_code', 'street_address'];
+    public const FIELDS = ['first_name', 'surname', 'middle_name', 'suffix', 'date_of_birth', 'sex', 'contact_number', 'student_number', 'school', 'campus', 'campus_region_code', 'campus_province_code', 'campus_city_code', 'education_level', 'course', 'year_level', 'region_code', 'province_code', 'city_code', 'barangay_code', 'street_address'];
 
     /** @return array<string, array<int, mixed>> */
-    public function rules(): array
+    public function rules(array $input = []): array
     {
-        $optionalName = InputRules::name();
-        $optionalName[1] = 'nullable';
-
         return [
-            'first_name' => InputRules::name(), 'surname' => InputRules::name(), 'middle_name' => $optionalName,
-            'suffix' => ['nullable', 'string', Rule::in(self::SUFFIXES)],
+            'first_name' => InputRules::name(), 'surname' => InputRules::name(),
+            'no_middle_name' => ['sometimes', 'boolean'],
+            'middle_name' => ['nullable', ...array_map(fn ($rule) => $rule === 'required' ? Rule::requiredIf(! in_array($input['no_middle_name'] ?? false, [true, 1, '1'], true)) : $rule, InputRules::name())],
+            'suffix' => ['nullable', Rule::enum(NameSuffix::class)],
             'date_of_birth' => ['required', 'date_format:Y-m-d', 'before:today'],
-            'sex' => ['required', Rule::in(['female', 'male'])],
-            'contact_number' => ['required', 'string', 'regex:/^\+?[0-9]{7,15}$/D'],
+            'sex' => ['required', Rule::enum(Sex::class)],
+            'contact_number' => ['required', 'string', 'size:13', 'regex:/^\+63[0-9]{10}$/D'],
             'student_number' => ['required', 'string', 'max:80', InputRules::singleLine()],
             'school' => ['required', 'string', 'max:255', InputRules::singleLine()],
-            'campus' => ['nullable', 'string', 'max:255', InputRules::singleLine()],
-            'college' => ['required', 'string', 'max:255', InputRules::singleLine()],
-            'course' => ['required', 'string', 'max:255', InputRules::singleLine()],
-            'year_level' => ['required', 'integer', Rule::in(self::YEAR_LEVELS)],
-            'enrollment_status' => ['required', Rule::in(['enrolled', 'not_enrolled', 'on_leave', 'graduated'])],
+            'campus' => ['exclude'],
+            'campus_region_code' => ['required', 'string', 'regex:/^[0-9]{9}$/D'],
+            'campus_province_code' => ['required', 'string', 'regex:/^(?:[0-9]{9}|none)$/D'],
+            'campus_city_code' => ['required', 'string', 'regex:/^[0-9]{9}$/D'],
+            'education_level' => ['required', Rule::enum(EducationLevel::class)],
+            'course' => ['required', 'string', 'max:255', InputRules::singleLine(), Rule::exists('courses', 'name')->where('education_level', is_string($input['education_level'] ?? null) ? $input['education_level'] : '')],
+            'year_level' => ['required', 'integer', Rule::in(array_map(fn (YearLevel $year): int => $year->value, array_filter(YearLevel::cases(), fn (YearLevel $year): bool => $year->educationLevel()->value === ($input['education_level'] ?? null))))],
             'region_code' => ['required', 'string', 'regex:/^[0-9]{9}$/D'],
             'province_code' => ['required', 'string', 'regex:/^(?:[0-9]{9}|none)$/D'],
             'city_code' => ['required', 'string', 'regex:/^[0-9]{9}$/D'],
@@ -48,11 +47,30 @@ class StudentRegistration
     public function normalize(array $input): array
     {
         $input = InputRules::normalize($input, array_merge(self::FIELDS, ['name', 'email', 'organization_name']), ['email']);
+        if (in_array($input['no_middle_name'] ?? false, [true, 1, '1'], true)) {
+            $input['middle_name'] = null;
+        }
         if (isset($input['contact_number']) && is_string($input['contact_number'])) {
-            $input['contact_number'] = preg_replace('/[ ()-]/', '', $input['contact_number']);
+            $input['contact_number'] = InputRules::contactNumber($input['contact_number']);
         }
 
         return $input;
+    }
+
+    /** @param array<string, mixed> $data @return array{campus: string} */
+    public function campus(array $data): array
+    {
+        try {
+            $names = $this->address(['region_code' => $data['campus_region_code'], 'province_code' => $data['campus_province_code'], 'city_code' => $data['campus_city_code']], false);
+        } catch (ValidationException $error) {
+            throw ValidationException::withMessages(collect($error->errors())->mapWithKeys(fn (array $messages, string $field): array => ['campus_'.$field => $messages])->all());
+        }
+        $label = $names['city_name'].', '.($data['campus_province_code'] === 'none' ? $names['region_name'] : $names['province_name']);
+        if (mb_strlen($label) > 255) {
+            throw ValidationException::withMessages(['campus_city_code' => 'The selected campus location is too long to save. Contact the administrator.']);
+        }
+
+        return ['campus' => $label];
     }
 
     /** @param array<string, mixed> $data */

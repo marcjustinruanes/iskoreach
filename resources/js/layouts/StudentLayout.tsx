@@ -30,14 +30,13 @@ export default function StudentLayout({ title, description, actions, children }:
             { label: 'My applications', href: '/student/applications', icon: BookOpen },
             { label: 'Document requirements', href: '/student/requirements', icon: FileCheck2 },
             { label: 'My document vault', href: '/student/documents', icon: FolderOpen },
-            { label: 'Existing scholarships', href: '/declarations', icon: FileText },
         ] },
         { label: 'Updates', icon: Bell, expandable: true, items: [
             { label: 'Notifications', href: '/notifications', icon: Bell, count: unread },
             { label: 'Announcements', href: '/scholarship-announcements', icon: Megaphone },
         ] },
-        { label: 'Awards & renewals', icon: Award, expandable: true, items: [
-            { label: 'Awards & benefits', href: '/benefits', icon: Award },
+        { label: 'Grants & renewals', icon: Award, expandable: true, items: [
+            { label: 'Grants & benefits', href: '/benefits', icon: Award },
             { label: 'Semester renewals', href: '/renewals', icon: CalendarClock },
             { label: 'Public passers', href: '/passers', icon: GraduationCap },
             { label: 'Public listing consent', href: '/student/awards', icon: ShieldCheck },

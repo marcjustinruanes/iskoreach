@@ -22,7 +22,7 @@ class AccountNotifications
 {
     public function query(User $user): Builder
     {
-        return $user->notifications()->whereIn('type', [ApplicationActivity::class, ProviderVerificationDecision::class, ChatActivity::class, RenewalActivity::class, AwardBenefitActivity::class, ScholarshipNotice::class, 'student_verification'])->getQuery();
+        return $user->notifications()->whereIn('type', [ApplicationActivity::class, ProviderVerificationDecision::class, ChatActivity::class, RenewalActivity::class, AwardBenefitActivity::class, ScholarshipNotice::class])->getQuery();
     }
 
     public function summary(User $user): array
@@ -39,7 +39,7 @@ class AccountNotifications
 
     public function application(Application $application): void
     {
-        if ($application->submitted_at === null) {
+        if ($application->submitted_at === null || $application->applicant_source === 'external') {
             return;
         }
         $isSubmission = $application->status->value === 'submitted';
@@ -53,11 +53,7 @@ class AccountNotifications
     public function row(User $user, DatabaseNotification $notice): array
     {
         $url = null;
-        if ($notice->type === 'student_verification') {
-            $title = $notice->data['title'];
-            $message = $notice->data['message'];
-            $url = route('student.profile').'#verification';
-        } elseif ($notice->type === ScholarshipNotice::class) {
+        if ($notice->type === ScholarshipNotice::class) {
             $title = $notice->data['title'];
             $message = $notice->data['message'];
             $url = route('scholarship-announcements.index');

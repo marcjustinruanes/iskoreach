@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // No shared default credentials. Add intentional development data later.
+        $this->call(CourseSeeder::class);
+        $this->call(PolicyDocumentSeeder::class);
     }
 }

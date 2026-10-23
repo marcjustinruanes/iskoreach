@@ -81,6 +81,6 @@ class ProviderWorkspaceCompletionTest extends TestCase
         $second = Application::factory()->create(['scholarship_id' => $program->id, 'status' => 'accepted']);
         $term = AcademicTerm::factory()->create();
         $this->actingAs($provider->user)->post('/benefits/applications/'.$second->id, ['action' => 'award_create', 'version' => $second->fresh()->workflow_version, 'context_token' => app(AwardBenefits::class)->context($second)['token'], 'confirmed' => true, 'reason' => 'Award decision confirmed', 'academic_term_id' => $term->id, 'starts_on' => now('Asia/Manila')->toDateString(), 'ends_on' => null, 'conflict_confirmed' => false])->assertSessionHasErrors('workflow');
-        $this->assertDatabaseCount('scholarship_awards', 1);
+        $this->assertDatabaseCount('scholarship_grants', 1);
     }
 }

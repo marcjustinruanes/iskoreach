@@ -20,7 +20,12 @@ export function newPasswordError(password: string, confirmation: string): string
 
 
 export function registrationContact(value: string): string {
-    return value.replace(/[^0-9+]/g, '').replace(/(?!^)\+/g, '');
+    if (!value) return '';
+    let digits = value.replace(/\D/g, '');
+    if (!digits) return '';
+    if (value.startsWith('+63') || digits.startsWith('63')) digits = digits.slice(2);
+    else if (digits.startsWith('0')) digits = digits.slice(1);
+    return '+63' + digits.slice(0, 10);
 }
 
 export function registrationName(value: string): string {

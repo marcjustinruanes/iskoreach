@@ -3,10 +3,10 @@
 namespace App\Http\Middleware;
 
 use App\Enums\UserRole;
-use App\Models\ExternalApplicantCount;
 use App\Models\ProviderProfile;
 use App\Notifications\ProviderVerificationDecision;
 use App\Services\AccountNotifications;
+use App\Services\GoogleAuthentication;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Middleware;
@@ -27,6 +27,7 @@ class HandleInertiaRequests extends Middleware
                 'provider_status' => $request->user()?->role === UserRole::Provider
                     ? $request->user()->providerProfile?->verification_status->value : null,
             ],
+            'googleAuth' => fn () => ['enabled' => app(GoogleAuthentication::class)->configured(), 'workUrl' => route('google.redirect', ['intent' => 'provider-work']), 'loginUrl' => route('google.redirect'), 'studentUrl' => route('google.redirect', ['intent' => 'student']), 'providerUrl' => route('google.redirect', ['intent' => 'provider'])],
             'status' => fn () => $request->session()->get('status'),
             'notificationSummary' => fn () => $request->user() ? app(AccountNotifications::class)->summary($request->user()) : null,
             ...($request->user()?->role === UserRole::Provider ? [
@@ -56,9 +57,9 @@ class HandleInertiaRequests extends Middleware
                     'renewals' => route('admin.renewals.index'),
                     'releases' => route('admin.releases.index'),
                     'terms' => route('admin.academic-terms.index'),
+                    'policies' => route('admin.policies.index'),
                     'reports' => route('admin.reports.index'),
                     'activity' => route('admin.activity-logs.index'),
-                    'pendingCounts' => ExternalApplicantCount::query()->where('status', 'pending')->count(),
                     'home' => route('home'),
                     'logout' => route('logout'),
                     'pendingProviders' => ProviderProfile::query()->where('verification_status', 'pending')

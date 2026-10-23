@@ -132,7 +132,7 @@ class AdminAwardMonitoringTest extends TestCase
                 ->assertDontSee('Private Student')->assertDontSee('private-student@example.test')
                 ->assertDontSee('Private application reason')->assertDontSee('Private renewal notes')->assertDontSee('Private release notes');
         }
-        $this->assertDatabaseHas('scholarship_awards', ['id' => $award->id]);
+        $this->assertDatabaseHas('scholarship_grants', ['id' => $award->id]);
     }
 
     public function test_renewal_and_release_totals_and_incomplete_release_warnings_use_actual_records(): void

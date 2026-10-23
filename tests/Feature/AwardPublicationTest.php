@@ -44,7 +44,7 @@ class AwardPublicationTest extends TestCase
         $this->assertDatabaseHas('activity_logs', ['action' => 'award.publish', 'actor_id' => $admin->id]);
         $this->assertDatabaseHas('activity_logs', ['action' => 'award.consent_withdrawn', 'actor_id' => $student->id]);
         $this->assertStringNotContainsString($student->name, ActivityLog::query()->get()->toJson());
-        $this->assertDatabaseHas('scholarship_awards', ['id' => $award->id, 'status' => 'active']);
+        $this->assertDatabaseHas('scholarship_grants', ['id' => $award->id, 'status' => 'active']);
     }
 
     public function test_students_cannot_access_or_change_another_students_awards_or_publish_their_own(): void

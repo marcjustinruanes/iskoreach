@@ -1,7 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureProviderIsVerified;
-use App\Http\Middleware\EnsureRequiredEmailIsVerified;
+use App\Http\Middleware\EnsureStudentRegistrationApproved;
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
@@ -17,9 +17,8 @@ return Application::configure(basePath: dirname(__DIR__))
         channels: __DIR__.'/../routes/channels.php',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->web(append: [HandleInertiaRequests::class]);
+        $middleware->web(append: [EnsureStudentRegistrationApproved::class, HandleInertiaRequests::class]);
         $middleware->alias([
-            'verified' => EnsureRequiredEmailIsVerified::class,
             'role' => EnsureUserHasRole::class,
             'provider.verified' => EnsureProviderIsVerified::class,
         ]);

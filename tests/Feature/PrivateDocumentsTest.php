@@ -103,7 +103,7 @@ class PrivateDocumentsTest extends TestCase
         $rule->update(['requirement_stage' => 'renewal']);
         $this->post($this->url($item, $rule), ['version' => 0, 'document_id' => $own->id, 'confirmed' => true])->assertSessionHasErrors('document_id');
         $this->actingAs($other)->post($this->url($item, $rule), ['version' => 0, 'document_id' => $file->id, 'confirmed' => true])->assertForbidden();
-        $this->assertDatabaseCount('application_documents', 0);
+        $this->assertDatabaseCount('document_submissions', 0);
     }
 
     public function test_requirement_size_and_format_are_checked_for_vault_reuse(): void
@@ -114,7 +114,7 @@ class PrivateDocumentsTest extends TestCase
         $this->post($this->url($item, $rule), ['version' => 0, 'document_id' => $file->id, 'confirmed' => true])->assertSessionHasErrors('document_id');
         $rule->update(['allowed_mime_types' => ['application/pdf'], 'max_size_kb' => 0]);
         $this->post($this->url($item, $rule), ['version' => 0, 'document_id' => $file->id, 'confirmed' => true])->assertSessionHasErrors('document_id');
-        $this->assertDatabaseCount('application_documents', 0);
+        $this->assertDatabaseCount('document_submissions', 0);
     }
 
     public function test_replacement_retains_versions_and_only_freezes_the_selected_version(): void

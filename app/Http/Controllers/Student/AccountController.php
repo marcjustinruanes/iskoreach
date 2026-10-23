@@ -12,6 +12,7 @@ use App\Models\StudentProfile;
 use App\Models\User;
 use App\Services\AccountNotifications;
 use App\Services\PrivateDocuments;
+use App\Services\RegistrationOptions;
 use App\Services\RenewalWorkflow;
 use App\Services\ScholarshipCatalog;
 use App\Services\StudentAccountSetup;
@@ -75,6 +76,7 @@ class AccountController extends Controller
         Gate::authorize('view', $profile);
 
         return Inertia::render('student/Profile', [
+            'registrationOptions' => app(RegistrationOptions::class)->data(),
             'accountSetup' => app(StudentAccountSetup::class)->data($request->user()),
             'profile' => $profile->only(array_merge(['id'], StudentRegistration::FIELDS, ['region_name', 'province_name', 'city_name', 'barangay_name'])),
             'accountCreatedAt' => $request->user()->created_at?->toIso8601String(),
@@ -85,13 +87,15 @@ class AccountController extends Controller
     {
         DB::transaction(function () use ($request, $studentProfile): void {
             $user = User::lockForUpdate()->findOrFail($request->user()->id);
-            $data = $request->validated();
+            $data = $request->safe()->except('no_middle_name');
             if (array_intersect(array_keys($data), StudentAccountSetup::ADDRESS)) {
                 $data += app(StudentRegistration::class)->address(array_replace($studentProfile->toArray(), $data));
             }
+            if (array_intersect(array_keys($data), ['campus_region_code', 'campus_province_code', 'campus_city_code'])) {
+                $data += app(StudentRegistration::class)->campus(array_replace($studentProfile->toArray(), $data));
+            }
             $studentProfile->fill($data);
             if ($studentProfile->isDirty()) {
-                app(StudentAccountSetup::class)->invalidate($user);
             }
             $studentProfile->save();
             if ($studentProfile->first_name && $studentProfile->surname) {

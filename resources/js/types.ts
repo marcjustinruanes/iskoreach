@@ -14,12 +14,13 @@ export interface SharedProps {
     auth: { user: User | null; provider_status: ProviderVerificationStatus | null };
     status?: string; notificationSummary?: { unread: number } | null;
     providerContext?: { organization_name: string | null; verification_status: ProviderVerificationStatus | null; dashboard: string; profile: string; counts: string; workspace: string; status: string; notices: VerificationNotice[] } | null;
-    adminNavigation?: { dashboard: string; providers: string; users: string; scholarships: string; counts: string; awards: string; renewals: string; releases: string; terms: string; reports: string; activity: string; pendingCounts: number; home: string; logout: string; pendingProviders: number };
+    adminNavigation?: { dashboard: string; providers: string; users: string; scholarships: string; counts: string; awards: string; renewals: string; releases: string; terms: string; policies: string; reports: string; activity: string; home: string; logout: string; pendingProviders: number };
 }
 
 export interface StudentProfile {
+    campus?: string | null; campus_region_code?: string | null; campus_province_code?: string | null; campus_city_code?: string | null;
     first_name?: string | null; surname?: string | null; middle_name?: string | null; suffix?: string | null; date_of_birth?: string | null; sex?: string | null; contact_number?: string | null;
-    student_number?: string | null; college?: string | null; enrollment_status?: string | null; region_name?: string | null; province_name?: string | null; city_name?: string | null; barangay_name?: string | null; street_address?: string | null;
+    student_number?: string | null; education_level?: string | null; region_name?: string | null; province_name?: string | null; city_name?: string | null; barangay_name?: string | null; street_address?: string | null;
     id: number;
     school: string | null;
     course: string | null;
@@ -27,7 +28,7 @@ export interface StudentProfile {
 }
 
 export interface ProviderProfile {
-    first_name?: string | null; surname?: string | null; middle_name?: string | null; suffix?: string | null; position?: string | null; contact_number?: string | null; work_email?: string | null; office_address?: string | null; organization_phone?: string | null; website?: string | null; organization_description?: string | null; country?: string | null;
+    first_name?: string | null; surname?: string | null; middle_name?: string | null; suffix?: string | null; position?: string | null; contact_number?: string | null; work_email?: string | null; coverage_areas?: { scope: string; region_code: string; province_code?: string; city_code: string; region_name?: string | null; province_name?: string | null; city_name?: string | null }[] | null; organization_phone?: string | null; website?: string | null; organization_description?: string | null; country?: string | null;
     id: number;
     organization_name: string | null;
     contact_email: string | null;
@@ -43,7 +44,7 @@ export interface ProviderReview extends ProviderProfile {
 }
 
 export interface ProviderDetails extends ProviderReview {
-    registration_details: Record<string, string | boolean | null>; registration_version: number; email_verified: boolean; documents_available: boolean; documents: { kind: string; name: string; url: string }[];
+    registration_details: Record<string, string | boolean | null>; registration_version: number; documents_available: boolean; documents: { kind: string; name: string; url: string }[];
     verification_version: number; reviewed_at: string | null; reviewer: string | null; review_url: string;
 }
 
@@ -78,12 +79,12 @@ export interface Paginated<T> {
 
 export interface AdminDashboardProps extends SharedProps {
     summary: {
-        pending_student_verifications: number; applications: number; active_awards: number; pending_renewals: number; pending_releases: number;
+        applications: number; active_awards: number; pending_renewals: number; pending_releases: number;
         scholarships: number; published_scholarships: number;
         students: number; providers: number; pending: number; approved: number; rejected: number;
         missing_provider_profiles: number; students_last_30_days: number; providers_last_30_days: number;
     };
-    reviewQueues: { providers: { id: number; label: string; created_at: string; url: string }[]; students: { id: number; label: string; created_at: string; url: string }[] };
+    reviewQueues: { providers: { id: number; label: string; created_at: string; url: string }[] };
     recentProviders: { id: number; organization_name: string | null; verification_status: ProviderVerificationStatus; created_at: string }[];
     recentActivity: { id: number; actor: string; action: string; reference: string; occurred_at: string }[];
     updatedAt: string;
@@ -104,20 +105,7 @@ export interface MonitoredScholarshipDetails extends MonitoredScholarship {
     requirements: { id: number; name: string; description: string | null; required: boolean; allowed_mime_types: string[] | null; max_size_kb: number | null; requirement_stage: string }[];
 }
 
-export interface ApplicantCountSummary {
-    internal_count: number; waitlisted_count: number; reported_external_count: number | null;
-    verified_external_count: number; public_count: number; needs_reverification: boolean;
-    latest_status: 'no_report' | 'pending' | 'approved' | 'rejected'; latest_report_id: number | null;
-    source_label: string | null; source_as_of: string | null; verified_source_label: string | null; verified_source_as_of: string | null;
-    last_reported_at: string | null; last_verified_at: string | null; pending_reports: number;
-    latest_approved_id: number | null; review_token: string;
-}
-export interface ExternalCountReport {
-    import_summary?: {source_rows:number;unique_emails:number;duplicate_rows:number;internal_matches:number;external_count:number} | null;
-    id: number; reported_count: number; corrected_count: number | null; source_label: string; source_as_of: string;
-    reporter: string; status: 'pending' | 'approved' | 'rejected'; reviewer: string | null; reviewed_at: string | null;
-    reason: string | null; correction_of_id: number | null; created_at: string; review_url?: string;
-}
+export interface ApplicantCountSummary { internal_count: number; external_count: number; waitlisted_count: number; public_count: number }
 
 export interface StudentDashboardData {
     applicationSummary: { total: number; submitted: number; under_review: number; waitlisted: number; accepted: number; rejected: number };

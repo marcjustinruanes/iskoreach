@@ -22,6 +22,11 @@
     height: 0;
 }
 
+.password-field::-ms-reveal,
+.password-field::-ms-clear {
+    display: none;
+}
+
 @theme {
     --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';

@@ -5,7 +5,12 @@ namespace App\Actions\Fortify;
 use App\Enums\UserRole;
 use App\Http\Requests\Auth\RegisterUserRequest;
 use App\Models\User;
+use App\Services\GoogleAuthentication;
+use App\Services\ProviderCoverage;
 use App\Services\ProviderRegistration;
+use App\Services\RegistrationDuplicates;
+use App\Services\RegistrationEmailVerification;
+use App\Services\RegistrationPolicies;
 use App\Services\StudentRegistration;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -28,14 +33,24 @@ class CreateNewUser implements CreatesNewUsers
 
         // Fortify owns the registration endpoint; reuse the Form Request rules in its action.
         $data = Validator::make($input, $request->rules())->validate();
+        app(RegistrationDuplicates::class)->validate($data);
+        app(RegistrationEmailVerification::class)->ensureVerified(request(), $data['email'], $data['account_type'] ?? 'student');
 
         $student = ($data['account_type'] ?? 'student') === 'student';
+        if (! $student) {
+            app(RegistrationEmailVerification::class)->ensureVerified(request(), $data['work_email'], 'provider', 'work');
+        }
         $name = $registration->name($data);
         $address = $registration->address($data, $student || ! empty($data['barangay_code']));
+        $campus = $student ? $registration->campus($data) : [];
+        $coverage = $student ? [] : app(ProviderCoverage::class)->resolve($data['coverage_areas']);
+        $google = app(GoogleAuthentication::class)->registration(request());
+        $googleSubject = $google && $google['email'] === $data['email'] ? $google['subject'] : null;
         $stored = [];
         try {
 
-            return DB::transaction(function () use ($data, $name, $address, &$stored): User {
+            $user = DB::transaction(function () use ($data, $name, $address, $campus, $coverage, $googleSubject, &$stored): User {
+                $accepted = app(RegistrationPolicies::class)->accepted($data);
                 $user = new User([
                     'name' => $name,
                     'email' => $data['email'],
@@ -44,11 +59,11 @@ class CreateNewUser implements CreatesNewUsers
                 $user->role = ($data['account_type'] ?? 'student') === 'provider'
                     ? UserRole::Provider : UserRole::Student;
 
-                $user->requires_email_verification = true;
-                $user->terms_accepted_at = now();
-                $user->privacy_accepted_at = now();
-                $user->registration_policy_version = StudentRegistration::POLICY_VERSION;
+                $user->registration_policy_version = $accepted['terms']->version().'|'.$accepted['privacy']->version();
+                $user->terms_policy_id = $accepted['terms']->id;
+                $user->privacy_policy_id = $accepted['privacy']->id;
 
+                $user->google_subject = $googleSubject;
                 $user->save();
 
                 if ($user->role === UserRole::Provider) {
@@ -66,19 +81,24 @@ class CreateNewUser implements CreatesNewUsers
                             $documents[$kind] = ['path' => $path, 'name' => $kind.'.'.$file->extension(), 'mime' => $file->getMimeType(), 'size' => $file->getSize(), 'sha256' => hash_file('sha256', $file->getRealPath())];
                         }
                     }
-                    $profile->forceFill(['registration_version' => 1, 'verification_documents' => $documents])->save();
+                    $profile->forceFill(['registration_version' => 1, 'verification_documents' => $documents, 'coverage_areas' => $coverage])->save();
                 } else {
-                    $user->studentProfile()->create(collect($data)->only(StudentRegistration::FIELDS)->all() + $address);
+                    $profile = $user->studentProfile()->make(collect($data)->only(StudentRegistration::FIELDS)->all() + $address + $campus);
+                    $profile->registration_status = 'pending';
+                    $profile->save();
                 }
 
                 return $user;
             });
+            request()->session()->forget(['registration_email', 'google_registration', 'registration_work_email', 'google_work_registration']);
+
+            return $user;
         } catch (\Throwable $error) {
             foreach ($stored as $path) {
                 Storage::disk('documents')->delete($path);
             }
             if ($error instanceof UniqueConstraintViolationException) {
-                throw ValidationException::withMessages(['email' => 'The email has already been taken.']);
+                throw ValidationException::withMessages([($data['account_type'] ?? 'student') === 'provider' ? 'organization_email' : 'email' => 'The email has already been taken.']);
             }
             throw $error;
         }

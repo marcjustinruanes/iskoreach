@@ -4,13 +4,20 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable(['renewal_id', 'requirement_index', 'student_document_id', 'version', 'submitted_at', 'removed_at'])]
-class RenewalDocument extends Model
+class RenewalDocument extends DocumentSubmission
 {
     use HasFactory;
+
+    protected $attributes = ['submission_type' => 'renewal'];
+
+    protected static function booted(): void
+    {
+        parent::booted();
+        static::addGlobalScope('submission_type', fn ($query) => $query->where('document_submissions.submission_type', 'renewal'));
+    }
 
     protected function casts(): array
     {

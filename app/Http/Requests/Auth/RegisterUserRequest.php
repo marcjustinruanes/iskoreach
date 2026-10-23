@@ -17,17 +17,19 @@ class RegisterUserRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $this->replace(app(StudentRegistration::class)->normalize($this->all()));
+        $this->replace(app(ProviderRegistration::class)->normalize($this->all()));
     }
 
     public function rules(): array
     {
         return [
             'name' => ['exclude'],
-            'email' => InputRules::email(unique: true),
+            'email' => InputRules::email(unique: $this->input('account_type') !== 'provider', gmail: true),
             'password' => InputRules::password(),
             'account_type' => ['sometimes', 'required', Rule::in(['student', 'provider'])],
             'registration_intent' => ['nullable', 'string'],
-        ] + ($this->input('account_type') === 'provider' ? app(ProviderRegistration::class)->rules($this->all()) : app(StudentRegistration::class)->rules());
+            'terms_version' => ['required', 'string', 'max:100'],
+            'privacy_version' => ['required', 'string', 'max:100'],
+        ] + ($this->input('account_type') === 'provider' ? app(ProviderRegistration::class)->rules($this->all()) : app(StudentRegistration::class)->rules($this->all()));
     }
 }

@@ -47,7 +47,7 @@ function LegacyAppLayout({ title, description, actions, children }: AppLayoutPro
     const home = '/' + user.role + '/dashboard';
     const navigation = [
         { label: user.role === 'admin' ? 'Provider reviews' : 'Account overview', href: home },
-        ...(user.role === 'student' ? [{ label: 'Browse scholarships', href: '/scholarships' }, { label: 'My applications', href: '/student/applications' }, { label: 'Document vault', href: '/student/documents' }, { label: 'Messages', href: '/messages' }, { label: 'My awards', href: '/student/awards' }, { label: 'Renewals', href: '/renewals' }, { label: 'Benefit history', href: '/benefits' }] : []),
+        ...(user.role === 'student' ? [{ label: 'Browse scholarships', href: '/scholarships' }, { label: 'My applications', href: '/student/applications' }, { label: 'Document vault', href: '/student/documents' }, { label: 'Messages', href: '/messages' }, { label: 'My grants', href: '/student/awards' }, { label: 'Renewals', href: '/renewals' }, { label: 'Benefit history', href: '/benefits' }] : []),
         ...(user.role === 'provider' && auth.provider_status === 'approved' ? [{ label: 'Provider workspace', href: '/provider/workspace' }, { label: 'Applicant counts', href: '/provider/applicant-counts' }] : []),
     ];
     return <div className="min-h-dvh bg-civic-canvas font-stitch text-civic-ink">

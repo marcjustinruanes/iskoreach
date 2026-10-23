@@ -19,6 +19,8 @@ class ScholarshipAward extends Model
     /** @use HasFactory<ScholarshipAwardFactory> */
     use HasFactory;
 
+    protected $table = 'scholarship_grants';
+
     protected function casts(): array
     {
         return ['workflow_version' => 'integer', 'history' => 'array', 'status' => AwardStatus::class, 'starts_on' => 'date', 'ends_on' => 'date', 'revoked_at' => 'datetime', 'public_listing_consented_at' => 'datetime', 'published_at' => 'datetime', 'publication_version' => 'integer'];
@@ -43,9 +45,9 @@ class ScholarshipAward extends Model
     {
         $today = now('Asia/Manila')->toDateString();
 
-        return $query->where('scholarship_awards.status', AwardStatus::Active)->whereNull('scholarship_awards.revoked_at')
-            ->whereDate('scholarship_awards.starts_on', '<=', $today)
-            ->where(fn (Builder $query) => $query->whereNull('scholarship_awards.ends_on')->orWhereDate('scholarship_awards.ends_on', '>=', $today))
+        return $query->where('scholarship_grants.status', AwardStatus::Active)->whereNull('scholarship_grants.revoked_at')
+            ->whereDate('scholarship_grants.starts_on', '<=', $today)
+            ->where(fn (Builder $query) => $query->whereNull('scholarship_grants.ends_on')->orWhereDate('scholarship_grants.ends_on', '>=', $today))
             ->whereHas('application', fn (Builder $query) => $query->where('status', 'accepted')->whereNotNull('submitted_at')
                 ->whereHas('student', fn (Builder $query) => $query->where('role', UserRole::Student)));
     }

@@ -32,11 +32,11 @@ class DemoProvidersSeederTest extends TestCase
         $removed = Scholarship::orderByDesc('id')->firstOrFail();
         $removed->delete();
         $this->seed(DemoProvidersSeeder::class);
-        $this->assertDatabaseCount('users', 6);
+        $this->assertDatabaseCount('accounts', 6);
         $this->assertDatabaseCount('provider_profiles', 5);
         $this->assertDatabaseCount('scholarships', 10);
         $this->assertDatabaseCount('scholarship_requirements', 46);
-        $this->assertDatabaseHas('users', ['id' => $other->id]);
+        $this->assertDatabaseHas('accounts', ['id' => $other->id]);
         $this->assertSame('[DEMO] Edited by provider', $item->fresh()->title);
         $this->assertTrue(Scholarship::withTrashed()->findOrFail($removed->id)->trashed());
         $this->assertTrue($passwords === User::where('role', UserRole::Provider)->pluck('password', 'email')->all());
@@ -110,7 +110,7 @@ class DemoProvidersSeederTest extends TestCase
         } finally {
             $this->app['env'] = 'testing';
         }
-        $this->assertDatabaseCount('users', 0);
+        $this->assertDatabaseCount('accounts', 0);
         Storage::disk('local')->assertMissing(DemoProvidersSeeder::CREDENTIALS_FILE);
     }
 
@@ -125,7 +125,7 @@ class DemoProvidersSeederTest extends TestCase
         } catch (RuntimeException $exception) {
             $this->assertStringContainsString('No passwords or accounts were overwritten', $exception->getMessage());
         }
-        $this->assertDatabaseCount('users', 1);
+        $this->assertDatabaseCount('accounts', 1);
         $this->assertTrue($password === $existing->fresh()->password);
         $this->assertDatabaseCount('provider_profiles', 0);
         Storage::disk('local')->assertMissing(DemoProvidersSeeder::CREDENTIALS_FILE);

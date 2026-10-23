@@ -3,9 +3,9 @@ import { focusRing } from './ui/DesignSystem';
 
 export default function WorkspaceBreadcrumbs({ role, title, path }: { role: 'student' | 'provider' | 'admin'; title: string; path: string }) {
     const parents: [string, string][] = role === 'admin' ? [
-        ['/admin/providers', 'Providers'], ['/admin/users', 'Users'], ['/admin/scholarships', 'Scholarships'], ['/admin/student-verifications', 'Student verification'], ['/admin/applicant-counts', 'Applicant counts'],
+        ['/admin/providers', 'Providers'], ['/admin/users', 'Users'], ['/admin/scholarships', 'Scholarships'], ['/admin/applicant-counts', 'Applicant counts'],
     ] : [
-        ['/'+role+'/scholarships', 'Scholarships'], ['/'+role+'/applications', 'Applications'], ['/messages', 'Messages'], ['/renewals', 'Renewals'], ['/benefits', 'Awards & benefits'],
+        ['/'+role+'/scholarships', 'Scholarships'], ['/'+role+'/applications', 'Applications'], ['/messages', 'Messages'], ['/renewals', 'Renewals'], ['/benefits', 'Grants & benefits'],
     ];
     const parent = parents.find(([href]) => path.startsWith(href+'/'));
     const label = role === 'admin' ? 'Administration' : role === 'provider' ? 'Provider' : 'Student';

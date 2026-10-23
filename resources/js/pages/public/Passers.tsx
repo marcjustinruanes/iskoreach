@@ -21,7 +21,7 @@ export default function Passers({ passers, filters }: SharedProps & { passers: P
                 <div className="min-w-0"><p className="break-words text-sm font-medium leading-6 text-civic-navy">{passer.scholarship}</p><p className="break-words text-sm leading-6 text-civic-muted">{passer.provider}</p></div>
                 <p className="text-sm text-civic-muted"><span className="md:hidden">Published </span><time dateTime={passer.published_at}>{new Date(passer.published_at).toLocaleDateString('en-PH', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric', year: 'numeric' })}</time></p>
             </li>)}</ul>
-        </section> : <div className="mt-5"><EmptyState title={filters.q || filters.year ? "No public listings match" : "No public results yet"} description={filters.q || filters.year ? "Try another name, scholarship, provider, or publication year, or reset the filters." : "Approved scholarship passers will appear here when confirmed awards are ready for publication."} /></div>}
+        </section> : <div className="mt-5"><EmptyState title={filters.q || filters.year ? "No public listings match" : "No public results yet"} description={filters.q || filters.year ? "Try another name, scholarship, provider, or publication year, or reset the filters." : "Approved scholarship passers will appear here when confirmed grants are ready for publication."} /></div>}
         <Pagination page={passers} label="Public passers pages" />
     </PublicDirectoryLayout>;
 }

@@ -2,6 +2,8 @@
 
 namespace Tests;
 
+use App\Models\Course;
+use App\Services\RegistrationPolicies;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Http\UploadedFile;
@@ -14,13 +16,18 @@ abstract class TestCase extends BaseTestCase
     /** @return array<string, mixed> */
     protected function studentRegistrationData(array $overrides = []): array
     {
-        return array_replace([
-            'account_type' => 'student', 'first_name' => 'Ana', 'surname' => 'Cruz',
+        if (! Course::query()->where('name', 'BS Computer Science')->where('education_level', 'college')->exists()) {
+            Course::factory()->create(['name' => 'BS Computer Science', 'education_level' => 'college']);
+        }
+
+        return $this->withVerifiedRegistrationEmail(array_replace([
+            'account_type' => 'student', 'first_name' => 'Ana', 'surname' => 'Cruz', 'middle_name' => 'Maria',
             'date_of_birth' => '2004-05-15', 'sex' => 'female', 'contact_number' => '09171234567',
-            'student_number' => '2026-001', 'school' => 'Test University', 'college' => 'College of Science', 'course' => 'Computer Science', 'year_level' => 2, 'enrollment_status' => 'enrolled',
+            'campus_region_code' => '040000000', 'campus_province_code' => '042100000', 'campus_city_code' => '042101000',
+            'student_number' => '2026-001', 'school' => 'Test University', 'education_level' => 'college', 'course' => 'BS Computer Science', 'year_level' => 2,
             'region_code' => '040000000', 'province_code' => '042100000', 'city_code' => '042101000', 'barangay_code' => '042101001',
-            'email' => 'new-student@example.test', 'password' => 'student-password', 'password_confirmation' => 'student-password', 'terms_accepted' => true, 'privacy_accepted' => true,
-        ], $overrides);
+            'email' => 'new-student@gmail.com', 'password' => 'student-password', 'password_confirmation' => 'student-password', 'terms_accepted' => true, 'privacy_accepted' => true,
+        ], $overrides));
     }
 
     /** @return array<string, mixed> */
@@ -37,14 +44,30 @@ abstract class TestCase extends BaseTestCase
             });
         });
 
-        return array_replace([
+        return $this->withVerifiedRegistrationEmail(array_replace([
             'account_type' => 'provider', 'registration_intent' => $intent,
-            'first_name' => 'Provider', 'surname' => 'Contact', 'position' => 'Director', 'contact_number' => '09171234567', 'work_email' => 'work@example.test',
-            'organization_description' => 'An education foundation providing student grants.', 'country' => 'PH', 'barangay_code' => '042101001', 'organization_name' => 'Example Foundation', 'organization_type' => 'foundation', 'office_address' => '123 Test Street', 'organization_email' => 'office@example.test', 'organization_phone' => '09171234567', 'authorization_required' => false,
+            'first_name' => 'Provider', 'surname' => 'Contact', 'middle_name' => 'Maria', 'position' => 'Director', 'contact_number' => '09171234567', 'work_email' => 'work@gmail.com',
+            'organization_description' => 'An education foundation providing student grants.', 'country' => 'PH', 'barangay_code' => '042101001', 'organization_name' => 'Example Foundation', 'organization_type' => 'foundation', 'organization_email' => 'office@gmail.com', 'organization_phone' => '09171234567', 'authorization_required' => false,
+            'coverage_areas' => [['scope' => 'nationwide', 'region_code' => '', 'province_code' => '', 'city_code' => '']],
             'region_code' => '040000000', 'province_code' => '042100000', 'city_code' => '042101000',
             'representative_id' => UploadedFile::fake()->image('id.jpg'), 'organization_proof' => UploadedFile::fake()->image('registration.jpg'),
-            'email' => 'provider@example.test', 'password' => 'provider-password', 'password_confirmation' => 'provider-password', 'terms_accepted' => true, 'privacy_accepted' => true,
-        ], $overrides);
+            'email' => 'provider@gmail.com', 'password' => 'provider-password', 'password_confirmation' => 'provider-password', 'terms_accepted' => true, 'privacy_accepted' => true,
+        ], $overrides));
+    }
+
+    /** @param array<string, mixed> $data @return array<string, mixed> */
+    protected function withVerifiedRegistrationEmail(array $data): array
+    {
+        $role = $data['account_type'] ?? 'student';
+        $email = $role === 'provider' ? ($data['organization_email'] ?? '') : ($data['email'] ?? '');
+        $this->withSession(['registration_email' => ['email' => is_string($email) ? strtolower(trim($email)) : '', 'role' => $role, 'verified' => true,
+            'hash' => '', 'attempts' => 0, 'sent_at' => now()->subMinutes(2)->timestamp, 'expires_at' => now()->addMinutes(10)->timestamp]]);
+
+        if ($role === 'provider') {
+            $this->withSession(['registration_work_email' => ['email' => strtolower(trim($data['work_email'])), 'role' => 'provider', 'verified' => true, 'expires_at' => now()->addMinutes(10)->timestamp]]);
+        }
+
+        return $data + app(RegistrationPolicies::class)->versions();
     }
 
     protected function fakeRegistrationLocations(): void

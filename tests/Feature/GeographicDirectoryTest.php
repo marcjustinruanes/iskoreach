@@ -25,6 +25,7 @@ class GeographicDirectoryTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        (require database_path('migrations/2026_10_20_134208_create_geographic_directory_tables.php'))->up();
         Http::preventStrayRequests();
         $this->package = sys_get_temp_dir().DIRECTORY_SEPARATOR.'iskoreach-geographic-'.bin2hex(random_bytes(8));
         mkdir($this->package);

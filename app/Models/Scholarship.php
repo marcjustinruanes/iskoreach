@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['provider_id', 'title', 'slug', 'description', 'scholarship_type', 'benefit_amount', 'currency', 'academic_term_id', 'opens_at', 'deadline_at', 'accepts_existing_scholars', 'existing_scholars_low_priority', 'require_verified_declarations', 'eligibility_rules', 'status', 'published_at'])]
+#[Fillable(['provider_id', 'title', 'slug', 'description', 'scholarship_type', 'benefit_amount', 'currency', 'academic_term_id', 'opens_at', 'deadline_at', 'accepts_existing_scholars', 'existing_scholars_low_priority', 'eligibility_rules', 'status', 'published_at'])]
 class Scholarship extends Model
 {
     /** @use HasFactory<ScholarshipFactory> */
@@ -19,7 +19,7 @@ class Scholarship extends Model
 
     protected function casts(): array
     {
-        return ['management_version' => 'integer', 'status' => ScholarshipStatus::class, 'benefit_amount' => 'decimal:2', 'opens_at' => 'datetime', 'deadline_at' => 'datetime', 'published_at' => 'datetime', 'accepts_existing_scholars' => 'boolean', 'existing_scholars_low_priority' => 'boolean', 'require_verified_declarations' => 'boolean', 'eligibility_rules' => 'array'];
+        return ['management_version' => 'integer', 'status' => ScholarshipStatus::class, 'benefit_amount' => 'decimal:2', 'opens_at' => 'datetime', 'deadline_at' => 'datetime', 'published_at' => 'datetime', 'accepts_existing_scholars' => 'boolean', 'existing_scholars_low_priority' => 'boolean', 'eligibility_rules' => 'array'];
     }
 
     public function provider(): BelongsTo
@@ -45,10 +45,5 @@ class Scholarship extends Model
     public function applications(): HasMany
     {
         return $this->hasMany(Application::class)->withTrashed();
-    }
-
-    public function externalCounts(): HasMany
-    {
-        return $this->hasMany(ExternalApplicantCount::class);
     }
 }

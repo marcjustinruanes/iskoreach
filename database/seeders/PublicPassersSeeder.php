@@ -32,7 +32,7 @@ class PublicPassersSeeder extends Seeder
                     $profile->forceFill(['user_id' => $provider->id, 'organization_name' => 'Hiraya Learning Foundation',
                         'contact_email' => $provider->email, 'work_email' => $provider->email,
                         'first_name' => 'Marisol', 'surname' => 'Rivera', 'position' => 'Program Coordinator',
-                        'organization_type' => 'foundation', 'office_address' => 'Fictional local development office, Philippines',
+                        'organization_type' => 'foundation',
                         'verification_status' => 'approved', 'reviewed_at' => now(), 'registration_version' => 0,
                         'authorization_required' => false])->save();
                 }
@@ -147,7 +147,7 @@ class PublicPassersSeeder extends Seeder
         }
         $user = new User;
         $user->forceFill(['name' => $name, 'email' => $email, 'role' => $role, 'password' => bin2hex(random_bytes(32)),
-            'email_verified_at' => now(), 'requires_email_verification' => true])->save();
+        ])->save();
         $user->activityLogs()->create(['action' => 'fixture.passer_account_created', 'subject_type' => User::class, 'subject_id' => $user->id,
             'changes' => ['development_only' => true, 'fictional' => true], 'occurred_at' => now()]);
 

@@ -6,7 +6,7 @@ use App\Http\Requests\ReadMessagesRequest;
 use App\Http\Requests\SendMessageRequest;
 use App\Models\Application;
 use App\Models\Conversation;
-use App\Models\MessageAttachment;
+use App\Models\Message;
 use App\Services\PrivateChat;
 use App\Services\PrivateDocuments;
 use Illuminate\Http\JsonResponse;
@@ -73,12 +73,12 @@ class MessageController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    public function download(MessageAttachment $attachment): StreamedResponse
+    public function download(Message $attachment): StreamedResponse
     {
-        Gate::authorize('view', $attachment->message->conversation);
+        Gate::authorize('view', $attachment->conversation);
         $disk = Storage::disk('documents');
-        abort_unless($disk->exists($attachment->path) && hash_equals($attachment->checksum, hash_file('sha256', $disk->path($attachment->path))), 404);
+        abort_unless($attachment->attachment_path && $disk->exists($attachment->attachment_path) && hash_equals($attachment->attachment_checksum, hash_file('sha256', $disk->path($attachment->attachment_path))), 404);
 
-        return $disk->download($attachment->path, $attachment->original_name, ['Content-Type' => $attachment->mime_type, 'X-Content-Type-Options' => 'nosniff', 'Cache-Control' => 'private, no-store']);
+        return $disk->download($attachment->attachment_path, $attachment->attachment_original_name, ['Content-Type' => $attachment->attachment_mime_type, 'X-Content-Type-Options' => 'nosniff', 'Cache-Control' => 'private, no-store']);
     }
 }

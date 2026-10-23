@@ -19,16 +19,25 @@ class UpdateProviderProfileRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->replace(InputRules::normalize($this->all(), [...ProviderRegistration::FIELDS, 'contact_email'], ['contact_email', 'work_email']));
+        foreach (['contact_number', 'organization_phone'] as $field) {
+            if (is_string($this->input($field))) {
+                $this->merge([$field => InputRules::contactNumber($this->input($field))]);
+            }
+        }
+        if ($this->boolean('no_middle_name')) {
+            $this->merge(['middle_name' => null]);
+        }
     }
 
     public function rules(): array
     {
         $rules = [];
-        foreach (['first_name', 'surname', 'middle_name', 'suffix', 'position', 'contact_number', 'work_email', 'office_address', 'organization_phone', 'website', 'organization_description', 'country'] as $field) {
+        foreach (['first_name', 'surname', 'middle_name', 'suffix', 'position', 'contact_number', 'work_email', 'organization_phone', 'website', 'organization_description', 'country'] as $field) {
             $rules[$field] = ['sometimes', ...app(ProviderRegistration::class)->rules()[$field]];
         }
 
         return $rules + [
+            'no_middle_name' => ['sometimes', 'boolean'],
             'organization_name' => ['required', 'string', 'max:255', InputRules::singleLine()],
             'contact_email' => InputRules::email(),
         ];

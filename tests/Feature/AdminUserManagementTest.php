@@ -66,7 +66,7 @@ class AdminUserManagementTest extends TestCase
     public function test_filters_and_sorting_are_validated_and_preserved_during_pagination(): void
     {
         $admin = User::factory()->create(['role' => UserRole::Admin]);
-        User::factory()->count(12)->create(['name' => 'Campus Student', 'role' => UserRole::Student]);
+        User::factory()->count(12)->has(StudentProfile::factory())->create(['name' => 'Campus Student', 'role' => UserRole::Student]);
         $this->actingAs($admin)->get('/admin/users?q=Campus&role=student&status=active&sort=oldest')->assertInertia(fn (Assert $page) => $page
             ->has('accounts.data', 10)->where('accounts.total', 12)
             ->where('accounts.next_page_url', fn ($url) => str_contains($url, 'q=Campus') && str_contains($url, 'role=student') && str_contains($url, 'status=active') && str_contains($url, 'sort=oldest')));
@@ -85,7 +85,7 @@ class AdminUserManagementTest extends TestCase
         }
     }
 
-    public function test_student_details_exclude_private_academic_data_and_authentication_secrets(): void
+    public function test_student_details_include_registration_for_review_and_exclude_authentication_secrets(): void
     {
         $admin = User::factory()->create(['role' => UserRole::Admin]);
         $student = StudentProfile::factory()->create(['school' => 'PRIVATE-SCHOOL', 'course' => 'PRIVATE-COURSE', 'year_level' => 4]);
@@ -95,7 +95,8 @@ class AdminUserManagementTest extends TestCase
             ->where('account.profile_present', true)->where('account.status', 'active')->where('account.verification_url', null)
             ->missing('account.password')->missing('account.remember_token')->missing('account.studentProfile')
             ->missing('account.school')->missing('account.course')->missing('account.year_level'));
-        $response->assertDontSee('PRIVATE-SCHOOL')->assertDontSee('PRIVATE-COURSE')->assertDontSee($student->user->password);
+        $response->assertInertia(fn (Assert $page) => $page->where('account.registration_details.school', 'PRIVATE-SCHOOL')->where('account.registration_details.course', 'PRIVATE-COURSE'));
+        $response->assertDontSee($student->user->password);
         $this->get('/admin/users')->assertInertia(fn (Assert $page) => $page->missing('accounts.data.0.password')->missing('accounts.data.0.studentProfile'));
     }
 
@@ -139,6 +140,6 @@ class AdminUserManagementTest extends TestCase
         $this->actingAs($admin)->patch('/admin/users/'.$student->id, ['role' => 'admin'])->assertStatus(405);
         $this->delete('/admin/users/'.$student->id)->assertStatus(405);
         $this->assertSame(UserRole::Student, $student->fresh()->role);
-        $this->assertDatabaseHas('users', ['id' => $student->id]);
+        $this->assertDatabaseHas('accounts', ['id' => $student->id]);
     }
 }

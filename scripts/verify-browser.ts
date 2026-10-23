@@ -315,12 +315,12 @@ $attachment->forceFill(['submitted_at'=>now(),'review_status'=>'rejected','revie
             await waitFor("[...document.querySelectorAll('main button')].find(button=>button.textContent==='Mark as read').disabled");
             await logout();
             await login('logout-student','Your student account');
-            await command('Page.navigate',{url:appUrl+'/student/email-code'});
-            await waitFor("document.querySelector('h1')?.textContent === 'Verify your email with a code'");
+            await command('Page.navigate',{url:appUrl+'/student/profile'});
+            await waitFor("document.querySelector('h1')?.textContent === 'My Profile'");
             assert.equal(await evaluate("Boolean(document.querySelector('#student-sidebar')) && !document.querySelector('nav[aria-label=\"Public navigation\"]')"),true);
-            assert.equal(await evaluate("Boolean(document.querySelector('main a[href=\"/student/profile#verification\"]'))"),true);
+            assert.equal(await evaluate("document.querySelector('a[href=\"/student/email-code\"]') === null"),true);
             await logout();
-            console.log('PASS: rejected-document feedback and real correction upload from application details, pending-review status, mobile/tablet/desktop layouts and student email-code workspace routing.');
+            console.log('PASS: rejected-document feedback and real correction upload from application details, pending-review status, mobile/tablet/desktop layouts and student profile workspace routing.');
         } else if (process.env.QA_PROFILE_PAGES_CHECK === 'true') {
             await login('logout-student','Your student account');
             const go=async(path:string)=>{await command('Page.navigate',{url:appUrl+path});await waitFor("document.querySelector('h1')?.textContent==='My Profile'");};
@@ -655,12 +655,9 @@ $attachment->forceFill(['submitted_at'=>now(),'review_status'=>'rejected','revie
             assert.equal(await evaluate("[...document.querySelectorAll('main span')].filter(span=>span.textContent==='Missing').length"),1,'Applications keep separate requirement statuses');
             for(const width of [320,768,1440]) {await command('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:1,mobile:width<768}); assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'),true);}
             await logout(); await login(accountPrefix+'-email','Your student account');
-            await go('/student/email-code','Verify your email with a code');
-            await fill('input[name=code]','111111');await evaluate("document.querySelector('main form').requestSubmit()");await waitFor("document.querySelector('[role=alert]')!==null");
-            await setValue('input[name=code]','548321'); await evaluate("document.querySelector('main form').requestSubmit()"); await waitFor("document.querySelector('h1')?.textContent==='Your student account'");
             await go('/student/profile','My Profile'); await setValue('input[name=school]','Updated legacy school'); await evaluate("document.querySelector('form[aria-label=\"Student profile\"]').requestSubmit()"); await waitFor("document.body.textContent.includes('Your profile has been saved.')");
             await logout();
-            console.log('PASS: real profile save, picture upload/removal, private verification documents, pending/admin approval/badge revocation, independent requirement uploads, dashboard search/progress and email-code error/success UI in an isolated database.');
+            console.log('PASS: real profile save, picture upload/removal, private verification documents, pending/admin approval/badge revocation, independent requirement uploads, dashboard search/progress and profile editing in an isolated database.');
         } else if (process.env.QA_STUDENT_CATALOG_CHECK === 'true') {
             await login('logout-student', 'Your student account');
             await evaluate("document.querySelector('#student-sidebar a[href=\"/student/scholarships\"]').click()");
@@ -2881,6 +2878,281 @@ echo 'Notification fixture ready.';
             }
         }
         console.log('PASS: empty home, scholarship directory, and public passers show honest empty states at 320, 768, and 1440px.');
+    }
+    if (process.env.QA_REGISTRATION_UX_CHECK === 'true') {
+        await command('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
+        await command('Page.navigate', { url: appUrl + '/register/student' });
+        await waitFor("document.querySelector('input[name=middle_name]') !== null");
+        assert.equal(await evaluate("document.querySelector('input[name=middle_name]').required"), true);
+        await evaluate("document.querySelector('input[name=no_middle_name]').click()");
+        await waitFor("document.querySelector('input[name=middle_name]').disabled && !document.querySelector('input[name=middle_name]').required");
+        await evaluate("document.querySelector('input[name=no_middle_name]').click()");
+        await waitFor("!document.querySelector('input[name=middle_name]').disabled && document.querySelector('input[name=middle_name]').required");
+        assert.equal(await evaluate("document.querySelector('input[name=email]').labels[0].textContent.includes('Personal email')"), true);
+        const checkEmailRow = async (name: string) => {
+            for (const width of [320, 768, 1440]) {
+                await command('Emulation.setDeviceMetricsOverride', { width, height: 1000, deviceScaleFactor: 1, mobile: width < 768 });
+                assert.equal(await evaluate(`(() => { const input = document.querySelector('input[name="${name}"]').getBoundingClientRect(); const button = [...document.querySelectorAll('button')].find(item => item.textContent.includes('Send verification code')).getBoundingClientRect(); return button.left >= input.right && button.top < input.bottom && button.bottom > input.top && input.width >= 60 && document.documentElement.scrollWidth <= innerWidth; })()`), true, 'Email and verification button share a row without overflow at ' + width);
+            }
+        };
+        await checkEmailRow('email');
+        const fillRegistration = async (name: string, value: string) => {
+            await evaluate(`(() => { const input = document.querySelector('input[name="${name}"]'); input.focus(); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, ${JSON.stringify(value)}); input.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+        };
+        await fillRegistration('email', 'person@yahoo.com');
+        await evaluate("document.querySelector('input[name=email]').dispatchEvent(new FocusEvent('focusout', { bubbles: true }))");
+        await waitFor("document.querySelector('[data-registration-email]').textContent.includes('Use an @gmail.com email address.')");
+        await evaluate("[...document.querySelectorAll('[data-registration-email] button')].find(button => button.textContent.includes('Send verification code')).click()");
+        assert.equal(await evaluate("[...document.querySelectorAll('[data-registration-email] [role=alert]')].filter(item => item.textContent.includes('Use an @gmail.com email address.')).length"), 1, 'Gmail validation appears only once after sending');
+        await fillRegistration('email', 'person@gmail.com');
+        await waitFor("!document.querySelector('[data-registration-email]').textContent.includes('Use an @gmail.com email address.')");
+        await evaluate("window.__emailPreviewFetch = window.fetch; window.fetch = (url, options) => String(url).endsWith('/register/email/send') ? Promise.resolve(new Response(JSON.stringify({ retry_after: 60 }), { status: 200, headers: { 'Content-Type': 'application/json' } })) : String(url).endsWith('/register/email/verify') ? Promise.resolve(new Response(JSON.stringify({ errors: { code: ['The verification code is incorrect.'] } }), { status: 422, headers: { 'Content-Type': 'application/json' } })) : window.__emailPreviewFetch(url, options)");
+        await evaluate("[...document.querySelectorAll('[data-registration-email] button')].find(button => button.textContent.includes('Send verification code')).click()");
+        await waitFor("document.querySelector('input[name=email_verification_code]') !== null");
+        await fillRegistration('email_verification_code', '123456');
+        await evaluate("[...document.querySelectorAll('[data-registration-email] button')].find(button => button.textContent.trim() === 'Verify email').click()");
+        await waitFor("document.querySelector('input[name=email_verification_code]').getAttribute('aria-invalid') === 'true'");
+        assert.equal(await evaluate("document.querySelector('input[name=email_verification_code]').parentElement.parentElement.querySelector('[role=alert]').textContent"), 'The verification code is incorrect.', 'Code errors appear under the code input');
+        assert.equal(await evaluate("document.querySelectorAll('[data-registration-email] [role=alert]').length"), 1);
+        await fillRegistration('email_verification_code', '12345');
+        await waitFor("document.querySelector('input[name=email_verification_code]').getAttribute('aria-invalid') === 'false'");
+        await evaluate("window.fetch = window.__emailPreviewFetch; delete window.__emailPreviewFetch");
+        await fillRegistration('email', '');
+        await evaluate("document.querySelector('form.registration-form').requestSubmit()");
+        await waitFor("document.querySelector('input[name=first_name]').getAttribute('aria-invalid') === 'true'");
+        await fillRegistration('first_name', 'Ana');
+        await waitFor("document.querySelector('input[name=first_name]').getAttribute('aria-invalid') === 'false'");
+        await fillRegistration('contact_number', '1234567890123456789');
+        await waitFor("document.querySelector('input[name=contact_number]').value === '1234567890'");
+        await fillRegistration('contact_number', '09171234567');
+        assert.equal(await evaluate("document.querySelector('input[name=contact_number]').value"), '9171234567');
+        await evaluate("window.confirm = () => { throw new Error('Registration must use its custom leave modal'); }; document.querySelector('a[href=\"/register/provider\"]').click()");
+        await waitFor("document.querySelector('[role=dialog]')?.textContent.includes('Leave registration?')");
+        assert.equal(await evaluate('location.pathname'), '/register/student');
+        await evaluate("[...document.querySelectorAll('[role=dialog] button')].find(button => button.textContent.includes('Stay in registration')).click()");
+        await waitFor("document.querySelector('[role=dialog]') === null");
+        assert.equal(await evaluate("document.querySelector('input[name=first_name]').value"), 'Ana');
+        await evaluate("document.querySelector('a[href=\"/register/provider\"]').click()");
+        await waitFor("document.querySelector('[role=dialog]') !== null");
+        await evaluate("[...document.querySelectorAll('[role=dialog] button')].find(button => button.textContent.trim() === 'Leave registration').click()");
+        await waitFor("location.pathname === '/register/provider' && document.querySelector('input[name=position]') !== null");
+        await evaluate("window.__registrationOriginalFetch = window.fetch; window.fetch = (url, options) => String(url).endsWith('/register/validate-step') ? Promise.resolve(new Response(JSON.stringify({ valid: true }), { status: 200, headers: { 'Content-Type': 'application/json' } })) : window.__registrationOriginalFetch(url, options)");
+        await fillRegistration('work_email', 'person@outlook.com');
+        await evaluate("document.querySelector('input[name=work_email]').dispatchEvent(new FocusEvent('focusout', { bubbles: true }))");
+        await waitFor("document.querySelector('input[name=work_email]').getAttribute('aria-invalid') === 'true'");
+        assert.equal(await evaluate("document.querySelector('input[name=work_email]').placeholder"), 'yourname@gmail.com');
+        for (const [name, value] of Object.entries({ first_name: 'Preview', surname: 'Tester', middle_name: 'Maria', position: 'Coordinator', contact_number: '09171234567', work_email: 'preview@gmail.com' })) {
+            await fillRegistration(name, value);
+        }
+        await checkEmailRow('work_email');
+        assert.equal(await evaluate("[...document.querySelectorAll('[data-registration-email] button')].some(button => button.textContent.includes('Continue with Google'))"), true, 'Work email includes Google verification');
+        await evaluate("window.__workEmailFetch = window.fetch; window.fetch = (url, options) => { if (String(url).endsWith('/register/email/send') || String(url).endsWith('/register/email/verify')) { window.__workEmailPurpose = JSON.parse(options.body).purpose; return Promise.resolve(new Response(JSON.stringify(String(url).endsWith('/send') ? { retry_after: 60 } : { verified: true }), { status: 200, headers: { 'Content-Type': 'application/json' } })); } return window.__workEmailFetch(url, options); }");
+        await evaluate("[...document.querySelectorAll('[data-registration-email] button')].find(button => button.textContent.includes('Send verification code')).click()");
+        await waitFor("document.querySelector('input[name=email_verification_code]') !== null");
+        await fillRegistration('email_verification_code', '123456');
+        await evaluate("[...document.querySelectorAll('[data-registration-email] button')].find(button => button.textContent.trim() === 'Verify email').click()");
+        await waitFor("[...document.querySelectorAll('[data-registration-email] [role=status]')].some(item => item.textContent.trim() === 'Email verified')");
+        assert.equal(await evaluate('window.__workEmailPurpose'), 'work');
+        await evaluate("window.fetch = window.__workEmailFetch; delete window.__workEmailFetch");
+        await evaluate("document.querySelector('form.registration-form').requestSubmit()");
+        await waitFor("document.querySelector('input[name=organization_email]') !== null");
+        await checkEmailRow('organization_email');
+        await fillRegistration('organization_phone', '09181234567');
+        assert.equal(await evaluate("document.querySelector('input[name=organization_phone]').value"), '9181234567');
+        assert.equal(await evaluate("document.querySelector('select[name=organization_type]').options.length"), 9);
+        assert.equal(await evaluate("document.querySelector('input[name=email]') === null"), true);
+        // Only stub step navigation for local preview checks; no account is submitted or email sent.
+        await evaluate("document.querySelector('form.registration-form').requestSubmit()");
+        await waitFor("document.querySelector('input[name=representative_id]') !== null");
+        await evaluate("(async () => { const canvas = document.createElement('canvas'); canvas.width = 10; canvas.height = 10; canvas.getContext('2d').fillRect(0, 0, 10, 10); const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png')); const transfer = new DataTransfer(); transfer.items.add(new File([blob], 'preview.png', { type: 'image/png' })); const input = document.querySelector('input[name=representative_id]'); input.files = transfer.files; input.dispatchEvent(new Event('change', { bubbles: true })); })()");
+        await waitFor("document.querySelector('button[aria-label=\"Enlarge Valid ID of authorized representative\"]') !== null");
+        await evaluate("document.querySelector('button[aria-label=\"Enlarge Valid ID of authorized representative\"]').click()");
+        await waitFor("document.querySelector('[role=dialog] img')?.naturalWidth === 10");
+        await evaluate("document.querySelector('[role=dialog] button[aria-label^=\"Close \"]').click()");
+        await waitFor("document.querySelector('[role=dialog]') === null");
+        await evaluate("document.querySelector('form.registration-form').requestSubmit()");
+        await waitFor("document.querySelector('#scope-0') !== null");
+        assert.equal(await evaluate("document.querySelector('#scope-0').value"), 'nationwide');
+        const selectCoverage = async (selector: string, value: string) => {
+            await evaluate(`(() => { const select = document.querySelector(${JSON.stringify(selector)}); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, ${JSON.stringify(value)}); select.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+        };
+        await selectCoverage('#scope-0', 'province');
+        await waitFor("document.querySelectorAll('#region-0 option').length > 2");
+        const coverageRegion = await evaluate("document.querySelector('#region-0 option:not([value=\"\"])').value") as string;
+        await selectCoverage('#region-0', coverageRegion);
+        await waitFor("document.querySelectorAll('input[name=coverage-choice]').length > 1");
+        await evaluate("document.querySelectorAll('input[name=coverage-choice]')[0].click()");
+        await evaluate("document.querySelectorAll('input[name=coverage-choice]')[1].click()");
+        assert.equal(await evaluate("document.querySelectorAll('input[name=coverage-choice]:checked').length"), 2);
+        assert.equal(await evaluate("document.querySelector('#scope-1') === null"), true, 'Multiple provinces use one compact checkbox list');
+        const provinceSearch = await evaluate("document.querySelector('input[name=coverage-choice]').closest('label').textContent.trim()") as string;
+        await fillRegistration('coverage-search', provinceSearch);
+        assert.equal(await evaluate("document.querySelectorAll('input[name=coverage-choice]:checked').length >= 1"), true, 'Searching preserves checked selections');
+        await fillRegistration('coverage-search', '');
+        assert.equal(await evaluate("document.querySelectorAll('input[name=coverage-choice]:checked').length"), 2);
+        const otherCoverageRegion = await evaluate(`([...document.querySelectorAll('#region-0 option')].find(option => option.value && option.value !== ${JSON.stringify(coverageRegion)})).value`) as string;
+        await selectCoverage('#region-0', otherCoverageRegion);
+        assert.equal(await evaluate("document.body.textContent.includes('2 of 20 provinces selected')"), true, 'Selections survive browsing another region');
+        await selectCoverage('#region-0', coverageRegion);
+        await waitFor("document.querySelectorAll('input[name=coverage-choice]:checked').length === 2");
+        await selectCoverage('#scope-0', 'city');
+        await selectCoverage('#region-0', coverageRegion);
+        await waitFor("document.querySelectorAll('input[name=coverage-choice]').length > 1 && document.querySelector('#coverage-province-filter').disabled === false");
+        await evaluate("document.querySelector('input[name=coverage-choice]').click()");
+        assert.equal(await evaluate("document.querySelectorAll('input[name=coverage-choice]:checked').length"), 1);
+        assert.equal(await evaluate("document.querySelector('input[name=office_address]') === null"), true);
+        for (const width of [320, 768, 1440]) {
+            await command('Emulation.setDeviceMetricsOverride', { width, height: 1000, deviceScaleFactor: 1, mobile: width < 768 });
+            assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true, 'Provider coverage fits at ' + width);
+        }
+        await selectCoverage('#scope-0', 'nationwide');
+        await waitFor("document.querySelector('input[name=coverage-choice]') === null");
+        await evaluate("document.querySelector('form.registration-form').requestSubmit()");
+        await waitFor("document.querySelectorAll('input[type=password]').length === 2");
+        assert.equal(await evaluate("document.querySelector('input[name=email]') === null && document.querySelector('input[name=organization_email]') === null"), true, 'Account setup contains no separate email field');
+        assert.equal(await evaluate("document.querySelector('[name=enrollment_status]') === null"), true);
+        await command('Emulation.setDeviceMetricsOverride', { width: 320, height: 844, deviceScaleFactor: 1, mobile: true });
+        assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true, 'Registration account setup fits mobile');
+        for (const [kind, title] of [['terms', 'Terms of Use'], ['privacy', 'Privacy Policy']]) {
+            const checkbox = `input[name="${kind}_accepted"]`;
+            assert.equal(await evaluate(`document.querySelector('${checkbox}').disabled`), true, 'Policy checkbox starts locked');
+            await evaluate(`[...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Read ${title}').click()`);
+            await waitFor("document.querySelector('[role=dialog] [aria-label=\"Policy document\"]') !== null");
+            assert.equal(await evaluate("[...document.querySelectorAll('[role=dialog] button')].find(button => button.textContent.trim() === 'I have read this').disabled"), true, 'Long policy requires scrolling');
+            await evaluate("document.querySelector('[role=dialog] button[aria-label^=\"Close \"]').click()");
+            await waitFor("document.querySelector('[role=dialog]') === null");
+            assert.equal(await evaluate(`document.querySelector('${checkbox}').disabled`), true, 'Closing without reading does not unlock consent');
+            await evaluate(`[...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Read ${title}').click()`);
+            await waitFor("document.querySelector('[role=dialog] [aria-label=\"Policy document\"]') !== null");
+            await evaluate("(() => { const area = document.querySelector('[aria-label=\"Policy document\"]'); area.scrollTop = area.scrollHeight; area.dispatchEvent(new Event('scroll', { bubbles: true })); })()");
+            await waitFor("[...document.querySelectorAll('[role=dialog] button')].find(button => button.textContent.trim() === 'I have read this').disabled === false");
+            assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true, 'Policy modal fits mobile');
+            await evaluate("[...document.querySelectorAll('[role=dialog] button')].find(button => button.textContent.trim() === 'I have read this').click()");
+            await waitFor("document.querySelector('[role=dialog]') === null");
+            assert.equal(await evaluate(`document.querySelector('${checkbox}').disabled`), false);
+            assert.equal(await evaluate(`document.querySelector('${checkbox}').checked`), false, 'Reading does not automatically grant consent');
+            await evaluate(`document.querySelector('${checkbox}').click()`);
+            assert.equal(await evaluate(`document.querySelector('${checkbox}').checked`), true);
+        }
+        assert.equal(await evaluate("document.querySelectorAll('button[aria-label^=\"Show \" ]').length"), 2, 'Password toggles appear before typing');
+        await fillRegistration('password', 'PreviewPassword123!');
+        await evaluate("document.querySelector('button[aria-controls=\"' + document.querySelector('input[name=password]').id + '\"]').click()");
+        assert.equal(await evaluate("document.querySelector('input[name=password]').type"), 'text');
+        await evaluate("document.querySelector('button[aria-controls=\"' + document.querySelector('input[name=password]').id + '\"]').click()");
+        assert.equal(await evaluate("document.querySelector('input[name=password]').type"), 'password');
+        await evaluate("document.querySelector('form.registration-form').requestSubmit()");
+        await waitFor("document.querySelector('button[aria-label=\"Edit Account setup\"]') !== null");
+        assert.deepEqual(await evaluate("[...document.querySelector('button[aria-label=\"Edit Account setup\"]').closest('section').querySelectorAll('dt')].map(item => item.textContent)"), ['Email', 'Password']);
+        assert.equal(await evaluate("document.querySelector('button[aria-label=\"Edit Account setup\"]').closest('section').textContent.includes('Password set')"), true);
+        assert.equal(await evaluate("document.querySelector('button[aria-label=\"Edit Coverage areas\"]').closest('section').textContent.includes('Nationwide')"), true);
+        for (const noMiddleName of [false, true]) {
+            await command('Page.navigate', { url: appUrl + '/register/student' });
+            await waitFor("document.querySelector('input[name=middle_name]') !== null");
+            await evaluate("window.__reviewOriginalFetch = window.fetch; window.fetch = (url, options) => String(url).endsWith('/register/validate-step') ? Promise.resolve(new Response(JSON.stringify({ valid: true }), { status: 200, headers: { 'Content-Type': 'application/json' } })) : window.__reviewOriginalFetch(url, options)");
+            if (noMiddleName) {
+                await evaluate("document.querySelector('input[name=no_middle_name]').click()");
+            } else {
+                await fillRegistration('middle_name', 'Samplemiddle');
+            }
+            await fillRegistration('email', 'review.student@gmail.com');
+            for (const nextField of ['select[name=education_level]', 'select[name=region_code]', 'input[name=password]', 'button[aria-label="Edit Account setup"]']) {
+                await evaluate("document.querySelector('form.registration-form').requestSubmit()");
+                await waitFor(`document.querySelector(${JSON.stringify(nextField)}) !== null`);
+            }
+            const reviewLabels = await evaluate("[...document.querySelectorAll('section dl dt')].map(item => item.textContent.toLowerCase())") as string[];
+            assert.equal(reviewLabels.includes('middle name'), !noMiddleName);
+            assert.equal(reviewLabels.includes('no middle name'), noMiddleName);
+            assert.equal(await evaluate("document.querySelector('button[aria-label=\"Edit Account setup\"]').closest('section').textContent.includes('review.student@gmail.com')"), true);
+        }
+        console.log('PASS: password toggles remain available, student review shows only the applicable middle-name field, and account review contains only email and password status.');
+        console.log('PASS: terms and privacy open in modals, require scrolling and read confirmation before enabling each consent checkbox, and do not grant consent automatically.');
+        console.log('PASS: registration errors clear on editing, phones use +63 and stop at 10 national digits, leave/stay uses a custom modal, provider documents enlarge locally, and account setup has passwords without another email field.');
+    }
+    if (process.env.QA_CAMPUS_LOCATION_CHECK === 'true') {
+        await command('Page.navigate', { url: appUrl + '/register/student' });
+        await waitFor("document.querySelector('input[name=first_name]') !== null");
+        await evaluate("window.__campusOriginalFetch = window.fetch; window.fetch = (url, options) => String(url).endsWith('/register/validate-step') ? Promise.resolve(new Response(JSON.stringify({ valid: true }), { status: 200, headers: { 'Content-Type': 'application/json' } })) : window.__campusOriginalFetch(url, options)");
+        await evaluate("document.querySelector('form.registration-form').requestSubmit()");
+        await waitFor("document.querySelector('select[name=campus_region_code] option[value=\"040000000\"]') !== null");
+        const selectCampus = async (name: string, value: string) => {
+            await evaluate(`(() => { const input = document.querySelector('select[name="${name}"]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(input, ${JSON.stringify(value)}); input.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+        };
+        await selectCampus('campus_region_code', '040000000');
+        await waitFor("document.querySelectorAll('select[name=campus_province_code] option').length > 2 && document.querySelector('select[name=campus_province_code]').disabled === false");
+        const province = await evaluate("document.querySelector('select[name=campus_province_code] option:not([value=\"\"]):not([value=none])').value") as string;
+        await selectCampus('campus_province_code', province);
+        await waitFor("document.querySelectorAll('select[name=campus_city_code] option').length > 1 && document.querySelector('select[name=campus_city_code]').disabled === false");
+        const city = await evaluate("document.querySelector('select[name=campus_city_code] option:not([value=\"\"])').value") as string;
+        await selectCampus('campus_city_code', city);
+        for (const width of [320, 768, 1440]) {
+            await command('Emulation.setDeviceMetricsOverride', { width, height: 1000, deviceScaleFactor: 1, mobile: width < 768 });
+            assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true, 'Campus selectors fit mobile and desktop');
+        }
+        await evaluate("document.querySelector('form.registration-form').requestSubmit()");
+        await waitFor("document.querySelector('select[name=region_code]') !== null");
+        assert.equal(await evaluate("document.querySelector('select[name=region_code]').value"), '', 'Campus selection does not fill the home address');
+        assert.equal(await evaluate("document.querySelector('select[name=city_code]').value"), '');
+        await evaluate("[...document.querySelectorAll('form.registration-form button')].find(button => button.textContent.includes('Previous')).click()");
+        await waitFor("document.querySelector('select[name=campus_city_code]') !== null");
+        assert.equal(await evaluate("document.querySelector('select[name=campus_city_code]').value"), city, 'Campus selection survives step navigation');
+        await selectCampus('campus_region_code', '130000000');
+        assert.equal(await evaluate("document.querySelector('select[name=campus_province_code]').value"), '');
+        assert.equal(await evaluate("document.querySelector('select[name=campus_city_code]').value"), '');
+        await evaluate("window.fetch = window.__campusOriginalFetch; delete window.__campusOriginalFetch");
+        console.log('PASS: campus province/city selectors use the location API, remain separate from the home address, preserve selections between steps, reset dependent choices, and fit mobile/desktop.');
+    }
+    if (process.env.QA_GOOGLE_AUTH_CHECK === 'true') {
+        for (const path of ['/login', '/register/student', '/register/provider']) {
+            await command('Page.navigate', { url: appUrl + path });
+            if (path === '/register/provider') {
+                await waitFor("document.querySelector('input[name=position]') !== null");
+                await evaluate("window.__googleProviderFetch = window.fetch; window.fetch = (url, options) => String(url).endsWith('/register/validate-step') ? Promise.resolve(new Response(JSON.stringify({ valid: true }), { status: 200, headers: { 'Content-Type': 'application/json' } })) : window.__googleProviderFetch(url, options)");
+                for (const [name, value] of Object.entries({ first_name: 'Preview', surname: 'Tester', middle_name: 'Maria', position: 'Coordinator', contact_number: '9171234567', work_email: 'preview@gmail.com' })) {
+                    await evaluate(`(() => { const input = document.querySelector('input[name="${name}"]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, ${JSON.stringify(value)}); input.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+                }
+                await evaluate("window.__workPreviewFetch = window.fetch; window.fetch = (url, options) => String(url).endsWith('/register/validate-step') ? Promise.resolve(new Response(JSON.stringify({ valid: true }), { status: 200, headers: { 'Content-Type': 'application/json' } })) : window.__workPreviewFetch(url, options); document.querySelector('form.registration-form').requestSubmit()");
+            }
+            await waitFor("[...document.querySelectorAll('button,a')].some(button => button.textContent.includes('Continue with Google'))");
+            if (path === '/login') {
+                assert.equal(await evaluate("(() => { const login = document.querySelector('button[type=submit]').getBoundingClientRect(); const google = [...document.querySelectorAll('button,a')].find(button => button.textContent.trim() === 'Continue with Google').getBoundingClientRect(); return google.top >= login.bottom; })()"), true, 'Google sign-in appears below the login button');
+            }
+            if (path !== '/login') {
+                assert.equal(await evaluate("[...document.querySelectorAll('[data-registration-email] button')].some(button => button.textContent.includes('Continue with Google'))"), true, 'Google registration belongs to the email field');
+            }
+            for (const width of [320, 768, 1440]) {
+                await command('Emulation.setDeviceMetricsOverride', { width, height: 1000, deviceScaleFactor: 1, mobile: width < 768 });
+                assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true, 'Google sign-in UI fits at ' + width);
+            }
+            if (path === '/register/student') {
+                await evaluate("(() => { const input = document.querySelector('input[name=email]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, 'reload@example.test'); input.dispatchEvent(new Event('input', { bubbles: true })); })()");
+                await command('Page.reload');
+                await waitFor("document.querySelector('input[name=email]')?.value === ''");
+                assert.equal(await evaluate("[...document.querySelectorAll('[data-registration-email] [role=status]')].some(item => item.textContent.includes('Email verified'))"), false);
+            }
+        }
+        await command('Page.navigate', { url: appUrl + '/auth/google/callback?state=invalid&code=invalid' });
+        await waitFor("location.pathname === '/login' && document.body.textContent.includes('Your Google sign-in session expired or was invalid.')");
+        console.log('PASS: Google registration buttons are in the email section, registration email clears on reload, pages fit mobile/desktop, and invalid callbacks show a safe retry message.');
+    }
+    if (process.env.QA_WORKFLOW_ADMIN_CHECK === 'true') {
+        assert.ok(process.env.QA_ADMIN_EMAIL && process.env.QA_ADMIN_PASSWORD, 'Supply temporary QA admin credentials through the environment');
+        await command('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
+        await command('Page.navigate', { url: appUrl + '/login' });
+        await waitFor("document.querySelector('input[name=password]') !== null");
+        for (const [name, value] of [['email', process.env.QA_ADMIN_EMAIL], ['password', process.env.QA_ADMIN_PASSWORD]]) {
+            await evaluate(`(() => { const input = document.querySelector('input[name="${name}"]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, ${JSON.stringify(value)}); input.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+        }
+        await evaluate("document.querySelector('form').requestSubmit()");
+        await waitFor("location.pathname === '/admin/dashboard' && document.querySelector('h1')?.textContent === 'Dashboard'");
+        assert.equal(await evaluate("document.querySelector('a[href=\"/admin/student-verifications\"]') === null"), true, 'Retired student verification is absent from navigation');
+        for (const path of ['/admin/applicant-counts', '/admin/awards', '/admin/reports', '/admin/activity-logs', '/admin/policies']) {
+            await command('Page.navigate', { url: appUrl + path });
+            await delay(500);
+            await waitFor(`location.pathname === ${JSON.stringify(path)} && document.readyState === 'complete' && document.querySelector('main h1') !== null`);
+            assert.equal(await evaluate("document.querySelector('h1')?.textContent !== 'Log in'"), true);
+            assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true, path + ' fits desktop');
+        }
+        console.log('PASS: existing admin login, simplified dashboard, individual applicant counts, grant monitoring, reports, audit logs and policy editor render without runtime errors.');
     }
     assert.deepEqual(errors, [], 'No uncaught browser errors');
     assert.equal(webSocketRequests, 0, 'Reverb must stay disabled by default');

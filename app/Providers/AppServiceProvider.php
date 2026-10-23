@@ -35,6 +35,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         if ($this->app->environment('local')) {
+            if (config('queue.default') === 'sync') {
+                DevCommands::except('queue');
+            }
             DevCommands::artisan('schedule:work', 'scheduler');
         }
         Gate::policy(AcademicTerm::class, AcademicTermPolicy::class);

@@ -35,7 +35,7 @@ class ScholarshipManagement
             if (! empty($data['academic_term_id'])) {
                 AcademicTerm::query()->lockForUpdate()->findOrFail($data['academic_term_id']);
             }
-            $item->fill(collect($data)->only(['title', 'description', 'scholarship_type', 'benefit_amount', 'currency', 'academic_term_id', 'accepts_existing_scholars', 'existing_scholars_low_priority', 'require_verified_declarations'])->all());
+            $item->fill(collect($data)->only(['title', 'description', 'scholarship_type', 'benefit_amount', 'currency', 'academic_term_id', 'accepts_existing_scholars', 'existing_scholars_low_priority'])->all());
             foreach (['opens_at', 'deadline_at'] as $field) {
                 $item->$field = empty($data[$field]) ? null : CarbonImmutable::createFromFormat('!Y-m-d\TH:i', $data[$field], 'Asia/Manila')->utc();
             }
@@ -90,7 +90,7 @@ class ScholarshipManagement
     {
         $item->load(['locations', 'requirements']);
 
-        return [...$item->only('title', 'description', 'scholarship_type', 'benefit_amount', 'currency', 'academic_term_id', 'accepts_existing_scholars', 'existing_scholars_low_priority', 'require_verified_declarations'),
+        return [...$item->only('title', 'description', 'scholarship_type', 'benefit_amount', 'currency', 'academic_term_id', 'accepts_existing_scholars', 'existing_scholars_low_priority'),
             ...($item->eligibility_rules['provider_settings'] ?? []), 'version' => $item->management_version, 'eligibility_criteria' => implode("\n", array_filter(is_array($item->eligibility_rules['criteria'] ?? null) ? $item->eligibility_rules['criteria'] : [], 'is_string')),
             'opens_at' => $item->opens_at?->timezone('Asia/Manila')->format('Y-m-d\TH:i'),
             'deadline_at' => $item->deadline_at?->timezone('Asia/Manila')->format('Y-m-d\TH:i'),

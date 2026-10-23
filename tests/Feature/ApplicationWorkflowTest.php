@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Enums\UserRole;
 use App\Models\Application;
-use App\Models\ExternalApplicantCount;
 use App\Models\ProviderProfile;
 use App\Models\Scholarship;
 use App\Models\ScholarshipAward;
@@ -13,6 +12,7 @@ use App\Models\StudentProfile;
 use App\Models\User;
 use App\Services\ApplicantCounts;
 use App\Services\ApplicationWorkflow;
+use App\Services\ExternalApplicants;
 use App\Services\ScholarshipManagement;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -61,19 +61,19 @@ class ApplicationWorkflowTest extends TestCase
         $this->assertNull($item->submitted_at);
         $this->post('/student/scholarships/'.$program->id.'/applications')->assertRedirect(route('student.applications.show', $item));
         $this->assertDatabaseCount('applications', 1);
-        $this->assertDatabaseCount('application_status_histories', 1);
         $this->assertSame(0, app(ApplicantCounts::class)->summary($program)['public_count']);
         $item->delete();
         $this->post('/student/scholarships/'.$program->id.'/applications')->assertStatus(409);
         $this->assertDatabaseCount('applications', 1);
     }
 
-    public function test_submission_saves_an_immutable_selected_profile_and_invalidates_external_inclusion(): void
+    public function test_submission_saves_an_immutable_selected_profile_and_keeps_individual_external_records_counted(): void
     {
         $item = $this->draft();
         $program = $item->scholarship;
-        ExternalApplicantCount::factory()->create(['scholarship_id' => $program->id, 'status' => 'approved', 'reported_count' => 7,
-            'internal_fingerprint' => app(ApplicantCounts::class)->snapshot($program)['fingerprint']]);
+        for ($index = 0; $index < 7; $index++) {
+            app(ExternalApplicants::class)->store($program->provider->user, $program, ['name' => 'External Person', 'email' => 'outside-'.$index.'@example.test']);
+        }
         $this->assertSame(7, app(ApplicantCounts::class)->summary($program)['public_count']);
         $name = $item->student->name;
         $this->actingAs($item->student)->patch('/student/applications/'.$item->id.'/submit', [...$this->submission($item), 'status' => 'accepted', 'low_priority' => true, 'student_id' => 999])->assertSessionHasNoErrors();
@@ -84,11 +84,10 @@ class ApplicationWorkflowTest extends TestCase
         $this->assertNotNull($item->submitted_at);
         $this->assertSame($name, $item->submission_snapshot['student']['name']);
         $this->assertArrayNotHasKey('email', $item->submission_snapshot['student']);
-        $this->assertSame(1, app(ApplicantCounts::class)->summary($program)['public_count']);
+        $this->assertSame(8, app(ApplicantCounts::class)->summary($program)['public_count']);
         $item->student->update(['name' => 'Later profile change']);
         $this->get('/student/applications/'.$item->id)->assertInertia(fn (Assert $page) => $page->where('application.student.name', $name));
         $this->patch('/student/applications/'.$item->id.'/submit', $this->submission($item))->assertSessionHasErrors('application');
-        $this->assertDatabaseCount('application_status_histories', 2);
         $this->assertDatabaseHas('activity_logs', ['action' => 'application.submitted', 'subject_id' => $item->id]);
     }
 
@@ -107,7 +106,6 @@ class ApplicationWorkflowTest extends TestCase
         $item->scholarship->provider->forceFill(['verification_status' => 'pending'])->save();
         $this->patch('/student/applications/'.$item->id.'/submit', $this->submission($item->fresh()))->assertSessionHasErrors('application');
         $this->assertNull($item->fresh()->submitted_at);
-        $this->assertDatabaseCount('application_status_histories', 1);
     }
 
     public function test_active_awards_block_or_require_low_priority_confirmation_and_accepted_applications_alone_do_not(): void
@@ -188,7 +186,7 @@ class ApplicationWorkflowTest extends TestCase
         $this->patch('/provider/applications/'.$submitted->id, $this->decision())->assertForbidden();
     }
 
-    public function test_reviews_append_history_enforce_versions_and_final_decisions_and_never_create_awards(): void
+    public function test_reviews_enforce_versions_and_final_decisions_without_history_or_automatic_grants(): void
     {
         $draft = $this->draft();
         $this->actingAs($draft->student)->patch('/student/applications/'.$draft->id.'/submit', $this->submission($draft))->assertSessionHasNoErrors();
@@ -197,12 +195,10 @@ class ApplicationWorkflowTest extends TestCase
         $this->patch('/provider/applications/'.$draft->id, $this->decision('waitlisted', 2))->assertSessionHasNoErrors();
         $this->patch('/provider/applications/'.$draft->id, $this->decision('accepted', 3))->assertSessionHasNoErrors();
         $this->assertSame('accepted', $draft->fresh()->status->value);
-        $this->assertDatabaseCount('scholarship_awards', 0);
+        $this->assertDatabaseCount('scholarship_grants', 0);
         $this->assertSame(1, app(ApplicantCounts::class)->summary($draft->scholarship)['internal_count']);
-        $this->assertDatabaseCount('application_status_histories', 5);
         $this->patch('/provider/applications/'.$draft->id, $this->decision('rejected', 4))->assertSessionHasErrors('status');
-        $this->assertDatabaseCount('application_status_histories', 5);
-        $this->actingAs($draft->student)->get('/student/applications/'.$draft->id)->assertInertia(fn (Assert $page) => $page->where('application.status', 'accepted')->has('application.history', 5)->where('application.decision_reason', 'Reviewed against the program criteria.'));
+        $this->actingAs($draft->student)->get('/student/applications/'.$draft->id)->assertInertia(fn (Assert $page) => $page->where('application.status', 'accepted')->missing('application.history')->where('application.decision_reason', 'Reviewed against the program criteria.'));
     }
 
     public function test_decisions_require_confirmation_valid_status_and_reason_and_retained_programs_are_read_only(): void

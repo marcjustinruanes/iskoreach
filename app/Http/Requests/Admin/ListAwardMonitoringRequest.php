@@ -35,7 +35,7 @@ class ListAwardMonitoringRequest extends FormRequest
             })],
             'provider' => ['nullable', 'integer', 'exists:provider_profiles,id'],
             'term' => ['nullable', 'integer', 'exists:academic_terms,id'],
-            'award' => ['nullable', 'integer', 'exists:scholarship_awards,id'],
+            'award' => ['nullable', 'integer', 'exists:scholarship_grants,id'],
             'from' => ['nullable', 'date_format:Y-m-d'],
             'to' => ['nullable', 'date_format:Y-m-d', ...($this->filled('from') ? ['after_or_equal:from'] : [])],
             'activity' => ['nullable', Rule::in(['active', 'inactive'])],

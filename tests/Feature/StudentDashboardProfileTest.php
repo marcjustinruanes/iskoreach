@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\UserRole;
 use App\Models\Application;
+use App\Models\Course;
 use App\Models\ProviderProfile;
 use App\Models\Renewal;
 use App\Models\Scholarship;
@@ -58,7 +59,7 @@ class StudentDashboardProfileTest extends TestCase
             ->where('applicationSummary.accepted', 1)->where('applicationSummary.waitlisted', 1)->where('applicationSummary.rejected', 1)
             ->has('recentApplications', 5)->missing('applicationSummary.active_awards'));
         $this->get('/student/applications/'.$foreign->id)->assertForbidden();
-        $this->assertDatabaseCount('scholarship_awards', 0);
+        $this->assertDatabaseCount('scholarship_grants', 0);
     }
 
     public function test_recent_submissions_are_limited_ordered_and_use_saved_title_without_private_fields(): void
@@ -82,6 +83,7 @@ class StudentDashboardProfileTest extends TestCase
 
     public function test_profile_is_owned_validated_and_cannot_change_account_identity_or_old_snapshots(): void
     {
+        Course::factory()->create(['name' => 'BS Mathematics', 'education_level' => 'college']);
         $profile = StudentProfile::factory()->create();
         $other = StudentProfile::factory()->create();
         $application = Application::factory()->create(['student_id' => $profile->user_id]);

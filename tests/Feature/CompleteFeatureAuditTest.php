@@ -12,7 +12,6 @@ use App\Models\StudentProfile;
 use App\Services\PrivateDocuments;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -40,21 +39,6 @@ class CompleteFeatureAuditTest extends TestCase
         $this->actingAs($student)->get('/student/dashboard')->assertInertia(fn (Assert $page) => $page->has('discoverScholarships', 1)->where('discoverScholarships.0.id', $allowed->id));
         $this->get('/student/scholarships')->assertInertia(fn (Assert $page) => $page->where('scholarships.total', 2));
         $this->get('/student/scholarships/'.$blocked->slug)->assertOk();
-    }
-
-    public function test_recommendations_use_current_declarations_and_provider_specific_verification(): void
-    {
-        Storage::fake('documents');
-        $student = StudentProfile::factory()->create()->user;
-        $source = app(PrivateDocuments::class)->upload($student, UploadedFile::fake()->image('proof.png'), 'Outside award');
-        $this->actingAs($student)->post('/declarations', ['name' => 'Outside grant', 'provider_name' => 'Outside provider', 'starts_on' => now()->subDay()->toDateString(), 'student_document_id' => $source->id])->assertSessionHasNoErrors();
-        $provider = ProviderProfile::factory()->create(['verification_status' => 'approved']);
-        $verifiedOnly = Scholarship::factory()->create(['provider_id' => $provider->id, 'status' => 'published', 'published_at' => now(), 'accepts_existing_scholars' => true, 'require_verified_declarations' => true]);
-        Scholarship::factory()->create(['provider_id' => ProviderProfile::factory()->create(['verification_status' => 'approved'])->id, 'status' => 'published', 'published_at' => now(), 'accepts_existing_scholars' => true, 'require_verified_declarations' => true]);
-        $selfReported = Scholarship::factory()->create(['provider_id' => $provider->id, 'status' => 'published', 'published_at' => now(), 'accepts_existing_scholars' => true]);
-        $this->get('/student/dashboard')->assertInertia(fn (Assert $page) => $page->has('discoverScholarships', 1)->where('discoverScholarships.0.id', $selfReported->id));
-        DB::table('scholarship_declaration_reviews')->insert(['scholarship_declaration_id' => DB::table('scholarship_declarations')->value('id'), 'provider_id' => $provider->id, 'status' => 'verified', 'reason' => 'Evidence checked by owner', 'reviewed_by' => $provider->user_id, 'created_at' => now(), 'updated_at' => now()]);
-        $this->get('/student/dashboard')->assertInertia(fn (Assert $page) => $page->has('discoverScholarships', 2)->where('discoverScholarships.0.id', $verifiedOnly->id));
     }
 
     public function test_pending_reviews_are_dashboard_tasks_even_when_no_documents_or_deadlines_are_missing(): void

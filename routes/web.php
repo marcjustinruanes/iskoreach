@@ -5,21 +5,24 @@ use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\ApplicantCountController as AdminApplicantCountController;
 use App\Http\Controllers\Admin\AwardMonitoringController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\PolicyDocumentController;
 use App\Http\Controllers\Admin\ProviderReviewController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ScholarshipController as AdminScholarshipController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Auth\GoogleAuthController;
+use App\Http\Controllers\Auth\RegistrationEmailController;
 use App\Http\Controllers\Auth\RegistrationStepController;
 use App\Http\Controllers\AwardBenefitController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentReviewController;
-use App\Http\Controllers\EmailCodeController;
 use App\Http\Controllers\ExternalApplicantImportController;
 use App\Http\Controllers\LocationLookupController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Provider\AccountController as ProviderAccountController;
 use App\Http\Controllers\Provider\ApplicantCountController as ProviderApplicantCountController;
+use App\Http\Controllers\Provider\ExternalApplicantController;
 use App\Http\Controllers\Provider\ScholarshipController as ProviderScholarshipController;
 use App\Http\Controllers\ProviderVerificationDocumentController;
 use App\Http\Controllers\Public\HomeController;
@@ -27,31 +30,38 @@ use App\Http\Controllers\Public\PasserController;
 use App\Http\Controllers\Public\ScholarshipController as PublicScholarshipController;
 use App\Http\Controllers\RenewalController;
 use App\Http\Controllers\ScholarshipAnnouncementController;
-use App\Http\Controllers\ScholarshipDeclarationController;
 use App\Http\Controllers\Student\AccountController as StudentAccountController;
 use App\Http\Controllers\Student\ApplicationController;
 use App\Http\Controllers\Student\AwardController as StudentAwardController;
 use App\Http\Controllers\Student\DocumentController;
 use App\Http\Controllers\Student\RequirementsController;
-use App\Http\Controllers\StudentVerificationController;
+use App\Http\Controllers\StudentPhotoController;
 use App\Services\ProviderRegistration;
-use App\Services\StudentRegistration;
+use App\Services\RegistrationPolicies;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::middleware(['auth', 'verified', 'role:student,provider'])->group(function (): void {
-    Route::get('/declarations', [ScholarshipDeclarationController::class, 'index'])->name('declarations.index');
-    Route::post('/declarations', [ScholarshipDeclarationController::class, 'store'])->middleware('throttle:20,1')->name('declarations.store');
-    Route::patch('/declarations/{declaration}', [ScholarshipDeclarationController::class, 'review'])->middleware('throttle:30,1')->name('declarations.review');
-    Route::get('/declarations/{declaration}/evidence', [ScholarshipDeclarationController::class, 'evidence'])->name('declarations.evidence');
+Route::middleware(['guest', 'throttle:google-auth'])->group(function (): void {
+    Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])->name('google.redirect');
+    Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->block()->name('google.callback');
+    Route::get('/auth/google/link', [GoogleAuthController::class, 'showLink'])->name('google.link');
+    Route::post('/auth/google/link', [GoogleAuthController::class, 'link'])->middleware('throttle:google-link')->block()->name('google.link.store');
+});
+
+Route::middleware(['auth', 'role:student,provider'])->group(function (): void {
     Route::get('/scholarship-announcements', [ScholarshipAnnouncementController::class, 'index'])->name('scholarship-announcements.index');
     Route::post('/scholarship-announcements/{scholarship}', [ScholarshipAnnouncementController::class, 'store'])->middleware('throttle:10,1')->name('scholarship-announcements.store');
     Route::patch('/document-reviews/{document}', [DocumentReviewController::class, 'update'])->middleware('throttle:30,1')->name('document-reviews.update');
 });
 Route::get('/register/student', fn () => Inertia::render('Auth', app(ProviderRegistration::class)->page('student')))->middleware('guest')->name('register.student');
 Route::get('/register/provider', fn () => Inertia::render('Auth', app(ProviderRegistration::class)->page('provider')))->middleware('guest')->name('register.provider');
-Route::get('/terms', fn () => Inertia::render('Policy', ['policy' => 'terms', 'version' => StudentRegistration::POLICY_VERSION]))->name('terms');
-Route::get('/privacy', fn () => Inertia::render('Policy', ['policy' => 'privacy', 'version' => StudentRegistration::POLICY_VERSION]))->name('privacy');
+Route::get('/terms', fn (RegistrationPolicies $policies) => Inertia::render('Policy', $policies->page('terms')))->name('terms');
+Route::get('/privacy', fn (RegistrationPolicies $policies) => Inertia::render('Policy', $policies->page('privacy')))->name('privacy');
+Route::get('/register/policies', fn (RegistrationPolicies $policies) => response()->json($policies->versions()))->middleware('guest')->name('register.policies');
+Route::get('/register/policies/{kind}', fn (string $kind, RegistrationPolicies $policies) => response()->json($policies->page($kind)))->whereIn('kind', ['terms', 'privacy'])->middleware('guest')->name('register.policies.show');
+Route::post('/register/email/send', [RegistrationEmailController::class, 'send'])->middleware(['guest', 'throttle:5,10'])->block()->name('register.email.send');
+Route::post('/register/email/verify', [RegistrationEmailController::class, 'verify'])->middleware(['guest', 'throttle:10,1'])->block()->name('register.email.verify');
 Route::get('/locations/cities/{city}/barangays', [LocationLookupController::class, 'barangays'])->where('city', '[0-9]{9}')->middleware('throttle:60,1')->name('locations.barangays');
 Route::get('/locations/regions/{region}/provinces', [LocationLookupController::class, 'provinces'])->where('region', '[0-9]{9}')->middleware('throttle:60,1')->name('locations.provinces');
 Route::get('/', HomeController::class)->name('home');
@@ -60,9 +70,17 @@ Route::get('/locations/regions/{region}/cities', LocationLookupController::class
 Route::get('/passers', PasserController::class)->name('passers.index');
 Route::get('/scholarships', [PublicScholarshipController::class, 'index'])->name('scholarships.index');
 Route::get('/scholarships/{slug}', [PublicScholarshipController::class, 'show'])->name('scholarships.show');
-Route::get('/scholarships/{slug}/apply', [PublicScholarshipController::class, 'apply'])->middleware(['auth', 'verified', 'role:student'])->name('scholarships.apply');
-Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'verified'])->name('dashboard');
-Route::middleware(['auth', 'verified', 'role:student,provider'])->prefix('benefits')->name('benefits.')->group(function (): void {
+Route::get('/scholarships/{slug}/apply', [PublicScholarshipController::class, 'apply'])->middleware(['auth', 'role:student'])->name('scholarships.apply');
+Route::get('/dashboard', DashboardController::class)->middleware(['auth'])->name('dashboard');
+Route::get('/student/registration-status', function (Request $request) {
+    $profile = $request->user()->studentProfile;
+    if ($profile?->registration_status === 'approved') {
+        return to_route('student.dashboard');
+    }
+
+    return Inertia::render('StudentRegistrationStatus', ['registrationStatus' => $profile?->registration_status ?? 'pending', 'reviewReason' => $profile?->registration_review_reason]);
+})->middleware(['auth', 'role:student'])->name('student.registration-status');
+Route::middleware(['auth', 'role:student,provider'])->prefix('benefits')->name('benefits.')->group(function (): void {
     Route::get('/', [AwardBenefitController::class, 'index'])->name('index');
     Route::get('/applications/{application}/create', [AwardBenefitController::class, 'create'])->name('create');
     Route::post('/applications/{application}', [AwardBenefitController::class, 'store'])->middleware('throttle:20,1')->name('store');
@@ -71,14 +89,14 @@ Route::middleware(['auth', 'verified', 'role:student,provider'])->prefix('benefi
     Route::post('/{award}/releases', [AwardBenefitController::class, 'storeRelease'])->middleware('throttle:20,1')->name('releases.store');
     Route::patch('/releases/{release}', [AwardBenefitController::class, 'updateRelease'])->middleware('throttle:30,1')->name('releases.update');
 });
-Route::middleware(['auth', 'verified', 'role:student,provider'])->prefix('renewals')->name('renewals.')->group(function (): void {
+Route::middleware(['auth', 'role:student,provider'])->prefix('renewals')->name('renewals.')->group(function (): void {
     Route::get('/', [RenewalController::class, 'index'])->name('index');
     Route::post('/', [RenewalController::class, 'store'])->middleware('throttle:20,1')->name('store');
     Route::get('/documents/{attachment}', [RenewalController::class, 'download'])->name('download');
     Route::get('/{renewal}', [RenewalController::class, 'show'])->name('show');
     Route::patch('/{renewal}', [RenewalController::class, 'update'])->middleware('throttle:30,1')->name('update');
 });
-Route::middleware(['auth', 'verified', 'role:student,provider'])->prefix('messages')->name('messages.')->group(function (): void {
+Route::middleware(['auth', 'role:student,provider'])->prefix('messages')->name('messages.')->group(function (): void {
     Route::get('/', [MessageController::class, 'index'])->name('index');
     Route::post('/applications/{application}', [MessageController::class, 'start'])->middleware('throttle:20,1')->name('start');
     Route::get('/attachments/{attachment}', [MessageController::class, 'download'])->name('download');
@@ -88,15 +106,15 @@ Route::middleware(['auth', 'verified', 'role:student,provider'])->prefix('messag
     Route::post('/{conversation}/read', [MessageController::class, 'read'])->middleware('throttle:60,1')->name('read');
     Route::post('/{conversation}/typing', [MessageController::class, 'typing'])->middleware('throttle:60,1')->name('typing');
 });
-Route::middleware(['auth', 'verified'])->group(function (): void {
+Route::middleware(['auth'])->group(function (): void {
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::get('/notifications/summary', [NotificationController::class, 'summary'])->name('notifications.summary');
     Route::patch('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'read'])->whereUuid('notification')->name('notifications.read');
 });
-Route::get('/application-documents/{applicationDocument}/download', [DocumentController::class, 'downloadAttachment'])->middleware(['auth', 'verified'])->name('application-documents.download');
+Route::get('/application-documents/{applicationDocument}/download', [DocumentController::class, 'downloadAttachment'])->middleware(['auth'])->name('application-documents.download');
 
-Route::middleware(['auth', 'verified', 'role:student'])->prefix('student')->name('student.')->group(function (): void {
+Route::middleware(['auth', 'role:student'])->prefix('student')->name('student.')->group(function (): void {
     Route::get('/requirements', [RequirementsController::class, 'index'])->name('requirements.index');
     Route::post('/applications/{application}/requirements/{requirement}/upload', [RequirementsController::class, 'upload'])->middleware('throttle:20,1');
     Route::get('/scholarships', [PublicScholarshipController::class, 'index'])->name('scholarships.index');
@@ -118,7 +136,7 @@ Route::middleware(['auth', 'verified', 'role:student'])->prefix('student')->name
     Route::patch('/profiles/{studentProfile}', [StudentAccountController::class, 'update'])->name('profiles.update');
 });
 
-Route::middleware(['auth', 'verified', 'role:provider'])->prefix('provider')->name('provider.')->group(function (): void {
+Route::middleware(['auth', 'role:provider'])->prefix('provider')->name('provider.')->group(function (): void {
     Route::middleware('provider.verified')->group(function (): void {
         Route::get('/applications', [App\Http\Controllers\Provider\ApplicationController::class, 'index'])->name('applications.index');
         Route::get('/applications/{application}', [App\Http\Controllers\Provider\ApplicationController::class, 'show'])->name('applications.show');
@@ -130,7 +148,7 @@ Route::middleware(['auth', 'verified', 'role:provider'])->prefix('provider')->na
         Route::post('/applicant-counts/{scholarship}/import', ExternalApplicantImportController::class)->middleware('throttle:10,1')->name('applicant-counts.import');
         Route::get('/applicant-counts', [ProviderApplicantCountController::class, 'index'])->name('applicant-counts.index');
         Route::get('/applicant-counts/{scholarship}', [ProviderApplicantCountController::class, 'show'])->name('applicant-counts.show');
-        Route::post('/applicant-counts/{scholarship}', [ProviderApplicantCountController::class, 'store'])->name('applicant-counts.store');
+        Route::post('/applicant-counts/{scholarship}', [ExternalApplicantController::class, 'store'])->name('applicant-counts.store');
     });
     Route::get('/status', [ProviderAccountController::class, 'status'])->name('status');
     Route::get('/profile', [ProviderAccountController::class, 'profile'])->name('profile');
@@ -140,7 +158,9 @@ Route::middleware(['auth', 'verified', 'role:provider'])->prefix('provider')->na
         ->middleware('provider.verified')->name('workspace');
 });
 
-Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('admin.')->group(function (): void {
+Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function (): void {
+    Route::get('/policies', [PolicyDocumentController::class, 'index'])->name('policies.index');
+    Route::post('/policies/{kind}', [PolicyDocumentController::class, 'store'])->whereIn('kind', ['terms', 'privacy'])->name('policies.store');
     Route::get('/academic-terms', [AcademicTermController::class, 'index'])->name('academic-terms.index');
     Route::post('/academic-terms', [AcademicTermController::class, 'store'])->name('academic-terms.store');
     Route::patch('/academic-terms/{academicTerm}', [AcademicTermController::class, 'update'])->name('academic-terms.update');
@@ -153,37 +173,24 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
     Route::get('/releases', [AwardMonitoringController::class, 'releases'])->name('releases.index');
     Route::get('/applicant-counts', [AdminApplicantCountController::class, 'index'])->name('applicant-counts.index');
     Route::get('/applicant-counts/{scholarship}', [AdminApplicantCountController::class, 'show'])->withTrashed()->name('applicant-counts.show');
-    Route::patch('/external-counts/{externalApplicantCount}', [AdminApplicantCountController::class, 'update'])->name('applicant-counts.review');
     Route::get('/dashboard', AdminDashboardController::class)->name('dashboard');
     Route::get('/scholarships', [AdminScholarshipController::class, 'index'])->name('scholarships.index');
     Route::get('/scholarships/{scholarship}', [AdminScholarshipController::class, 'show'])->withTrashed()->name('scholarships.show');
     Route::get('/users', [AdminUserController::class, 'index'])->name('users.index');
     Route::get('/users/{user}', [AdminUserController::class, 'show'])->name('users.show');
+    Route::patch('/users/{user}/registration-review', [AdminUserController::class, 'reviewStudent'])->name('users.registration-review');
     Route::get('/providers', [ProviderReviewController::class, 'index'])->name('providers.index');
     Route::get('/providers/{providerProfile}', [ProviderReviewController::class, 'show'])->name('providers.show');
     Route::patch('/providers/{providerProfile}/review', [ProviderReviewController::class, 'update'])->name('providers.review');
 });
 
 Route::post('/register/validate-step', RegistrationStepController::class)->middleware(['guest', 'throttle:30,1'])->name('register.validate-step');
-Route::get('/provider-verification/{providerProfile}/{kind}', [ProviderVerificationDocumentController::class, 'show'])->middleware(['auth', 'verified'])->name('provider-verification.show');
+Route::get('/provider-verification/{providerProfile}/{kind}', [ProviderVerificationDocumentController::class, 'show'])->middleware(['auth'])->name('provider-verification.show');
 
-Route::post('/provider-verification/{providerProfile}', [ProviderVerificationDocumentController::class, 'update'])->middleware(['auth', 'verified', 'throttle:10,1'])->name('provider-verification.update');
+Route::post('/provider-verification/{providerProfile}', [ProviderVerificationDocumentController::class, 'update'])->middleware(['auth', 'throttle:10,1'])->name('provider-verification.update');
 
 Route::middleware(['auth', 'role:student'])->group(function (): void {
-    Route::get('/student/email-code', [EmailCodeController::class, 'show'])->name('student.email-code');
-    Route::post('/student/email-code/send', [EmailCodeController::class, 'send'])->middleware('throttle:5,10');
-    Route::post('/student/email-code/verify', [EmailCodeController::class, 'verify'])->middleware('throttle:10,1');
-});
-Route::middleware(['auth', 'verified', 'role:student'])->group(function (): void {
-    Route::post('/student/profile/photo', [StudentVerificationController::class, 'photo']);
-    Route::delete('/student/profile/photo', [StudentVerificationController::class, 'removePhoto']);
-    Route::get('/student/profile/photo', [StudentVerificationController::class, 'showPhoto'])->name('student.photo.show');
-    Route::post('/student/verification/documents/{kind}', [StudentVerificationController::class, 'document']);
-    Route::post('/student/verification', [StudentVerificationController::class, 'submit'])->middleware('throttle:5,10');
-});
-Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin/student-verifications')->name('admin.student-verifications.')->group(function (): void {
-    Route::get('/', [StudentVerificationController::class, 'index'])->name('index');
-    Route::get('/{verification}', [StudentVerificationController::class, 'show'])->name('show');
-    Route::patch('/{verification}', [StudentVerificationController::class, 'review'])->name('review');
-    Route::get('/{verification}/files/{kind}', [StudentVerificationController::class, 'file'])->name('file');
+    Route::post('/student/profile/photo', [StudentPhotoController::class, 'photo']);
+    Route::delete('/student/profile/photo', [StudentPhotoController::class, 'removePhoto']);
+    Route::get('/student/profile/photo', [StudentPhotoController::class, 'showPhoto'])->name('student.photo.show');
 });

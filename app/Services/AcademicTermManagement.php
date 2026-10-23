@@ -11,7 +11,7 @@ use Illuminate\Validation\ValidationException;
 
 class AcademicTermManagement
 {
-    public const REFERENCE_TABLES = ['scholarships', 'applications', 'scholarship_awards', 'renewals', 'payments'];
+    public const REFERENCE_TABLES = ['scholarships', 'applications', 'scholarship_grants', 'renewals', 'payments'];
 
     public function version(AcademicTerm $term): string
     {

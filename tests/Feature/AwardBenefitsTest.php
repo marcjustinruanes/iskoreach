@@ -111,7 +111,7 @@ class AwardBenefitsTest extends TestCase
         $this->assertNull($award->public_listing_consented_at);
         $this->assertNull($award->public_name);
         $this->post('/benefits/applications/'.$application->id, $payload)->assertSessionHasErrors('workflow');
-        $this->assertDatabaseCount('scholarship_awards', 1);
+        $this->assertDatabaseCount('scholarship_grants', 1);
         $this->get('/benefits')->assertInertia(fn (Assert $page) => $page->where('awards.total', 1));
         $this->get('/passers')->assertInertia(fn (Assert $page) => $page->where('passers.total', 0));
         $this->actingAs($application->student)->get('/benefits/'.$award->id)->assertOk();
@@ -155,7 +155,7 @@ class AwardBenefitsTest extends TestCase
         $application->save();
         $application->scholarship->delete();
         $this->post('/benefits/applications/'.$application->id, $data)->assertSessionHasErrors('workflow');
-        $this->assertDatabaseCount('scholarship_awards', 0);
+        $this->assertDatabaseCount('scholarship_grants', 0);
     }
 
     public function test_dates_confirmations_stale_versions_and_changed_award_context_are_rejected(): void
@@ -171,7 +171,7 @@ class AwardBenefitsTest extends TestCase
         $other->save();
         $this->award($other);
         $this->post('/benefits/applications/'.$application->id, $data)->assertSessionHasErrors('workflow');
-        $this->assertDatabaseCount('scholarship_awards', 1);
+        $this->assertDatabaseCount('scholarship_grants', 1);
     }
 
     public function test_overlap_rules_include_future_awards_and_allow_acknowledged_existing_scholars(): void
@@ -190,7 +190,7 @@ class AwardBenefitsTest extends TestCase
         $data = $this->payload($second, ['starts_on' => now()->addMonth()->toDateString()]);
         $this->post('/benefits/applications/'.$second->id, $data)->assertSessionHasErrors('workflow');
         $this->post('/benefits/applications/'.$second->id, array_replace($data, ['conflict_confirmed' => true]))->assertSessionHasNoErrors();
-        $this->assertDatabaseCount('scholarship_awards', 2);
+        $this->assertDatabaseCount('scholarship_grants', 2);
     }
 
     public function test_revocation_clears_publication_invalidates_context_and_is_final_without_changing_application(): void
@@ -274,7 +274,7 @@ class AwardBenefitsTest extends TestCase
         } catch (\RuntimeException $error) {
             $this->assertSame('rollback', $error->getMessage());
         }
-        $this->assertDatabaseCount('scholarship_awards', 0);
+        $this->assertDatabaseCount('scholarship_grants', 0);
         $this->assertDatabaseCount('notifications', 0);
         $award = $this->award($application);
         $student = $application->student;

@@ -66,7 +66,7 @@ class PrivateChat
                 }
                 $existing = $thread->messages()->where('sender_id', $user->id)->where('submission_token', $data['submission_token'])->first();
                 if ($existing) {
-                    $sameFile = $file ? $existing->attachment && hash_equals($existing->attachment->checksum, hash_file('sha256', $file->getRealPath())) : ! $existing->attachment;
+                    $sameFile = $file ? $existing->attachment_path && hash_equals($existing->attachment_checksum, hash_file('sha256', $file->getRealPath())) : ! $existing->attachment_path;
                     if ($existing->body !== $body || ! $sameFile) {
                         throw ValidationException::withMessages(['submission_token' => 'This send attempt was already recorded. Reload before composing another message.']);
                     }
@@ -75,8 +75,8 @@ class PrivateChat
                 }
                 $message = $thread->messages()->create(['sender_id' => $user->id, 'body' => $body, 'submission_token' => $data['submission_token']]);
                 if ($file) {
-                    $message->attachment()->create(['uploaded_by' => $user->id, 'path' => $path, 'original_name' => mb_substr(preg_replace('/[\x00-\x1F\x7F\/\\\\]/u', '_', $file->getClientOriginalName()), 0, 240),
-                        'mime_type' => $file->getMimeType(), 'size_bytes' => $file->getSize(), 'checksum' => hash_file('sha256', $file->getRealPath()), ]);
+                    $message->forceFill(['attachment_path' => $path, 'attachment_original_name' => mb_substr(preg_replace('/[\x00-\x1F\x7F\/\\\\]/u', '_', $file->getClientOriginalName()), 0, 240),
+                        'attachment_mime_type' => $file->getMimeType(), 'attachment_size_bytes' => $file->getSize(), 'attachment_checksum' => hash_file('sha256', $file->getRealPath()), ])->save();
                 }
                 $thread->last_message_at = now();
                 $thread->save();
@@ -125,10 +125,10 @@ class PrivateChat
         $other = $user->id === $conversation->student_id ? $conversation->provider->user_id : $conversation->student_id;
 
         return ['thread' => $this->threadData($user, $conversation), 'typing' => (bool) Cache::get($this->typingKey($conversation, $other), false),
-            'messages' => $conversation->messages()->with('attachment')->orderByDesc('id')->paginate(25, ['*'], 'page', $page)->withPath(route('messages.show', $conversation))->through(fn ($message) => [
+            'messages' => $conversation->messages()->orderByDesc('id')->paginate(25, ['*'], 'page', $page)->withPath(route('messages.show', $conversation))->through(fn ($message) => [
                 'id' => $message->id, 'mine' => $message->sender_id === $user->id, 'body' => $message->body, 'sent_at' => $message->created_at->toIso8601String(),
-                'read_at' => $message->read_at?->toIso8601String(), 'attachment' => $message->attachment ? ['name' => $message->attachment->original_name,
-                    'size_bytes' => $message->attachment->size_bytes, 'download_url' => route('messages.download', $message->attachment)] : null])];
+                'read_at' => $message->read_at?->toIso8601String(), 'attachment' => $message->attachment_path ? ['name' => $message->attachment_original_name,
+                    'size_bytes' => $message->attachment_size_bytes, 'download_url' => route('messages.download', $message)] : null])];
     }
 
     public function threadData(User $user, Conversation $thread): array

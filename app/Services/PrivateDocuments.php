@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Enums\ApplicationStatus;
 use App\Models\Application;
 use App\Models\ApplicationDocument;
-use App\Models\ApplicationStatusHistory;
 use App\Models\ProviderProfile;
 use App\Models\Scholarship;
 use App\Models\ScholarshipRequirement;
@@ -111,7 +110,6 @@ class PrivateDocuments
             $item->workflow_version++;
             $item->save();
             if ($fromStatus !== $item->status->value) {
-                ApplicationStatusHistory::create(['application_id' => $item->id, 'from_status' => $fromStatus, 'to_status' => $item->status->value, 'changed_by' => $student->id, 'reason' => 'Document checklist readiness changed.', 'occurred_at' => now()]);
             }
             $this->audit($student, $remove ? 'application.document_removed' : 'application.document_attached', $item->id, Application::class);
         });

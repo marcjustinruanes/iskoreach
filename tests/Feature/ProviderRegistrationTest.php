@@ -15,6 +15,16 @@ class ProviderRegistrationTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_representative_work_email_requires_gmail_and_normalizes_case(): void
+    {
+        $data = $this->providerRegistrationData(['work_email' => 'representative@outlook.com']);
+        $this->postJson('/register/validate-step', [...$data, 'step' => 1])->assertUnprocessable()->assertJsonValidationErrors(['work_email' => 'Use an @gmail.com email address.']);
+        $this->post('/register', $data)->assertSessionHasErrors(['work_email' => 'Use an @gmail.com email address.']);
+        $this->assertDatabaseCount('accounts', 0);
+        $this->post('/register', $this->withVerifiedRegistrationEmail([...$data, 'work_email' => ' REPRESENTATIVE@GMAIL.COM ']))->assertSessionHasNoErrors();
+        $this->assertSame('representative@gmail.com', User::firstOrFail()->providerProfile->work_email);
+    }
+
     public function test_organization_details_and_configured_type_specific_documents_are_validated_and_saved(): void
     {
         Notification::fake();
@@ -29,7 +39,6 @@ class ProviderRegistrationTest extends TestCase
         $this->assertSame('Test Barangay', $profile->barangay_name);
         $this->assertSame($data['organization_description'], $profile->organization_description);
         $this->assertArrayHasKey('accreditation', $profile->verification_documents);
-        $profile->user->markEmailAsVerified();
         $profile->forceFill(['verification_status' => 'suspended', 'rejection_reason' => 'Documents require investigation'])->save();
         $this->actingAs($profile->user)->post(route('provider-verification.update', $profile), ['expected_version' => 0, 'representative_id' => UploadedFile::fake()->image('replacement.jpg')])->assertSessionHasNoErrors();
         $this->assertSame('suspended', $profile->fresh()->verification_status->value);
@@ -46,16 +55,14 @@ class ProviderRegistrationTest extends TestCase
         $this->assertSame('Provider Maria Contact Jr.', $user->name);
         $this->assertSame(UserRole::Provider, $user->role);
         $this->assertSame('Provider', $profile->first_name);
-        $this->assertSame('work@example.test', $profile->work_email);
-        $this->assertSame('office@example.test', $profile->contact_email);
+        $this->assertSame('work@gmail.com', $profile->work_email);
+        $this->assertSame('office@gmail.com', $profile->contact_email);
         $this->assertSame('Test City', $profile->city_name);
         $this->assertSame('pending', $profile->verification_status->value);
-        $this->assertNotNull($user->terms_accepted_at);
         foreach ($profile->verification_documents as $document) {
             Storage::disk('documents')->assertExists($document['path']);
         }
-        $this->get('/provider/workspace')->assertRedirect('/email/verify');
-        $user->markEmailAsVerified();
+        $this->get('/provider/workspace')->assertForbidden();
         $this->actingAs($user->fresh())->get('/provider/workspace')->assertForbidden();
         $this->get(route('provider-verification.show', [$profile, 'representative_id']))->assertDownload('representative_id.jpg')->assertHeader('X-Content-Type-Options', 'nosniff');
     }
@@ -64,11 +71,11 @@ class ProviderRegistrationTest extends TestCase
     {
         $data = $this->providerRegistrationData(['organization_type' => 'individual', 'organization_name' => null, 'organization_proof' => null]);
         $this->post('/register', $data)->assertSessionHasErrors('administration_evidence');
-        $this->assertDatabaseCount('users', 0);
+        $this->assertDatabaseCount('accounts', 0);
         $data['administration_evidence'] = UploadedFile::fake()->image('evidence.png');
         $data['organization_proof'] = UploadedFile::fake()->image('not-needed.png');
         $this->post('/register', $data)->assertSessionHasNoErrors();
-        $this->assertSame('Provider Contact', ProviderProfile::firstOrFail()->organization_name);
+        $this->assertSame('Provider Maria Contact', ProviderProfile::firstOrFail()->organization_name);
         $this->assertArrayNotHasKey('organization_proof', ProviderProfile::firstOrFail()->verification_documents);
     }
 
@@ -76,7 +83,7 @@ class ProviderRegistrationTest extends TestCase
     {
         $data = $this->providerRegistrationData(['authorization_required' => true, 'representative_id' => UploadedFile::fake()->create('script.php', 1, 'text/plain'), 'terms_accepted' => false]);
         $this->post('/register', $data)->assertSessionHasErrors(['authorization_letter', 'representative_id', 'terms_accepted']);
-        $this->assertDatabaseCount('users', 0);
+        $this->assertDatabaseCount('accounts', 0);
         $this->assertSame([], Storage::disk('documents')->allFiles());
         $data = $this->providerRegistrationData(['representative_id' => UploadedFile::fake()->create('large.pdf', 1025, 'application/pdf')]);
         $this->post('/register', $data)->assertSessionHasErrors('representative_id');
@@ -93,15 +100,15 @@ class ProviderRegistrationTest extends TestCase
         $data = $this->providerRegistrationData();
         $this->withSession(['registration_nonce' => 'another-session']);
         $this->post('/register', $data)->assertSessionHasErrors('account_type');
-        $this->assertDatabaseCount('users', 0);
+        $this->assertDatabaseCount('accounts', 0);
     }
 
     public function test_duplicate_email_creates_neither_provider_nor_private_files(): void
     {
-        User::factory()->create(['email' => 'provider@example.test']);
-        $data = $this->providerRegistrationData(['email' => 'PROVIDER@example.test']);
-        $this->post('/register', $data)->assertSessionHasErrors('email');
-        $this->assertDatabaseCount('users', 1);
+        User::factory()->create(['email' => 'office@gmail.com']);
+        $data = $this->providerRegistrationData(['email' => 'PROVIDER@gmail.com']);
+        $this->post('/register', $data)->assertSessionHasErrors('organization_email');
+        $this->assertDatabaseCount('accounts', 1);
         $this->assertDatabaseCount('provider_profiles', 0);
         $this->assertSame([], Storage::disk('documents')->allFiles());
     }
@@ -109,9 +116,9 @@ class ProviderRegistrationTest extends TestCase
     public function test_step_validation_only_validates_the_current_step_and_never_creates_an_account(): void
     {
         $this->fakeRegistrationLocations();
-        $this->postJson('/register/validate-step', ['account_type' => 'student', 'step' => 1])->assertUnprocessable()->assertJsonValidationErrors(['first_name', 'surname', 'date_of_birth', 'contact_number'])->assertJsonMissingValidationErrors(['email', 'school']);
+        $this->postJson('/register/validate-step', ['account_type' => 'student', 'step' => 1])->assertUnprocessable()->assertJsonValidationErrors(['first_name', 'surname', 'date_of_birth', 'contact_number', 'email'])->assertJsonMissingValidationErrors(['school']);
         $data = $this->studentRegistrationData(['step' => 1]);
-        unset($data['email'], $data['password'], $data['school']);
+        unset($data['password'], $data['school']);
         $this->postJson('/register/validate-step', $data)->assertOk()->assertJson(['valid' => true]);
         $this->postJson('/register/validate-step', $this->studentRegistrationData(['step' => 3, 'barangay_code' => '999999999']))->assertUnprocessable()->assertJsonValidationErrors('barangay_code');
         $this->postJson('/register/validate-step', $this->studentRegistrationData(['step' => 4, 'password_confirmation' => 'different']))->assertUnprocessable()->assertJsonValidationErrors('password');
@@ -120,7 +127,7 @@ class ProviderRegistrationTest extends TestCase
         $this->postJson('/register/validate-step', $data)->assertOk();
         $data['step'] = 3;
         $this->postJson('/register/validate-step', $data)->assertUnprocessable()->assertJsonValidationErrors(['representative_id', 'organization_proof']);
-        $this->assertDatabaseCount('users', 0);
+        $this->assertDatabaseCount('accounts', 0);
     }
 
     public function test_private_verification_documents_deny_other_providers_students_and_guests(): void
@@ -138,7 +145,7 @@ class ProviderRegistrationTest extends TestCase
         $this->get($url)->assertStatus(409);
     }
 
-    public function test_admin_cannot_approve_until_email_and_required_documents_are_verified_and_review_confirmed(): void
+    public function test_admin_cannot_approve_until_required_documents_are_verified_and_review_confirmed(): void
     {
         Notification::fake();
         $this->post('/register', $this->providerRegistrationData())->assertSessionHasNoErrors();
@@ -146,8 +153,7 @@ class ProviderRegistrationTest extends TestCase
         $admin = User::factory()->create(['role' => UserRole::Admin]);
         $url = route('admin.providers.review', $profile);
         $decision = ['verification_status' => 'approved', 'expected_version' => 0, 'documents_reviewed' => true];
-        $this->actingAs($admin)->patch($url, $decision)->assertSessionHasErrors('verification_status');
-        $profile->user->markEmailAsVerified();
+        $this->actingAs($admin);
         $this->patch($url, array_replace($decision, ['documents_reviewed' => false]))->assertSessionHasErrors('verification_status');
         $path = $profile->verification_documents['organization_proof']['path'];
         $original = Storage::disk('documents')->get($path);
@@ -163,7 +169,6 @@ class ProviderRegistrationTest extends TestCase
     {
         $this->post('/register', $this->providerRegistrationData())->assertSessionHasNoErrors();
         $profile = ProviderProfile::firstOrFail();
-        $profile->user->markEmailAsVerified();
         $profile->forceFill(['verification_status' => 'approved'])->save();
         $url = route('provider-verification.update', $profile);
         $this->actingAs(ProviderProfile::factory()->create()->user)->post($url, ['expected_version' => 0])->assertForbidden();

@@ -163,7 +163,7 @@ class RenewalWorkflowTest extends TestCase
         $this->assertSame($award->starts_on->toDateString(), $award->fresh()->starts_on->toDateString());
         $this->assertNull($award->fresh()->ends_on);
         $this->assertDatabaseCount('payments', 0);
-        $this->assertDatabaseCount('scholarship_awards', 1);
+        $this->assertDatabaseCount('scholarship_grants', 1);
         $this->actingAs($student)->get('/renewals/'.$renewal->id)->assertInertia(fn (Assert $page) => $page->where('renewal.notes', 'Requirements reviewed'));
     }
 

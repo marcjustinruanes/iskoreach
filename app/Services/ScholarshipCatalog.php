@@ -60,13 +60,12 @@ class ScholarshipCatalog
         return $this->visible()->where('status', 'published')->where('opens_at', '<=', now())->where('deadline_at', '>', now())
             ->whereDoesntHave('applications', fn ($query) => $query->where('student_id', $student->id))
             ->with(['provider:id,organization_name', 'locations', 'academicTerm'])->orderBy('deadline_at')->orderBy('id')->lazy(100)
-            ->filter(function (Scholarship $program) use ($student, $hasAward): bool {
-                $declarations = app(ScholarshipNotices::class)->declarations($student, $program);
-                if (($hasAward || count($declarations) > 0) && ! $program->accepts_existing_scholars) {
+            ->filter(function (Scholarship $program) use ($hasAward): bool {
+                if ($hasAward && ! $program->accepts_existing_scholars) {
                     return false;
                 }
 
-                return ! $program->require_verified_declarations || collect($declarations)->every(fn ($row): bool => $row['verification'] === 'verified');
+                return true;
             })->take($limit)->collect()->values();
     }
 
@@ -81,7 +80,7 @@ class ScholarshipCatalog
             'accepts_existing_scholars' => $item->accepts_existing_scholars,
             'locations' => $item->locations->map(fn ($location): array => $location->only('id', 'scope', 'region_code', 'city_code', 'region_name', 'city_name', 'province_code', 'province_name')),
             'academic_term' => $item->academicTerm ? $item->academicTerm->academic_year.' · '.$item->academicTerm->semester : null,
-            'internal_count' => $summary['internal_count'], 'external_count' => $summary['verified_external_count'], 'applicant_count' => $summary['public_count'],
-            'external_count_needs_reverification' => $summary['needs_reverification'], 'verified_source_as_of' => $summary['verified_source_as_of'], 'show_url' => route('scholarships.show', $item->slug)];
+            'internal_count' => $summary['internal_count'], 'external_count' => $summary['external_count'], 'applicant_count' => $summary['public_count'],
+            'show_url' => route('scholarships.show', $item->slug)];
     }
 }

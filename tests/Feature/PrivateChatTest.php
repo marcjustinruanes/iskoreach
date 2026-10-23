@@ -7,7 +7,6 @@ use App\Events\ChatChanged;
 use App\Models\Application;
 use App\Models\Conversation;
 use App\Models\Message;
-use App\Models\MessageAttachment;
 use App\Models\ProviderProfile;
 use App\Models\Scholarship;
 use App\Models\StudentProfile;
@@ -113,13 +112,22 @@ class PrivateChatTest extends TestCase
         $this->actingAs($thread->student)->post('/messages/'.$thread->id, ['submission_token' => $token, 'file' => $this->pdf()])->assertSessionHasNoErrors();
         $this->post('/messages/'.$thread->id, ['submission_token' => $token, 'file' => $this->pdf()])->assertSessionHasNoErrors();
         $this->assertCount(1, Storage::disk('documents')->allFiles());
-        $attachment = MessageAttachment::firstOrFail();
+        $attachment = Message::whereNotNull('attachment_path')->firstOrFail();
+        $this->assertArrayNotHasKey('attachment_path', $attachment->toArray());
+        $this->assertArrayNotHasKey('attachment_checksum', $attachment->toArray());
         $this->get('/messages/attachments/'.$attachment->id)->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
         $this->actingAs($thread->provider->user)->get('/messages/attachments/'.$attachment->id)->assertOk();
         $this->actingAs(StudentProfile::factory()->create()->user)->get('/messages/attachments/'.$attachment->id)->assertForbidden();
         $this->actingAs($thread->student)->get('/messages/'.$thread->id)->assertInertia(fn (Assert $page) => $page->missing('messages.data.0.attachment.path')->missing('messages.data.0.submission_token'));
-        Storage::disk('documents')->put($attachment->path, 'tampered');
+        Storage::disk('documents')->put($attachment->attachment_path, 'tampered');
         $this->get('/messages/attachments/'.$attachment->id)->assertNotFound();
+    }
+
+    public function test_text_only_messages_have_no_downloadable_attachment(): void
+    {
+        $thread = Conversation::factory()->create();
+        $message = Message::factory()->create(['conversation_id' => $thread->id, 'sender_id' => $thread->student_id]);
+        $this->actingAs($thread->student)->get('/messages/attachments/'.$message->id)->assertNotFound();
     }
 
     public function test_read_receipts_are_bounded_do_not_mark_own_messages_and_mark_only_related_chat_notices(): void
@@ -153,7 +161,7 @@ class PrivateChatTest extends TestCase
     {
         $thread = Conversation::factory()->create();
         $this->actingAs($thread->student)->post('/messages/'.$thread->id, ['submission_token' => (string) Str::uuid(), 'file' => $this->pdf()])->assertSessionHasNoErrors();
-        $attachment = MessageAttachment::firstOrFail();
+        $attachment = Message::whereNotNull('attachment_path')->firstOrFail();
         $notice = $thread->provider->user->notifications()->firstOrFail();
         $thread->provider->forceFill(['verification_status' => 'pending'])->save();
         $this->getJson('/messages/'.$thread->id.'/state')->assertForbidden();

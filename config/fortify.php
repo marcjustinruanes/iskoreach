@@ -28,7 +28,7 @@ return [
     |
     */
 
-    'passwords' => 'users',
+    'passwords' => 'accounts',
 
     /*
     |--------------------------------------------------------------------------
@@ -164,7 +164,6 @@ return [
     'features' => [
         Features::registration(),
         Features::resetPasswords(),
-        Features::emailVerification(),
     ],
 
 ];

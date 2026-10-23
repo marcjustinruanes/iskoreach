@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\OrganizationType;
 use App\Models\ProviderProfile;
 use App\Support\InputRules;
 use Illuminate\Support\Facades\Crypt;
@@ -12,20 +13,25 @@ use Illuminate\Validation\ValidationException;
 
 class ProviderRegistration
 {
-    public const FIELDS = ['organization_description', 'country', 'barangay_code', 'first_name', 'surname', 'middle_name', 'suffix', 'position', 'contact_number', 'work_email', 'organization_name', 'organization_type', 'office_address', 'region_code', 'province_code', 'city_code', 'organization_phone', 'website', 'authorization_required'];
+    public const FIELDS = ['organization_description', 'country', 'barangay_code', 'first_name', 'surname', 'middle_name', 'suffix', 'position', 'contact_number', 'work_email', 'organization_name', 'organization_type', 'region_code', 'province_code', 'city_code', 'organization_phone', 'website', 'authorization_required'];
 
     public const DOCUMENTS = ['representative_id', 'organization_proof', 'administration_evidence', 'authorization_letter', 'accreditation'];
 
     /** @return array<string, mixed> */
     public function page(string $role): array
     {
+        $googleReturn = request()->session()->pull('google_registration_return', false);
+        if (! request()->header('X-Inertia') && ! $googleReturn) {
+            request()->session()->forget(['google_registration', 'registration_email', 'google_work_registration', 'registration_work_email']);
+        }
+        $google = app(GoogleAuthentication::class)->registration(request());
         $nonce = request()->session()->get('registration_nonce');
         if (! $nonce) {
             $nonce = Str::random(48);
             request()->session()->put('registration_nonce', $nonce);
         }
 
-        return ['verificationPolicy' => config('provider-verification.documents_by_type'), 'mode' => 'register', 'accountType' => $role, 'registrationIntent' => Crypt::encryptString(json_encode(['role' => $role, 'session' => $nonce, 'expires' => now()->addHours(4)->timestamp], JSON_THROW_ON_ERROR))];
+        return ['verifiedWorkEmail' => app(RegistrationEmailVerification::class)->verifiedAddress(request(), 'provider', 'work'), 'verifiedAccountEmail' => app(RegistrationEmailVerification::class)->verifiedAddress(request(), $role), 'googleReturn' => $googleReturn, 'googleRegistration' => $google ? collect($google)->only(['email'])->all() : null, 'policyVersions' => app(RegistrationPolicies::class)->versions(), 'registrationOptions' => app(RegistrationOptions::class)->data(), 'verificationPolicy' => config('provider-verification.documents_by_type'), 'mode' => 'register', 'accountType' => $role, 'registrationIntent' => Crypt::encryptString(json_encode(['role' => $role, 'session' => $nonce, 'expires' => now()->addHours(4)->timestamp], JSON_THROW_ON_ERROR))];
     }
 
     /** @param array<string, mixed> $input */
@@ -47,19 +53,19 @@ class ProviderRegistration
     /** @return array<string, array<int, mixed>> */
     public function rules(array $input = []): array
     {
-        $student = app(StudentRegistration::class)->rules();
-        $rules = array_intersect_key($student, array_flip(['first_name', 'surname', 'middle_name', 'suffix', 'contact_number', 'region_code', 'province_code', 'city_code', 'terms_accepted', 'privacy_accepted']));
-        foreach (['position', 'office_address', 'organization_phone'] as $field) {
+        $student = app(StudentRegistration::class)->rules($input ?: request()->all());
+        $rules = array_intersect_key($student, array_flip(['first_name', 'surname', 'middle_name', 'no_middle_name', 'suffix', 'contact_number', 'region_code', 'province_code', 'city_code', 'terms_accepted', 'privacy_accepted']));
+        foreach (['position', 'organization_phone'] as $field) {
             $rules[$field] = ['required', 'string', 'max:255', InputRules::singleLine()];
         }
         $rules['organization_phone'] = $student['contact_number'];
         $rules['organization_description'] = ['required', 'string', 'min:10', 'max:4000'];
         $rules['country'] = ['sometimes', Rule::in(['PH'])];
         $rules['barangay_code'] = $student['barangay_code'];
-        $rules['organization_type'] = ['required', Rule::in(['foundation', 'government', 'school', 'organization', 'individual', 'lgu', 'nonprofit', 'corporate', 'other'])];
+        $rules['organization_type'] = ['required', Rule::enum(OrganizationType::class)];
         $rules['organization_name'] = ['required_unless:organization_type,individual', 'nullable', 'string', 'max:255', InputRules::singleLine()];
-        $rules['work_email'] = InputRules::email();
-        $rules['organization_email'] = InputRules::email();
+        $rules['work_email'] = InputRules::email(gmail: true);
+        $rules['organization_email'] = InputRules::email(unique: true, gmail: true);
         $rules['website'] = ['nullable', 'url:http,https', 'max:255'];
         $rules['authorization_required'] = ['required', 'boolean'];
         $values = $input ?: request()->all();
@@ -76,7 +82,7 @@ class ProviderRegistration
             $rules[$kind] = array_values(array_filter(['bail', $applicability === 'sometimes' ? null : $applicability, $required, 'nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:1024']));
         }
 
-        return $rules;
+        return $rules + app(ProviderCoverage::class)->rules();
     }
 
     /** @param array<string, mixed> $input @return array<string, mixed> */
@@ -84,8 +90,11 @@ class ProviderRegistration
     {
         $input = app(StudentRegistration::class)->normalize($input);
         $input = InputRules::normalize($input, [...self::FIELDS, 'organization_email'], ['work_email', 'organization_email']);
+        if (($input['account_type'] ?? 'student') === 'provider') {
+            $input['email'] = $input['organization_email'] ?? null;
+        }
         if (isset($input['organization_phone']) && is_string($input['organization_phone'])) {
-            $input['organization_phone'] = preg_replace('/[ ()-]/', '', $input['organization_phone']);
+            $input['organization_phone'] = InputRules::contactNumber($input['organization_phone']);
         }
 
         return $input;

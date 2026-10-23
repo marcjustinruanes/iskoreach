@@ -57,13 +57,13 @@ class DemoProvidersSeeder extends Seeder
                         $user = new User;
                         $user->forceFill(['name' => $provider['first_name'].' '.$provider['surname'], 'email' => $email,
                             'password' => Hash::make($credentials[$email]['password']), 'role' => UserRole::Provider,
-                            'email_verified_at' => now(), 'requires_email_verification' => true])->save();
+                        ])->save();
                         $profile = new ProviderProfile;
                         $profile->forceFill(['user_id' => $user->id, 'organization_name' => $provider['name'],
                             'contact_email' => $email, 'work_email' => $email, 'first_name' => $provider['first_name'],
                             'surname' => $provider['surname'], 'position' => 'Demo Scholarship Administrator',
                             'contact_number' => '0900000000'.($index + 1), 'organization_phone' => '0900000000'.($index + 1),
-                            'organization_type' => $provider['type'], 'office_address' => 'Demo office '.($index + 1).' (fictional address for local testing only)',
+                            'organization_type' => $provider['type'],
                             'region_code' => '130000000', 'city_code' => '137404000', 'region_name' => 'National Capital Region',
                             'city_name' => 'Quezon City', 'verification_status' => 'approved', 'verification_version' => 1,
                             'reviewed_at' => now(), 'registration_version' => 0, 'authorization_required' => false])->save();
@@ -103,7 +103,6 @@ class DemoProvidersSeeder extends Seeder
                 'opens_at' => $upcoming ? now()->addDays(14) : now()->subDays($closed ? 60 : 7),
                 'deadline_at' => $closed ? now()->subDays(7) : now()->addDays($upcoming ? 45 : 30 + $index),
                 'accepts_existing_scholars' => $index % 2 === 0, 'existing_scholars_low_priority' => $index === 2,
-                'require_verified_declarations' => false,
                 'eligibility_rules' => ['criteria' => ['Currently enrolled senior high school or college student at a Philippine school or university.',
                     'Provide current enrollment evidence and grades for provider review.',
                     $variant === 0 ? 'Nationwide coverage; applicants from any Philippine region may apply.' : 'For students residing or studying in the National Capital Region.',

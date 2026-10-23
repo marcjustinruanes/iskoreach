@@ -6,6 +6,7 @@ use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Actions\Fortify\UpdateUserProfileInformation;
 use App\Enums\ProviderVerificationStatus;
+use App\Models\Course;
 use App\Models\ProviderProfile;
 use App\Models\StudentProfile;
 use App\Models\User;
@@ -34,10 +35,10 @@ class InputValidationTest extends TestCase
     public function test_direct_registration_normalizes_selected_text_without_trimming_passwords(): void
     {
         $password = '  valid password!  ';
-        $user = app(CreateNewUser::class)->create($this->providerRegistrationData(['first_name' => "\u{00a0}Ana\u{00a0}", 'surname' => 'Cruz', 'email' => '  ANA+tag@Example.test  ',
+        $user = app(CreateNewUser::class)->create($this->providerRegistrationData(['first_name' => "\u{00a0}Ana\u{00a0}", 'surname' => 'Cruz', 'organization_email' => '  ANA+tag@Gmail.com  ',
             'password' => $password, 'password_confirmation' => $password, 'organization_name' => '  Foundation 123 & Co.  ']));
-        $this->assertSame('Ana Cruz', $user->name);
-        $this->assertSame('ana+tag@example.test', $user->email);
+        $this->assertSame('Ana Maria Cruz', $user->name);
+        $this->assertSame('ana+tag@gmail.com', $user->email);
         $this->assertSame('Foundation 123 & Co.', $user->providerProfile->organization_name);
         $this->assertTrue(Hash::check($password, $user->password));
         $this->assertFalse(Hash::check(trim($password), $user->password));
@@ -45,28 +46,28 @@ class InputValidationTest extends TestCase
 
     public function test_registration_rejects_blank_names_and_case_variant_duplicate_emails(): void
     {
-        User::factory()->create(['email' => 'Existing@Example.test']);
-        $this->post('/register', ['name' => "\u{00a0}", 'email' => 'EXISTING@example.test', 'password' => 'valid-password', 'password_confirmation' => 'valid-password'])
+        User::factory()->create(['email' => 'Existing@Gmail.com']);
+        $this->post('/register', ['name' => "\u{00a0}", 'email' => 'EXISTING@gmail.com', 'password' => 'valid-password', 'password_confirmation' => 'valid-password'])
             ->assertSessionHasErrors(['first_name', 'surname', 'email']);
-        $this->assertDatabaseCount('users', 1);
+        $this->assertDatabaseCount('accounts', 1);
     }
 
     public function test_email_rules_reject_internal_whitespace_and_incomplete_domains_without_dns_checks(): void
     {
-        foreach (['person @example.test', 'person@localhost', "person\t@example.test", 'bad@@example.test', str_repeat('a', 256).'@example.test'] as $email) {
+        foreach (['person @gmail.com', 'person@localhost', "person\t@gmail.com", 'bad@@gmail.com', str_repeat('a', 256).'@gmail.com'] as $email) {
             $this->assertTrue(Validator::make(['email' => $email], ['email' => InputRules::email()])->fails());
         }
-        $this->assertTrue(Validator::make(['email' => 'person+tag@example.test'], ['email' => InputRules::email()])->passes());
+        $this->assertTrue(Validator::make(['email' => 'person+tag@gmail.com'], ['email' => InputRules::email()])->passes());
     }
 
     public function test_profile_information_action_ignores_own_email_but_rejects_another_account_case_variant(): void
     {
-        $user = User::factory()->create(['email' => 'owner@example.test']);
-        app(UpdateUserProfileInformation::class)->update($user, ['name' => '  Ana Cruz  ', 'email' => ' OWNER@Example.test ']);
+        $user = User::factory()->create(['email' => 'owner@gmail.com']);
+        app(UpdateUserProfileInformation::class)->update($user, ['name' => '  Ana Cruz  ', 'email' => ' OWNER@Gmail.com ']);
         $this->assertSame('Ana Cruz', $user->fresh()->name);
-        User::factory()->create(['email' => 'other@example.test']);
+        User::factory()->create(['email' => 'other@gmail.com']);
         $this->expectException(ValidationException::class);
-        app(UpdateUserProfileInformation::class)->update($user, ['name' => 'Ana Cruz', 'email' => 'OTHER@Example.test']);
+        app(UpdateUserProfileInformation::class)->update($user, ['name' => 'Ana Cruz', 'email' => 'OTHER@Gmail.com']);
     }
 
     public function test_new_password_byte_limits_nulls_minimums_and_confirmation_are_consistent(): void
@@ -107,39 +108,40 @@ class InputValidationTest extends TestCase
 
     public function test_provider_cosmetic_email_edit_preserves_approval_and_real_change_requires_review(): void
     {
-        $profile = ProviderProfile::factory()->create(['verification_status' => ProviderVerificationStatus::Approved, 'organization_name' => 'Foundation 123', 'contact_email' => 'Contact@Example.test']);
-        $this->actingAs($profile->user)->patch('/provider/profiles/'.$profile->id, ['organization_name' => '  Foundation 123  ', 'contact_email' => ' CONTACT@example.test '])->assertSessionHasNoErrors();
+        $profile = ProviderProfile::factory()->create(['verification_status' => ProviderVerificationStatus::Approved, 'organization_name' => 'Foundation 123', 'contact_email' => 'Contact@Gmail.com']);
+        $this->actingAs($profile->user)->patch('/provider/profiles/'.$profile->id, ['organization_name' => '  Foundation 123  ', 'contact_email' => ' CONTACT@gmail.com '])->assertSessionHasNoErrors();
         $this->assertSame(ProviderVerificationStatus::Approved, $profile->fresh()->verification_status);
-        $this->assertSame('Contact@Example.test', $profile->fresh()->contact_email);
+        $this->assertSame('Contact@Gmail.com', $profile->fresh()->contact_email);
         $this->assertDatabaseCount('activity_logs', 0);
-        $this->patch('/provider/profiles/'.$profile->id, ['organization_name' => 'Foundation 123', 'contact_email' => 'new@example.test'])->assertSessionHasNoErrors();
+        $this->patch('/provider/profiles/'.$profile->id, ['organization_name' => 'Foundation 123', 'contact_email' => 'new@gmail.com'])->assertSessionHasNoErrors();
         $this->assertSame(ProviderVerificationStatus::Pending, $profile->fresh()->verification_status);
         $this->assertDatabaseCount('activity_logs', 1);
     }
 
     public function test_profiles_allow_real_organization_and_academic_punctuation_but_reject_controls(): void
     {
+        Course::factory()->create(['name' => 'BS IT (4-year)', 'education_level' => 'college']);
         $student = StudentProfile::factory()->create();
-        $this->actingAs($student->user)->patch('/student/profiles/'.$student->id, ['school' => '  School #123 & College  ', 'course' => ' BS IT (4-year) ', 'year_level' => 12])->assertSessionHasNoErrors();
+        $this->actingAs($student->user)->patch('/student/profiles/'.$student->id, ['school' => '  School #123 & College  ', 'course' => ' BS IT (4-year) ', 'year_level' => 2])->assertSessionHasNoErrors();
         $this->assertSame('School #123 & College', $student->fresh()->school);
         $this->patch('/student/profiles/'.$student->id, ['school' => "Bad\x01school", 'course' => "BS\nIT", 'year_level' => 13])->assertSessionHasErrors(['school', 'course', 'year_level']);
         $provider = ProviderProfile::factory()->create();
-        $this->actingAs($provider->user)->patch('/provider/profiles/'.$provider->id, ['organization_name' => "Bad\x01organization", 'contact_email' => 'person @example.test'])->assertSessionHasErrors(['organization_name', 'contact_email']);
+        $this->actingAs($provider->user)->patch('/provider/profiles/'.$provider->id, ['organization_name' => "Bad\x01organization", 'contact_email' => 'person @gmail.com'])->assertSessionHasErrors(['organization_name', 'contact_email']);
     }
 
     public function test_direct_json_registration_rejects_oversized_passwords_without_echoing_them(): void
     {
         $password = str_repeat('a', 73);
-        $response = $this->postJson('/register', ['name' => 'Ana Cruz', 'email' => 'ana@example.test', 'password' => $password, 'password_confirmation' => $password]);
+        $response = $this->postJson('/register', ['name' => 'Ana Cruz', 'email' => 'ana@gmail.com', 'password' => $password, 'password_confirmation' => $password]);
         $response->assertUnprocessable()->assertJsonValidationErrors('password')->assertDontSee($password);
-        $this->assertDatabaseCount('users', 0);
+        $this->assertDatabaseCount('accounts', 0);
     }
 
     public function test_provider_contact_email_does_not_gain_account_uniqueness_requirements(): void
     {
-        $first = ProviderProfile::factory()->create(['contact_email' => 'shared@example.test']);
+        $first = ProviderProfile::factory()->create(['contact_email' => 'shared@gmail.com']);
         $second = ProviderProfile::factory()->create();
-        $this->actingAs($second->user)->patch('/provider/profiles/'.$second->id, ['organization_name' => $second->organization_name, 'contact_email' => ' SHARED@Example.test '])->assertSessionHasNoErrors();
+        $this->actingAs($second->user)->patch('/provider/profiles/'.$second->id, ['organization_name' => $second->organization_name, 'contact_email' => ' SHARED@Gmail.com '])->assertSessionHasNoErrors();
         $this->assertSame($first->contact_email, $second->fresh()->contact_email);
     }
 

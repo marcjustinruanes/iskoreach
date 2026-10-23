@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Provider\ReviewApplicationRequest;
 use App\Models\ActivityLog;
 use App\Models\Application;
+use App\Models\Scholarship;
 use App\Services\ApplicationWorkflow;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,16 +21,26 @@ class ApplicationController extends Controller
     public function index(Request $request, ApplicationWorkflow $workflow): Response
     {
         $filters = $request->validate(['q' => ['nullable', 'string', 'max:200'],
+            'school' => ['nullable', 'string', 'max:255'], 'campus_city_code' => ['nullable', 'string', 'regex:/^[0-9]{9}$/D'],
             'status' => ['nullable', Rule::in(ApplicationStatus::countedValues())], 'priority' => ['nullable', Rule::in(['standard', 'low'])]]);
-        $filters = array_replace(['q' => '', 'status' => '', 'priority' => ''], array_filter($filters, fn ($value) => $value !== null));
+        $filters = array_replace(['q' => '', 'status' => '', 'priority' => '', 'school' => '', 'campus_city_code' => ''], array_filter($filters, fn ($value) => $value !== null));
         $query = Application::query()->whereNotNull('submitted_at')->whereIn('status', ApplicationStatus::countedValues())
-            ->whereHas('student', fn ($query) => $query->where('role', 'student'))
+            ->withValidApplicant()
             ->whereHas('scholarship', fn ($query) => $query->where('provider_id', $request->user()->providerProfile->id))->with('scholarship.provider');
+        $campusOptions = (clone $query)->get(['submission_snapshot'])->map(fn ($item): array => [
+            'school' => $item->submission_snapshot['student']['school'] ?? null,
+            'campus' => $item->submission_snapshot['student']['campus'] ?? null,
+            'city_code' => $item->submission_snapshot['student']['campus_city_code'] ?? null,
+        ])->filter(fn (array $option): bool => is_string($option['school']) && $option['school'] !== '');
+        $schoolOptions = $campusOptions->pluck('school')->unique()->sort()->values()->all();
+        $campusOptions = $campusOptions->filter(fn (array $option): bool => filled($option['campus']) && filled($option['city_code']))->unique(fn (array $option): string => $option['school'].'|'.$option['city_code'])->sortBy('campus')->values()->all();
         $query->when($filters['q'] !== '', fn ($query) => $query->where(fn ($query) => $query->whereLike('submission_snapshot->student->name', '%'.$filters['q'].'%')->orWhereHas('scholarship', fn ($query) => $query->whereLike('title', '%'.$filters['q'].'%'))))
             ->when($filters['status'] !== '', fn ($query) => $query->where('status', $filters['status']))
-            ->when($filters['priority'] !== '', fn ($query) => $query->where('low_priority', $filters['priority'] === 'low'));
+            ->when($filters['priority'] !== '', fn ($query) => $query->where('low_priority', $filters['priority'] === 'low'))
+            ->when($filters['school'] !== '', fn ($query) => $query->where('submission_snapshot->student->school', $filters['school']))
+            ->when($filters['campus_city_code'] !== '', fn ($query) => $query->where('submission_snapshot->student->campus_city_code', $filters['campus_city_code']));
 
-        return Inertia::render('provider/Applications', ['filters' => $filters, 'applications' => $query->latest('submitted_at')->orderByDesc('id')->paginate(10)->withQueryString()->through(fn ($item): array => [...$workflow->row($item), 'student_name' => $item->submission_snapshot['student']['name'] ?? 'Submitted account #'.$item->student_id])]);
+        return Inertia::render('provider/Applications', ['scholarships' => Scholarship::where('provider_id', $request->user()->providerProfile->id)->orderBy('title')->get(['id', 'title']), 'schoolOptions' => $schoolOptions, 'campusOptions' => $campusOptions, 'filters' => $filters, 'applications' => $query->latest('submitted_at')->orderByDesc('id')->paginate(10)->withQueryString()->through(fn ($item): array => [...$workflow->row($item), 'school' => $item->submission_snapshot['student']['school'] ?? null, 'campus' => $item->submission_snapshot['student']['campus'] ?? null, 'student_name' => $item->applicant_source === 'external' ? $item->applicant_name : ($item->submission_snapshot['student']['name'] ?? 'Submitted account #'.$item->student_id)])]);
     }
 
     public function show(Application $application, ApplicationWorkflow $workflow): Response

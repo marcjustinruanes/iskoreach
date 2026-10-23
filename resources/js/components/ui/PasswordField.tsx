@@ -15,7 +15,7 @@ export default function PasswordField({ label, id, className = '', ...props }: P
     const [visible, setVisible] = useState(false);
     const Icon = visible ? EyeOff : Eye;
     return <div className="relative">
-        <Input {...props} id={fieldId} label={label} type={visible ? 'text' : 'password'} className={'pr-14 ' + className} />
+        <Input {...props} id={fieldId} label={label} type={visible ? 'text' : 'password'} className={'password-field pr-14 ' + className} />
         <button type="button" aria-label={(visible ? 'Hide ' : 'Show ') + label.toLowerCase()} aria-controls={fieldId} aria-pressed={visible}
             onClick={() => setVisible(!visible)} className={'absolute top-7 right-1 flex size-11 items-center justify-center rounded-lg text-civic-muted hover:text-civic-teal ' + focusRing}>
             <Icon aria-hidden="true" className="size-5" />

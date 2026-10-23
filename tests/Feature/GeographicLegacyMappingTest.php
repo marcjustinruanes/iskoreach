@@ -8,6 +8,7 @@ use App\Services\GeographicLegacyMapping;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -92,7 +93,7 @@ class GeographicLegacyMappingTest extends TestCase
         $this->assertTrue($row['requires_review']);
         $this->assertFalse($row['apply_available']);
         $this->assertFalse($report['authority_verified']);
-        $this->assertDatabaseCount('geographic_datasets', 0);
+        $this->assertFalse(Schema::hasTable('geographic_datasets'));
         $this->assertDatabaseCount('scholarship_locations', 0);
         Http::assertNothingSent();
     }
@@ -176,7 +177,7 @@ class GeographicLegacyMappingTest extends TestCase
         $this->artisan('geography:mapping-report', ['manifest' => $this->manifest, '--coverage' => $this->directory.'/coverage.json'])->assertSuccessful();
         $row = $this->report([$this->coverage(['secret' => 'must not be exported'])])['rows'][0];
         $this->assertArrayNotHasKey('secret', $row['original']);
-        $this->assertDatabaseCount('geographic_datasets', 0);
+        $this->assertFalse(Schema::hasTable('geographic_datasets'));
     }
 
     public function test_current_database_reporting_keeps_real_coverage_and_history_unchanged(): void
@@ -187,6 +188,6 @@ class GeographicLegacyMappingTest extends TestCase
         $this->artisan('geography:mapping-report', ['manifest' => $this->manifest, '--current' => true])->assertSuccessful();
         $this->assertSame($before, DB::table('scholarship_locations')->get()->toJson());
         $this->assertDatabaseHas('scholarship_locations', ['id' => $location->id, 'city_code' => '990010100', 'city_name' => 'Repeated Place']);
-        $this->assertDatabaseCount('geographic_datasets', 0);
+        $this->assertFalse(Schema::hasTable('geographic_datasets'));
     }
 }

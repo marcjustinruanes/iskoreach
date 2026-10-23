@@ -18,7 +18,7 @@ class ApplicationPolicy
     {
         return $user->role === UserRole::Provider && ! $application->trashed() && $application->submitted_at !== null
             && in_array($application->status->value, ApplicationStatus::countedValues(), true)
-            && $application->student?->role === UserRole::Student
+            && ($application->applicant_source === 'external' || $application->student?->role === UserRole::Student)
             && $application->scholarship->provider()->where('user_id', $user->id)->where('verification_status', 'approved')->exists();
     }
 }

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\ProviderVerificationStatus;
 use App\Enums\UserRole;
+use App\Models\Course;
 use App\Models\ProviderProfile;
 use App\Models\StudentProfile;
 use App\Models\User;
@@ -17,7 +18,7 @@ class PhaseOneTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_student_registration_creates_a_profile_and_requires_email_verification(): void
+    public function test_student_registration_creates_a_profile_with_preverified_email(): void
     {
         $this->fakeRegistrationLocations();
         $this->post('/register', $this->studentRegistrationData())->assertRedirect('/dashboard');
@@ -26,12 +27,10 @@ class PhaseOneTest extends TestCase
         $this->assertSame(UserRole::Student, $user->role);
         $this->assertNotNull($user->studentProfile);
         $this->assertNull($user->providerProfile);
-        $this->get('/dashboard')->assertRedirect('/email/verify');
-        $user->markEmailAsVerified();
         $this->actingAs($user->fresh());
-        $this->get('/dashboard')->assertRedirect('/student/dashboard');
-        $this->get('/student/dashboard')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->component('student/Dashboard')->where('auth.user.role', 'student'));
+        $this->get('/dashboard')->assertRedirect('/student/registration-status');
+        $this->get('/student/registration-status')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('StudentRegistrationStatus')->where('registrationStatus', 'pending'));
     }
 
     public function test_provider_registration_is_pending_and_cannot_enter_the_workspace(): void
@@ -41,8 +40,6 @@ class PhaseOneTest extends TestCase
         $user = User::firstOrFail();
         $this->assertSame(UserRole::Provider, $user->role);
         $this->assertSame(ProviderVerificationStatus::Pending, $user->providerProfile->verification_status);
-        $this->get('/dashboard')->assertRedirect('/email/verify');
-        $user->markEmailAsVerified();
         $this->actingAs($user->fresh());
         $this->get('/dashboard')->assertRedirect('/provider/status');
         $this->get('/provider/dashboard')->assertRedirect('/provider/status');
@@ -55,11 +52,11 @@ class PhaseOneTest extends TestCase
     public function test_public_registration_cannot_select_an_admin_account_type(): void
     {
         $this->post('/register', [
-            'name' => 'Escalation Attempt', 'email' => 'attacker@example.test',
+            'name' => 'Escalation Attempt', 'email' => 'attacker@gmail.com',
             'password' => 'test-password', 'password_confirmation' => 'test-password',
             'account_type' => 'admin',
         ])->assertSessionHasErrors('account_type');
-        $this->assertDatabaseCount('users', 0);
+        $this->assertDatabaseCount('accounts', 0);
         $this->assertGuest();
     }
 
@@ -70,7 +67,7 @@ class PhaseOneTest extends TestCase
         $this->get('/register?account=admin')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Auth')->where('accountType', 'student'));
         $this->post('/register', $this->providerRegistrationData(['organization_name' => '']))->assertSessionHasErrors('organization_name');
-        $this->assertDatabaseCount('users', 0);
+        $this->assertDatabaseCount('accounts', 0);
     }
 
     public function test_all_private_areas_require_authentication(): void
@@ -100,6 +97,7 @@ class PhaseOneTest extends TestCase
 
     public function test_student_updates_are_validated_and_enforce_ownership(): void
     {
+        Course::factory()->create(['name' => 'BS Mathematics', 'education_level' => 'college']);
         $profile = StudentProfile::factory()->create();
         $other = StudentProfile::factory()->create();
         $this->actingAs($profile->user)->patch('/student/profiles/'.$other->id, ['school' => 'Unauthorized'])->assertForbidden();
@@ -119,7 +117,7 @@ class PhaseOneTest extends TestCase
         $profile = ProviderProfile::factory()->create();
         $other = ProviderProfile::factory()->create();
         $this->actingAs($profile->user)->patch('/provider/profiles/'.$other->id, [
-            'organization_name' => 'Unauthorized', 'contact_email' => 'x@example.test',
+            'organization_name' => 'Unauthorized', 'contact_email' => 'x@gmail.com',
         ])->assertForbidden();
         $this->patch('/provider/profiles/'.$profile->id, [
             'organization_name' => $profile->organization_name, 'contact_email' => $profile->contact_email,
@@ -178,12 +176,12 @@ class PhaseOneTest extends TestCase
 
     public function test_admin_is_created_interactively_and_its_password_is_hashed(): void
     {
-        $this->artisan('app:create-admin', ['--name' => 'Local Administrator', '--email' => 'admin@example.test'])
+        $this->artisan('app:create-admin', ['--name' => 'Local Administrator', '--email' => 'admin@gmail.com'])
             ->expectsQuestion('Password', 'long-local-password')
             ->expectsQuestion('Confirm password', 'long-local-password')
             ->expectsOutput('Administrator created. Sign in through the regular login page.')
             ->assertSuccessful();
-        $admin = User::where('email', 'admin@example.test')->firstOrFail();
+        $admin = User::where('email', 'admin@gmail.com')->firstOrFail();
         $this->assertSame(UserRole::Admin, $admin->role);
         $this->assertTrue(Hash::check('long-local-password', $admin->password));
         $this->assertDatabaseHas('activity_logs', ['action' => 'admin.created_locally', 'actor_id' => $admin->id]);
@@ -197,13 +195,13 @@ class PhaseOneTest extends TestCase
             ->expectsQuestion('Confirm password', 'long-local-password')
             ->assertFailed();
         $this->assertSame(UserRole::Student, $user->fresh()->role);
-        $this->assertDatabaseCount('users', 1);
+        $this->assertDatabaseCount('accounts', 1);
         $this->assertDatabaseCount('activity_logs', 0);
     }
 
     public function test_admin_command_rejects_noninteractive_use(): void
     {
         $this->artisan('app:create-admin', ['--no-interaction' => true])->assertFailed();
-        $this->assertDatabaseCount('users', 0);
+        $this->assertDatabaseCount('accounts', 0);
     }
 }

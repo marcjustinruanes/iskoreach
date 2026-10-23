@@ -3,12 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\Application;
-use App\Models\ExternalApplicantCount;
 use App\Models\ProviderProfile;
 use App\Models\Scholarship;
 use App\Models\ScholarshipLocation;
 use App\Models\ScholarshipRequirement;
-use App\Services\ApplicantCounts;
+use App\Services\ExternalApplicants;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -40,15 +39,15 @@ class PublicScholarshipDiscoveryTest extends TestCase
         ScholarshipRequirement::factory()->create(['scholarship_id' => $item->id]);
         $application = Application::factory()->create(['scholarship_id' => $item->id, 'status' => 'waitlisted']);
         Application::factory()->create(['scholarship_id' => $item->id, 'status' => 'not_started', 'submitted_at' => null]);
-        $fingerprint = app(ApplicantCounts::class)->snapshot($item)['fingerprint'];
-        ExternalApplicantCount::factory()->create(['scholarship_id' => $item->id, 'status' => 'approved', 'internal_fingerprint' => $fingerprint, 'reported_count' => 7]);
-        ExternalApplicantCount::factory()->create(['scholarship_id' => $item->id, 'reported_count' => 999]);
+        for ($index = 0; $index < 7; $index++) {
+            app(ExternalApplicants::class)->store($item->provider->user, $item, ['name' => 'External Person', 'email' => 'outside-'.$index.'@example.test']);
+        }
         $this->get('/scholarships/'.$item->slug)->assertInertia(fn (Assert $page) => $page
             ->component('public/ScholarshipDetails')->where('scholarship.internal_count', 1)->where('scholarship.external_count', 7)->where('scholarship.applicant_count', 8)
             ->has('scholarship.requirements', 1)->missing('scholarship.contact_email')->missing('scholarship.applications')->missing('scholarship.reports'))
             ->assertDontSee($application->student->email)->assertDontSee($item->provider->contact_email);
         Application::factory()->create(['scholarship_id' => $item->id]);
-        $this->get('/scholarships/'.$item->slug)->assertInertia(fn (Assert $page) => $page->where('scholarship.applicant_count', 2)->where('scholarship.external_count', 0));
+        $this->get('/scholarships/'.$item->slug)->assertInertia(fn (Assert $page) => $page->where('scholarship.applicant_count', 9)->where('scholarship.external_count', 7));
     }
 
     public function test_filters_support_any_location_nationwide_programs_future_opening_dates_and_currency_ranges(): void

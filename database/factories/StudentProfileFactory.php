@@ -15,8 +15,10 @@ class StudentProfileFactory extends Factory
         return [
             'user_id' => User::factory()->state(['role' => UserRole::Student]),
             'school' => fake()->company().' College',
+            'education_level' => 'college',
             'course' => 'BS Computer Science',
             'year_level' => 2,
+            'registration_status' => 'approved',
         ];
     }
 }

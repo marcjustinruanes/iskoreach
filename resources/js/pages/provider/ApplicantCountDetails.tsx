@@ -1,32 +1,4 @@
-import ExternalCountWorkflow from '../../components/ExternalCountWorkflow';
-import { Link, useForm } from '@inertiajs/react';
-import { useState } from 'react';
-import type { FormEvent } from 'react';
-import type { ApplicantCountSummary, ExternalCountReport, Paginated, SharedProps } from '../../types';
-import ProviderLayout from '../../layouts/ProviderLayout';
-import ApplicantCountBreakdown from '../../components/ApplicantCountBreakdown';
-import ExternalCountHistory from '../../components/ExternalCountHistory';
-import { Button, Card, Input, buttonStyles, focusRing } from '../../components/ui/DesignSystem';
-import { useRequestFeedback } from '../../components/ui/useRequestFeedback';
-interface Props extends SharedProps { scholarship: { id: number; title: string; report_url: string }; summary: ApplicantCountSummary; reports: Paginated<ExternalCountReport> }
-export default function ApplicantCountDetails({ scholarship, summary, reports }: Props) {
-    return <ProviderLayout title="Report external applicants" description={scholarship.title}><Link href="/provider/applicant-counts" className={buttonStyles('outline') + ' mb-6'}>Back to applicant counts</Link><ApplicantCountBreakdown summary={summary} /><ExternalCountWorkflow /><ReportForm key={summary.latest_report_id ?? 'first'} url={scholarship.report_url} internalCount={summary.internal_count} /><CsvImport url={scholarship.report_url + '/import'} /><ExternalCountHistory reports={reports} /></ProviderLayout>;
-}
-function ReportForm({ url, internalCount }: { url: string; internalCount: number }) {
-    const [token] = useState(() => crypto.randomUUID());
-    const form = useForm({ reported_count: '', source_label: '', source_as_of: '', duplicates_excluded: false, submission_token: token });
-    const request = useRequestFeedback(form.cancel);
-    const submit = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); if (!request.begin()) return; form.post(url, { preserveScroll: true, onFinish: request.finish }); };
-    return <Card className="mt-6 rounded-xl p-5 sm:p-6"><h2 className="text-lg font-bold text-civic-navy">Submit a manual count snapshot</h2><p className="mt-2 text-sm leading-6 text-civic-muted">Report the complete external count for the source date, excluding the {internalCount} internal applicants. A new report does not overwrite earlier reports. Do not include names, email addresses, or private applicant information.</p><form onSubmit={submit} className="mt-5 space-y-5">
-        <div className="grid gap-5 sm:grid-cols-2"><Input label="External applicant count" name="reported_count" type="number" min={0} max={1000000000} step={1} required value={form.data.reported_count} onChange={event => form.setData('reported_count', event.target.value)} error={form.errors.reported_count} /><Input label="Source as-of date" name="source_as_of" type="date" required value={form.data.source_as_of} onChange={event => form.setData('source_as_of', event.target.value)} error={form.errors.source_as_of} /></div>
-        <Input label="Source label" name="source_label" required maxLength={200} placeholder="For example: organization application register" value={form.data.source_label} onChange={event => form.setData('source_label', event.target.value)} error={form.errors.source_label} />
-        <div><label className="flex items-start gap-3 text-sm leading-6"><input type="checkbox" name="duplicates_excluded" required checked={form.data.duplicates_excluded} onChange={event => form.setData('duplicates_excluded', event.target.checked)} className={'mt-1 size-5 shrink-0 accent-civic-teal ' + focusRing} />I checked the source and excluded anyone who has a counted IskoReach application, including waitlisted applicants.</label>{form.errors.duplicates_excluded && <p role="alert" className="mt-2 text-sm text-civic-danger">{form.errors.duplicates_excluded}</p>}</div>
-        {[request.error, form.errors.submission_token].filter(Boolean).map((error, index) => <p role="alert" key={index} className="rounded-lg bg-red-50 p-3 text-sm leading-6 text-civic-danger">{error}</p>)}<Button type="submit" loading={form.processing}>Submit for verification</Button>
-    </form></Card>;
-}
-
-function CsvImport({ url }: { url: string }) {
-    const form = useForm({ file: null as File | null, source_label: '', source_as_of: '', submission_token: crypto.randomUUID(), confirmed: false });
-    const request = useRequestFeedback(form.cancel);
-    return <Card className="mt-6"><h2 className="text-lg font-bold">Import a CSV count</h2><p className="mt-2 text-sm leading-6 text-civic-muted">Export your external form responses as UTF-8 CSV and rename its email column to email. Up to 10,000 rows and 2 MB. Email duplicates and matching submitted internal applicants are excluded. Only an aggregate report is retained; an administrator must verify it before publication. This does not connect to Google Forms automatically. Different addresses belonging to the same person require manual source review.</p><form className="mt-5 space-y-4" onSubmit={event => { event.preventDefault(); if (!request.begin()) return; form.post(url, { forceFormData: true, preserveScroll: true, onFinish: request.finish, onSuccess: () => { form.reset('file'); form.setData('submission_token', crypto.randomUUID()); } }); }}><Input key={form.data.submission_token} label="CSV file" type="file" accept=".csv,text/csv" required onChange={e => form.setData('file', e.target.files?.[0] ?? null)} /><Input label="External source label" required maxLength={200} value={form.data.source_label} onChange={e => form.setData('source_label', e.target.value)} /><Input label="CSV source as-of date" type="date" required value={form.data.source_as_of} onChange={e => form.setData('source_as_of', e.target.value)} /><label className="flex items-start gap-3 text-sm"><input type="checkbox" checked={form.data.confirmed} onChange={e => form.setData('confirmed', e.target.checked)} />I am authorized to use this source and have checked its completeness and identity duplicates.</label>{request.error && <p role="alert" className="text-civic-danger">{request.error}</p>}{Object.entries(form.errors).map(([key, error]) => <p key={key} role="alert" className="text-civic-danger">{error}</p>)}<Button type="submit" loading={form.processing} disabled={!form.data.confirmed || !form.data.file}>Import for verification</Button></form></Card>;
-}
+import Layout from '../../layouts/ProviderLayout';
+import ScholarshipApplicantDetails from '../../components/ScholarshipApplicantDetails';
+import type { ScholarshipApplicantDetailsProps } from '../../components/ScholarshipApplicantDetails';
+export default function ApplicantCountDetails(props:ScholarshipApplicantDetailsProps) { return <Layout title={props.scholarship.title}><ScholarshipApplicantDetails {...props} provider /></Layout>; }

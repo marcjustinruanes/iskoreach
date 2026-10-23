@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Provider;
 
 use App\Enums\ApplicationStatus;
 use App\Enums\ProviderVerificationStatus;
-use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Provider\UpdateProviderProfileRequest;
 use App\Models\Application;
@@ -49,7 +48,7 @@ class AccountController extends Controller
                 'retained' => $profile->scholarships()->onlyTrashed()->count(),
                 'submitted' => $this->submittedApplications($profile)->count(),
             ],
-            'recentScholarships' => $profile->scholarships()->withCount(['applications as submitted_count' => fn ($query) => $query->whereNotNull('submitted_at')->whereIn('status', ApplicationStatus::countedValues())->whereHas('student', fn ($student) => $student->where('role', UserRole::Student))])->latest('updated_at')->orderByDesc('id')->limit(5)->get()
+            'recentScholarships' => $profile->scholarships()->withCount(['applications as submitted_count' => fn ($query) => $query->whereNotNull('submitted_at')->whereIn('status', ApplicationStatus::countedValues())->withValidApplicant()])->latest('updated_at')->orderByDesc('id')->limit(5)->get()
                 ->map(fn ($scholarship): array => ['id' => $scholarship->id, 'title' => $scholarship->title, 'status' => $scholarship->status->value,
                     'submitted_count' => $scholarship->submitted_count, 'deadline_at' => $scholarship->deadline_at?->toIso8601String(), 'updated_at' => $scholarship->updated_at->toIso8601String(), 'counts_url' => route('provider.applicant-counts.show', $scholarship)]),
             'nextTasks' => [
@@ -60,7 +59,7 @@ class AccountController extends Controller
             ],
             'reviewSummary' => $this->submittedApplications($profile)->whereNull('deleted_at')->selectRaw('status, COUNT(*) AS total')->groupBy('status')->pluck('total', 'status')->map(fn ($count): int => (int) $count),
             'recentSubmissions' => $this->submittedApplications($profile)->whereNull('deleted_at')->with(['student:id,name', 'scholarship:id,title'])->latest('submitted_at')->orderByDesc('id')->limit(6)->get()
-                ->map(fn ($item): array => ['id' => $item->id, 'student' => $item->student->name, 'scholarship' => $item->scholarship->title,
+                ->map(fn ($item): array => ['id' => $item->id, 'student' => $item->applicant_name, 'scholarship' => $item->scholarship->title,
                     'status' => $item->status->value, 'submitted_at' => $item->submitted_at->toIso8601String(), 'url' => route('provider.applications.show', $item)]),
             'applicationActivity' => $this->submittedApplications($profile)->with('scholarship:id,title,deleted_at')
                 ->selectRaw('scholarship_id, status, COUNT(*) AS total, MAX(submitted_at) AS last_submitted_at')
@@ -106,7 +105,7 @@ class AccountController extends Controller
     {
         $changed = DB::transaction(function () use ($request, $providerProfile): bool {
             $profile = ProviderProfile::query()->lockForUpdate()->findOrFail($providerProfile->id);
-            $data = $request->validated();
+            $data = $request->safe()->except('no_middle_name');
             $original = InputRules::normalize(['contact_email' => $profile->contact_email], ['contact_email'], ['contact_email']);
             if ($data['contact_email'] === $original['contact_email']) {
                 $data['contact_email'] = $profile->contact_email;
@@ -165,7 +164,7 @@ class AccountController extends Controller
     private function submittedApplications(ProviderProfile $profile): Builder
     {
         return Application::withTrashed()->whereIn('status', ApplicationStatus::countedValues())->whereNotNull('submitted_at')
-            ->whereHas('student', fn ($query) => $query->where('role', UserRole::Student))
+            ->withValidApplicant()
             ->whereHas('scholarship', fn ($query) => $query->where('provider_id', $profile->id));
     }
 }

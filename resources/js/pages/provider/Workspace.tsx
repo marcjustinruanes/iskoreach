@@ -8,7 +8,7 @@ const tools = [
     { title: 'Applicant counts', description: 'Review count breakdowns and report external applications.', href: '/provider/applicant-counts', icon: ChartNoAxesCombined, label: 'Reporting' },
     { title: 'Messages', description: 'Continue private conversations with your student applicants.', href: '/messages', icon: MessagesSquare, label: 'Communication' },
     { title: 'Renewals', description: 'Open renewal requests and review submitted requirements.', href: '/renewals', icon: CalendarClock, label: 'Scholar support' },
-    { title: 'Awards and benefits', description: 'Confirm awards and record benefit-release history.', href: '/benefits', icon: Award, label: 'Scholar support' },
+    { title: 'Grants and benefits', description: 'Confirm grants and record benefit-release history.', href: '/benefits', icon: Award, label: 'Scholar support' },
 ];
 export default function Workspace() {
     return <ProviderLayout title="Provider workspace" actions={<Link href="/provider/scholarships/create" className={buttonStyles('primary')}>Create scholarship<ArrowRight aria-hidden="true" className="size-4" /></Link>}>
