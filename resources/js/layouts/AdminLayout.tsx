@@ -4,7 +4,7 @@ import SidebarNavigation, { type SidebarGroup } from '../components/SidebarNavig
 import SidebarAccount from '../components/SidebarAccount';
 import NotificationBell, { useNotificationSummary } from '../components/NotificationBell';
 import { Head, Link, usePage } from '@inertiajs/react';
-import { Bell, ArrowUpRight, Award, BookOpen, Building2, CalendarClock, CalendarDays, ChartNoAxesCombined, CircleDollarSign, History, FileText, LayoutDashboard, ListChecks, Menu as MenuIcon, ShieldCheck, Users } from 'lucide-react';
+import { Bell, ArrowUpRight, Award, BookOpen, Building2, CalendarClock, CalendarDays, ChartNoAxesCombined, CircleDollarSign, History, FileText, LayoutDashboard, ListChecks, Menu as MenuIcon, ShieldCheck, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import type { SharedProps } from '../types';
@@ -13,7 +13,7 @@ import SidebarToggle, { useSidebarCollapsed } from '../components/SidebarToggle'
 import { focusRing } from '../components/ui/DesignSystem';
 import { Drawer } from '../components/ui/Overlays';
 
-export default function AdminLayout({ title, description, actions, children }: { title: string; description?: string; actions?: ReactNode; children: ReactNode }) {
+export default function AdminLayout({ title, description, actions, children, dashboard = false }: { title: string; description?: string; actions?: ReactNode; children: ReactNode; dashboard?: boolean }) {
     const { props, url } = usePage<SharedProps>();
     const unreadNotifications = useNotificationSummary();
     const { auth, adminNavigation: navigation, status } = props;
@@ -44,22 +44,22 @@ export default function AdminLayout({ title, description, actions, children }: {
     return <div className="min-h-dvh bg-civic-canvas font-stitch text-base text-civic-ink">
         <Head title={title + ' · Administration'} />
         <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[90] focus:rounded-lg focus:bg-white focus:p-4">Skip to content</a>
-        <aside id="admin-sidebar" data-collapsed={collapsed} className={'workspace-sidebar fixed inset-y-0 left-0 z-40 hidden w-60 flex-col overflow-hidden scrollbar-hidden border-r border-slate-700 bg-civic-navy px-3 pb-3 text-white lg:flex lg:transition-[width] lg:duration-200 lg:ease-out lg:motion-reduce:transition-none '}>
-            <div data-sidebar-brand className="flex h-20 shrink-0 items-center px-3"><Brand compact inverse /></div>
+        <aside id="admin-sidebar" data-collapsed={collapsed} className={'workspace-sidebar admin-sidebar fixed inset-y-0 left-0 z-40 hidden w-60 flex-col overflow-hidden scrollbar-hidden border-r border-slate-700 bg-civic-navy px-3 pb-3 text-white lg:flex lg:transition-[width] lg:duration-200 lg:ease-out lg:motion-reduce:transition-none '}>
+            <div data-sidebar-brand className="flex h-20 shrink-0 items-center justify-between px-3"><Brand compact /><button type="button" onClick={toggle} aria-label={collapsed ? 'Expand admin navigation' : 'Collapse admin navigation'} aria-expanded={!collapsed} className={'admin-sidebar-collapse hidden size-9 items-center justify-center rounded-lg lg:inline-flex ' + focusRing}>{collapsed ? <ChevronRight aria-hidden="true" className="size-4" /> : <ChevronLeft aria-hidden="true" className="size-4" />}</button></div>
             <div data-sidebar-scroll className="min-h-0 flex-1 pt-5 pb-3 overflow-y-auto overscroll-contain scrollbar-hidden">{links()}
             <div className="mt-auto pt-6"><Link href={navigation.home} aria-label="View public site" title="View public site" data-sidebar-footer className={'flex min-h-11 items-center justify-between rounded-lg border border-white/15 px-3 text-xs font-semibold text-slate-200 hover:bg-white/10 ' + focusRing}><span>View public site</span><ArrowUpRight aria-hidden="true" className="size-4" /></Link></div>
             </div><SidebarAccount user={auth.user} />
         </aside>
         <div className={'min-w-0 transition-[padding-left] duration-200 ease-out motion-reduce:transition-none ' + (collapsed ? 'lg:pl-20' : 'lg:pl-60')}>
-            <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-2 border-b border-neutral-200 bg-white px-3 sm:px-6 lg:px-8">
+            <header className={'admin-topbar sticky top-0 z-30 flex h-16 items-center justify-between gap-2 border-b border-neutral-200 bg-white px-3 sm:px-6 lg:px-8 ' + (dashboard ? 'admin-dashboard-topbar' : '')}>
                 <div className="flex min-w-0 items-center gap-2"><SidebarToggle collapsed={collapsed} onToggle={toggle} controls="admin-sidebar" /><button type="button" onClick={() => setSidebarOpen(true)} aria-label="Open admin navigation" aria-expanded={sidebarOpen} className={'flex size-11 shrink-0 items-center justify-center rounded-lg hover:bg-civic-panel lg:hidden ' + focusRing}><MenuIcon aria-hidden="true" className="size-5" /></button><WorkspaceBreadcrumbs role="admin" title={title} path={url.split('?')[0]} /></div>
                 <div className="flex shrink-0 items-center gap-1 sm:gap-2">
                     <NotificationBell unread={unreadNotifications} />
 
                 </div>
             </header>
-            <main id="main-content" className="admin-workspace workspace-content mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
-                <PageHeader title={title} description={description} actions={actions} />
+            <main id="main-content" className={'admin-workspace workspace-content mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8 lg:py-6 ' + (dashboard ? 'admin-dashboard-workspace' : '') + (title === 'Find a scholarship' ? ' admin-scholarship-browse-workspace' : '') + (title === 'Notifications' ? ' admin-notifications-workspace' : '') + (url.split('?')[0].startsWith('/scholarships/') ? ' admin-scholarship-detail-workspace' : '')}>
+                {!dashboard && <PageHeader title={title} description={description} actions={actions} />}
                 {status && <div role="status" className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-900">{status}</div>}
                 {children}
             </main>

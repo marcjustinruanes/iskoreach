@@ -10,9 +10,10 @@ export default function PublicDirectoryLayout({ title, description, children, st
     const { auth } = usePage<SharedProps>().props;
     if (auth.user?.role === 'provider') return <ProviderLayout title={title} description={description}>{children}</ProviderLayout>;
     if (auth.user?.role === 'admin') return <AdminLayout title={title} description={description}>{children}</AdminLayout>;
-    if (studentWorkspace || auth.user?.role === 'student') return <StudentLayout title={title} description={description}>{children}</StudentLayout>;
-    return <PublicLayout><Head title={title} /><main id="main-content" className={publicPageContainer}>
-        <PublicPageHeading title={title} description={description} />
+    if (studentWorkspace || auth.user?.role === 'student') return <StudentLayout title={title} description={description} fullWidth>{children}</StudentLayout>;
+    const scholarshipDiscovery = title === 'Find a scholarship';
+    return <PublicLayout><Head title={title} /><main id="main-content" className={publicPageContainer + (scholarshipDiscovery ? ' scholarship-discovery-page' : '')}>
+        <PublicPageHeading title={scholarshipDiscovery ? 'Find your scholarship' : title} description={description} />
         {children}
     </main></PublicLayout>;
 }

@@ -17,8 +17,8 @@ export interface SidebarGroup {
     expandable?: boolean;
 }
 
-export default function SidebarNavigation({ label, groups, currentPath, collapsed = false, onExpand, onNavigate }: {
-    label: string; groups: SidebarGroup[]; currentPath: string; collapsed?: boolean;
+export default function SidebarNavigation({ label, groups, currentPath, collapsed = false, showGroupLabels = false, onExpand, onNavigate }: {
+    label: string; groups: SidebarGroup[]; currentPath: string; collapsed?: boolean; showGroupLabels?: boolean;
     onExpand: () => void; onNavigate: () => void;
 }) {
     const id = useId();
@@ -40,6 +40,7 @@ export default function SidebarNavigation({ label, groups, currentPath, collapse
         const Icon = group.icon || group.items[0].icon;
         const panelId = id + '-' + index;
         return <div key={group.label} className={index ? 'border-t border-white/15 pt-3' : ''}>
+            {showGroupLabels && <p className="sidebar-section-label">{group.label}</p>}
             {group.expandable && <button type="button" title={group.label} aria-label={group.label} aria-expanded={open} aria-controls={panelId} onClick={() => {
                 if (collapsed) onExpand();
                 setExpanded(values => ({ ...values, [group.label]: collapsed || !open }));
