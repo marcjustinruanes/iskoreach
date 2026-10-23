@@ -1,41 +1,95 @@
 import { Link } from '@inertiajs/react';
 import type { ReactNode } from 'react';
-import { ArrowRight, Search, ClipboardCheck, BellRing, MapPin, FileCheck2, TrendingUp, CalendarClock, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Search, ClipboardCheck, BellRing, MapPin, FileCheck2, TrendingUp, CalendarClock, ShieldCheck, Sun, Landmark, GraduationCap, School, Building2, FileText, UsersRound, RefreshCw, MessageCircle } from 'lucide-react';
 import Brand from './Brand';
 import { buttonStyles, focusRing } from './ui/DesignSystem';
 
-export const landingContainer = 'mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-12';
+export const landingContainer = 'mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-12';
 export const landingTitle = 'text-civic-heading-mobile font-bold tracking-tight text-civic-navy md:text-civic-heading';
 
 export function LandingHero({ stats, children }: { stats: { programs: number; open: number; passers: number }; children: ReactNode }) {
-    return <section className={landingContainer + ' grid gap-10 py-12 sm:py-16 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:gap-16 lg:py-20'} aria-labelledby="hero-title">
-        <div><h1 id="hero-title" className="max-w-xl text-[32px] font-extrabold leading-10 tracking-tight text-civic-navy sm:text-civic-display sm:leading-[56px]">Find scholarships.<br />Build your future.</h1><p className="mt-5 max-w-lg text-base leading-7 text-civic-muted sm:text-lg">Explore opportunities across the Philippines and keep your scholarship applications in one place.</p><div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-2"><Link href="/scholarships" className={buttonStyles('secondary', 'lg')}>Explore Scholarships<ArrowRight aria-hidden="true" className="size-4" /></Link></div>{stats.programs > 0 && <p className="mt-6 text-sm leading-6 text-civic-muted"><span className="font-semibold text-civic-navy">{stats.programs.toLocaleString('en-PH')}</span> published {stats.programs === 1 ? 'program' : 'programs'}<span aria-hidden="true" className="mx-3">/</span><span className="font-semibold text-civic-navy">{stats.open.toLocaleString('en-PH')}</span> open now</p>}</div>
-        <div className="rounded-2xl border border-civic-border/60 border-t-4 border-t-civic-gold bg-white p-5 shadow-civic-raised sm:p-7"><h2 className="text-lg font-bold text-civic-navy">Start your search</h2><p className="mt-2 mb-5 text-sm leading-6 text-civic-muted">Search a program, provider, or location.</p>{children}<p className="mt-4 flex items-start gap-2 text-xs leading-5 text-civic-muted"><ShieldCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0" />Explore first. Prepare your documents when you choose a program.</p></div>
+    return <section className="landing-hero" aria-labelledby="hero-title">
+        <div className={landingContainer + ' landing-hero-grid'}>
+            <div className="landing-hero-copy">
+                <p className="landing-eyebrow"><Sun aria-hidden="true" className="size-4" />Scholarships for a brighter Philippines</p>
+                <h1 id="hero-title" className="max-w-xl text-[32px] font-extrabold leading-10 tracking-tight text-civic-navy sm:text-civic-display sm:leading-[1.08]">Find scholarships.<br />Build your <span className="landing-highlight">future.</span></h1>
+                <p className="mt-5 max-w-lg text-base leading-7 text-civic-muted sm:text-lg">Explore opportunities across the Philippines and keep your scholarship applications in one place.</p>
+                <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-2"><Link href="/scholarships" className={buttonStyles('primary', 'lg')}>Explore Scholarships<ArrowRight aria-hidden="true" className="size-4" /></Link></div>
+                <div className="landing-benefits" aria-label="IskoReach benefits">
+                    <div><span><Search aria-hidden="true" /></span><p><strong>{stats.programs > 0 ? stats.programs.toLocaleString('en-PH') : 'More'}</strong><small>scholarship opportunities</small></p></div>
+                    <div><span><Landmark aria-hidden="true" /></span><p><strong>Top providers</strong><small>schools, NGOs and more</small></p></div>
+                    <div><span><ClipboardCheck aria-hidden="true" /></span><p><strong>All in one place</strong><small>search, save and apply</small></p></div>
+                </div>
+            </div>
+            <div className="landing-hero-art" aria-hidden="true">
+                <span className="landing-hero-sun" />
+                <span className="landing-hero-dots" />
+                <span className="landing-hero-rays">✦</span>
+                <img src="/images/landing-students.png" alt="" className="landing-hero-students" fetchPriority="high" />
+            </div>
+            <div className="landing-hero-search">
+                <div className="landing-search-panel rounded-2xl border border-civic-border/60 border-t-4 border-t-civic-gold bg-white p-5 shadow-civic-raised sm:p-7">
+                    <h2 className="text-lg font-bold text-civic-navy">Start your search</h2>
+                    <p className="mt-2 mb-5 text-sm leading-6 text-civic-muted">Search a program, provider, or location.</p>
+                    {children}
+                    <p className="landing-search-note mt-4 flex items-start gap-2 text-xs leading-5 text-civic-muted"><ShieldCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0" />Explore first. Prepare your documents when you choose a program.</p>
+                </div>
+            </div>
+        </div>
+    </section>;
+}
+
+export function LandingTrust() {
+    return <section className="landing-trust" aria-label="Who IskoReach serves">
+        <div className={landingContainer + ' landing-trust-inner'}>
+            <p className="landing-trust-intro">Trusted by students across<br className="hidden sm:block" /> the Philippines</p>
+            <div><span><GraduationCap aria-hidden="true" /></span><p>Students</p></div>
+            <div><span><School aria-hidden="true" /></span><p>Schools</p></div>
+            <div><span><Building2 aria-hidden="true" /></span><p>Organizations</p></div>
+            <div><span><FileText aria-hidden="true" /></span><p>Government Programs</p></div>
+        </div>
     </section>;
 }
 
 export function LandingJourney() {
-    return <section id="how-it-works" className={landingContainer + ' scroll-mt-24 border-t border-civic-border/40 py-12 lg:py-16'} aria-labelledby="journey-title"><div id="about" className="max-w-2xl scroll-mt-28"><p className="text-xs font-bold uppercase tracking-widest text-civic-muted">About IskoReach</p><h2 id="journey-title" className={landingTitle + ' mt-3'}>One place for your scholarship journey.</h2><p id="student-title" className="mt-4 scroll-mt-28 text-sm leading-7 text-civic-muted">IskoReach connects students with scholarship programs and helps providers manage applications. Each provider sets its own requirements and makes its grant decisions.</p></div><ol className="mt-8 grid gap-7 md:grid-cols-3">{[
-        ['Discover', 'Compare locations, deadlines, and eligibility before choosing a program.', Search],
-        ['Prepare and apply', 'Follow the program checklist and submit the documents it requires.', ClipboardCheck],
-        ['Stay updated', 'Track applications, provider messages, and semester renewal requirements.', BellRing],
-    ].map(([title, description, Icon], index) => { const StepIcon = Icon as typeof Search; return <li key={String(title)} className="rounded-xl border border-civic-border/40 bg-white p-5 shadow-civic-card"><div className="flex items-center justify-between"><span className="rounded-xl bg-civic-cream p-3 text-civic-navy"><StepIcon aria-hidden="true" className="size-5" /></span><span className="text-sm font-bold text-civic-muted">0{index + 1}</span></div><h3 className="mt-4 text-base font-bold text-civic-navy">{String(title)}</h3><p className="mt-2 text-sm leading-6 text-civic-muted">{String(description)}</p></li>; })}</ol></section>;
+    return <section id="how-it-works" className="landing-journey scroll-mt-24" aria-labelledby="journey-title"><div className={landingContainer}>
+        <div id="about" className="max-w-3xl scroll-mt-28"><p className="text-xs font-bold uppercase tracking-widest text-civic-muted">About IskoReach</p><h2 id="journey-title" className={landingTitle + ' mt-2'}>One place for your <span className="landing-highlight">scholarship journey.</span></h2><p id="student-title" className="mt-3 scroll-mt-28 text-sm leading-6 text-civic-muted sm:text-base">IskoReach connects students with scholarship programs and helps providers manage applications. Each provider sets its own requirements and makes its grant decisions.</p></div>
+        <ol className="landing-journey-cards">{[
+            ['Discover', 'Compare locations, deadlines, and eligibility before choosing a program.', Search, '/scholarships'],
+            ['Prepare and apply', 'Follow the program checklist and submit the documents it requires.', ClipboardCheck, '/register'],
+            ['Stay updated', 'Track applications, provider messages, and semester renewal requirements.', BellRing, '/login'],
+        ].map(([title, description, Icon, href], index) => { const StepIcon = Icon as typeof Search; return <li key={String(title)}><Link href={String(href)} className="landing-journey-card"><div className="landing-journey-card-top"><span className="landing-journey-icon"><StepIcon aria-hidden="true" className="size-5" /></span><span className="landing-journey-number">0{index + 1}</span></div><div className="landing-journey-card-copy"><h3>{String(title)}</h3><p>{String(description)}</p></div><span aria-hidden="true" className="landing-journey-arrow"><ArrowRight className="size-5" /></span></Link></li>; })}</ol>
+    </div></section>;
 }
 
 export function LandingStudentTools() {
-    return <section className="bg-civic-panel/60 py-10 lg:py-12" aria-labelledby="student-tools-title"><div className={landingContainer}><div className="mb-6 max-w-2xl"><h2 id="student-tools-title" className={landingTitle}>Stay organized at every step.</h2><p className="mt-3 text-sm leading-6 text-civic-muted">Keep your opportunities, documents, and updates together in your student workspace.</p></div><div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">{[
+    return <section className="landing-tools" aria-labelledby="student-tools-title"><div className={landingContainer}><div className="mb-5 max-w-2xl"><h2 id="student-tools-title" className={landingTitle}>Stay organized at every step.</h2><p className="mt-2 text-sm leading-6 text-civic-muted sm:text-base">Keep your opportunities, documents, and updates together in your student workspace.</p></div><div className="landing-tool-grid">{[
         { icon: MapPin, title: 'Explore any location', text: 'Search beyond your hometown for programs that fit your plans.' },
         { icon: FileCheck2, title: 'Prepare your requirements', text: 'Know which documents each scholarship needs before you submit.' },
         { icon: TrendingUp, title: 'Track each application', text: 'Follow separate statuses and provider decisions for every program.' },
         { icon: CalendarClock, title: 'Keep up with renewals', text: 'Stay on top of semester requirements and scholarship updates.' },
-    ].map(({ icon: Icon, title, text }) => <div key={title}><Icon aria-hidden="true" className="mb-3 size-5 text-civic-navy" /><h3 className="text-sm font-bold text-civic-navy">{title}</h3><p className="mt-2 text-sm leading-6 text-civic-muted">{text}</p></div>)}</div></div></section>;
+    ].map(({ icon: Icon, title, text }) => <div className="landing-tool" key={title}><span><Icon aria-hidden="true" /></span><div><h3>{title}</h3><p>{text}</p></div></div>)}</div></div></section>;
 }
 
 export function LandingProviders({ accountHref, onReview }: { accountHref: string; onReview: () => void }) {
-    return <section id="for-providers" className={landingContainer + ' scroll-mt-24 py-10 lg:py-12'} aria-labelledby="provider-title"><div className="flex flex-col justify-between gap-6 rounded-2xl border border-civic-navy bg-civic-navy p-6 text-white shadow-civic-card sm:p-8 lg:flex-row lg:items-center"><div className="max-w-xl"><h2 id="provider-title" className="text-2xl font-bold leading-8 text-white">Make scholarship management more organized.</h2><p className="mt-3 text-sm leading-7 text-white/80">Bring your programs, applicant records, and semester requirements into one provider workspace.</p><ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs leading-6 text-white/80">{['Publish scholarships', 'Review applications', 'Manage renewals'].map(text => <li key={text} className="flex items-center gap-2"><CheckCircle2 aria-hidden="true" className="size-4 text-civic-cream" />{text}</li>)}</ul></div><div className="flex shrink-0 flex-col items-start gap-2"><Link href={accountHref} className={buttonStyles('secondary')}>Register as a provider<ArrowRight aria-hidden="true" className="size-4" /></Link><button type="button" onClick={onReview} className={'min-h-11 rounded-lg px-2 text-sm font-semibold text-white/85 underline underline-offset-4 ' + focusRing}>How provider approval works</button></div></div></section>;
+    const features = [
+        { icon: FileCheck2, label: 'Publish scholarships' },
+        { icon: UsersRound, label: 'Review applications' },
+        { icon: RefreshCw, label: 'Manage renewals' },
+    ];
+    return <section id="for-providers" className="landing-provider-section scroll-mt-24"><div className={landingContainer + ' landing-provider-container'}><div className="landing-provider-card">
+        <span className="landing-provider-dots" aria-hidden="true" />
+        <div className="landing-provider-copy"><h2 id="provider-title"><Sun aria-hidden="true" className="landing-provider-spark" />Make scholarship management<br /><span>more organized.</span></h2><p>Easily manage your programs, applicant records, and semester requirements with a provider account.</p>
+            <ul className="landing-provider-features">{features.map(({ icon: Icon, label }) => <li key={label}><span><Icon aria-hidden="true" /></span>{label}</li>)}</ul>
+        </div>
+        <div className="landing-provider-actions"><Link href={accountHref} className={buttonStyles('secondary', 'lg') + ' landing-provider-cta'}>Register as a provider<ArrowRight aria-hidden="true" className="size-5" /></Link><button type="button" onClick={onReview} className={'landing-provider-review ' + focusRing}>How provider approval works<ArrowRight aria-hidden="true" className="size-5" /></button></div>
+    </div></div></section>;
 }
 
 export function LandingFooter({ accountHref, providerHref, loginHref, hideAccount = false }: { hideAccount?: boolean; accountHref: string; providerHref: string; loginHref: string }) {
     const links: [string, string][] = [['Scholarships', '/scholarships'], ['Public passers', '/passers'], ['How it works', '/#how-it-works'], ...(hideAccount ? [] : accountHref === loginHref ? [['My account', accountHref] as [string, string]] : [['Student account', accountHref], ['Provider account', providerHref], ['Log in', loginHref]] as [string, string][]), ['Provider messaging', '/messages']];
-    return <footer id="contact" className="scroll-mt-24 border-t border-civic-border/50 bg-civic-panel py-5"><div className={landingContainer}><div className="flex flex-col justify-between gap-4 md:flex-row md:items-start md:gap-8"><div className="shrink-0"><Brand compact /><p className="mt-2 max-w-xs text-xs leading-5 text-civic-muted">Discover scholarships. Keep your next steps clear.</p></div><nav aria-label="Footer navigation" className="flex max-w-2xl flex-wrap gap-x-5">{links.map(([label, href]) => href.includes('#') ? <a key={label} href={href} className={'inline-flex min-h-11 items-center rounded text-xs text-civic-muted hover:text-civic-navy ' + focusRing}>{label}</a> : <Link key={label} href={href} className={'inline-flex min-h-11 items-center rounded text-xs text-civic-muted hover:text-civic-navy ' + focusRing}>{label}</Link>)}</nav></div><div className="mt-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-1 border-t border-civic-border/50 pt-3 text-xs leading-5 text-civic-muted"><p>Copyright {new Date().getFullYear()} IskoReach PH.</p><p className="max-w-md">Scholarship questions? Sign in to message the provider.</p><div className="flex gap-4"><Link href="/terms" className={'inline-flex min-h-11 items-center rounded underline ' + focusRing}>Terms of Use</Link><Link href="/privacy" className={'inline-flex min-h-11 items-center rounded underline ' + focusRing}>Privacy Policy</Link></div></div></div></footer>;
+    return <footer id="contact" className="landing-footer scroll-mt-24"><div className={landingContainer + ' landing-footer-container'}>
+        <div className="landing-footer-main"><div className="landing-footer-brand"><Brand compact /><p>Discover scholarships. Keep your next steps clear.</p></div><nav aria-label="Footer navigation" className="landing-footer-links">{links.map(([label, href]) => href.includes('#') ? <a key={label} href={href} className={focusRing}>{label}</a> : <Link key={label} href={href} className={focusRing}>{label}</Link>)}</nav></div>
+        <div className="landing-footer-meta"><p>Copyright {new Date().getFullYear()} IskoReach PH.</p><p className="landing-footer-message"><MessageCircle aria-hidden="true" />Scholarship questions? Sign in to message the provider.</p><div className="landing-footer-legal"><Link href="/terms" className={focusRing}>Terms of Use</Link><Link href="/privacy" className={focusRing}>Privacy Policy</Link></div></div>
+    </div></footer>;
 }

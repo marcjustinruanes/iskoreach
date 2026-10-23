@@ -1,8 +1,9 @@
 import { useId, useState } from 'react';
 import { useLocationOptions } from './provider/LocationScopePicker';
 import { Button, focusRing } from './ui/DesignSystem';
+import { ArrowRight, MapPin, TriangleAlert } from 'lucide-react';
 
-export default function LocationSearchPicker({ value, onChange, error }: { value: string; onChange: (value: string) => void; error?: string }) {
+export default function LocationSearchPicker({ value, onChange, error, label = 'Region / province / city or municipality', visual = false }: { value: string; onChange: (value: string) => void; error?: string; label?: string; visual?: boolean }) {
     const id = useId();
     const [retry, setRetry] = useState(0);
     const [selection, setSelection] = useState({ region: '', province: '', value: '' });
@@ -19,10 +20,10 @@ export default function LocationSearchPicker({ value, onChange, error }: { value
         onChange(name);
     };
 
-    return <fieldset className="min-w-0 space-y-3">
-        <legend className="mb-2 text-sm font-semibold text-civic-ink">Region / province / city or municipality</legend>
+    return <fieldset className={'min-w-0 space-y-3 ' + (visual ? 'scholarship-location-field' : '')}>
+        <legend className="mb-2 text-sm font-semibold text-civic-ink">{label}</legend>
         <input type="hidden" name="location" value={value} />
-        <div><label htmlFor={id + '-region'} className="sr-only">Region</label><select id={id + '-region'} className={control} value={regionCode} disabled={regions.loading || !!regions.error} onChange={event => choose(event.target.value, '', regions.data.find(region => region.code === event.target.value)?.name ?? '')}>
+        <div className="scholarship-region-control"><label htmlFor={id + '-region'} className="sr-only">Region</label><select id={id + '-region'} className={control} value={regionCode} disabled={regions.loading || !!regions.error} onChange={event => choose(event.target.value, '', regions.data.find(region => region.code === event.target.value)?.name ?? '')}>
             <option value="">{regions.loading ? 'Loading regions…' : 'All regions'}</option>
             {regions.data.map(region => <option key={region.code} value={region.code}>{region.name}</option>)}
         </select></div>
@@ -38,8 +39,9 @@ export default function LocationSearchPicker({ value, onChange, error }: { value
             <Button variant="ghost" size="sm" onClick={() => choose('', '', '')}>Clear location</Button>
         </div>}
         {value && <div className="flex items-center gap-2 text-xs text-civic-muted"><p>Selected location: {value}</p>{!regionCode && <Button variant="ghost" size="sm" onClick={() => choose('', '', '')}>Clear location</Button>}</div>}
-        {(error || lookupError) && <p role="alert" className="text-sm text-civic-danger">{error || lookupError}</p>}
-        {lookupError && <Button variant="outline" onClick={() => setRetry(previous => previous + 1)}>Retry location lookup</Button>}
+        {(error || lookupError) && (visual && lookupError ? <div className="location-lookup-block"><p role="alert" className="location-lookup-warning"><span className="location-lookup-warning-icon"><TriangleAlert aria-hidden="true" className="size-5" /></span>Location options are temporarily unavailable.</p><button type="button" className="location-lookup-retry" onClick={() => setRetry(previous => previous + 1)}>Retry location lookup<ArrowRight aria-hidden="true" className="size-5" /></button></div> : <p role="alert" className="text-sm text-civic-danger">{error || lookupError}</p>)}
+        {lookupError && !visual && <Button variant="outline" onClick={() => setRetry(previous => previous + 1)}>Retry location lookup</Button>}
+        {visual && <MapPin aria-hidden="true" className="scholarship-location-icon" />}
         {(regions.stale || provinces.stale || cities.stale) && <p role="status" className="text-xs text-civic-muted">Using previously retrieved location options while the location service is unavailable.</p>}
     </fieldset>;
 }

@@ -84,8 +84,9 @@ function AuthScreen({ mode, token = '', email = '', status }: AuthPageProps) {
         });
     };
 
-    return <AuthLayout title={confirmation ? 'Check your email' : titles[mode]}
-        description={confirmation ? 'Your account recovery request has been received.' : descriptions[mode]}>
+    const loginPage = mode === 'login';
+    return <AuthLayout title={confirmation ? 'Check your email' : loginPage ? 'Welcome back' : titles[mode]}
+        description={confirmation ? 'Your account recovery request has been received.' : loginPage ? 'Log in to continue your scholarship journey.' : descriptions[mode]} loginPage={loginPage}>
         {confirmation ? <div>
             <span className="mb-5 flex size-14 items-center justify-center rounded-full bg-civic-panel"><MailCheck aria-hidden="true" className="size-7 text-civic-teal" /></span>
             <p role="status" className="text-sm leading-7 text-civic-muted">{status}</p>
@@ -98,16 +99,16 @@ function AuthScreen({ mode, token = '', email = '', status }: AuthPageProps) {
             {mode === 'reset' && Object.keys(form.errors).length > 0 && <div role="alert" className="mb-5 rounded-lg border border-red-200 bg-red-50 p-3 text-sm leading-6 text-red-900"><p>We couldn’t reset your password. Check the details below.</p><Link href="/forgot-password" className={'mt-1 inline-flex min-h-11 items-center rounded font-semibold underline ' + focusRing}>Request a new reset link</Link></div>}
             <form ref={formRef} onSubmit={submit} noValidate aria-busy={form.processing} className="space-y-5">
                 {mode === 'google-link' && <p className="break-all text-sm font-semibold">{email}</p>}
-                {mode !== 'confirm' && mode !== 'google-link' && <Input label="Email address" name="email" type="email" value={form.data.email} onChange={e => form.setData('email', e.target.value)} autoComplete="email" error={form.errors.email} required maxLength={255} />}
-                {mode !== 'forgot' && <PasswordField label="Password" name="password" value={form.data.password} onChange={e => form.setData('password', e.target.value)} autoComplete={mode === 'login' || mode === 'confirm' || mode === 'google-link' ? 'current-password' : 'new-password'} error={form.errors.password} hint={mode === 'reset' ? 'Use at least 8 characters and at most 72 UTF-8 bytes. Spaces and symbols are allowed; accented letters and emoji can use several bytes.' : undefined} required />}
+                {mode !== 'confirm' && mode !== 'google-link' && <Input label="Email address" name="email" type="email" placeholder={loginPage ? 'Enter your email address' : undefined} value={form.data.email} onChange={e => form.setData('email', e.target.value)} autoComplete="email" error={form.errors.email} required maxLength={255} />}
+                {mode !== 'forgot' && <PasswordField label="Password" name="password" placeholder={loginPage ? 'Enter your password' : undefined} value={form.data.password} onChange={e => form.setData('password', e.target.value)} autoComplete={mode === 'login' || mode === 'confirm' || mode === 'google-link' ? 'current-password' : 'new-password'} error={form.errors.password} hint={mode === 'reset' ? 'Use at least 8 characters and at most 72 UTF-8 bytes. Spaces and symbols are allowed; accented letters and emoji can use several bytes.' : undefined} required />}
                 {(mode === 'reset') && <PasswordField label="Confirm password" name="password_confirmation" value={form.data.password_confirmation} onChange={e => form.setData('password_confirmation', e.target.value)} autoComplete="new-password" error={form.errors.password_confirmation} required />}
                 {form.errors.token && <p role="alert" className="text-sm text-civic-danger">{form.errors.token}</p>}
-                {mode === 'login' && <div className="flex flex-wrap items-center justify-between gap-2">
+                {mode === 'login' && <div className="flex flex-wrap items-center justify-end gap-2">
                     <Link href="/forgot-password" className={'inline-flex min-h-11 items-center rounded text-sm font-semibold text-civic-teal ' + focusRing}>Forgot password?</Link>
                 </div>}
                 <Button type="submit" loading={form.processing} className="w-full">{form.processing ? 'Please wait…' : mode === 'forgot' ? 'Send reset instructions' : mode === 'reset' ? 'Save new password' : mode === 'google-link' ? 'Confirm and link Google' : titles[mode]}</Button>
             </form>
-            {mode === 'login' && <div className="mt-5 space-y-4"><div className="flex items-center gap-3 text-sm text-civic-muted"><span aria-hidden="true" className="h-px flex-1 bg-civic-border" /><span>or</span><span aria-hidden="true" className="h-px flex-1 bg-civic-border" /></div><GoogleAuthButton /></div>}
+            {mode === 'login' && <div className="auth-login-google mt-5 space-y-4"><div className="flex items-center gap-3 text-sm text-civic-muted"><span aria-hidden="true" className="h-px flex-1 bg-civic-border" /><span>OR</span><span aria-hidden="true" className="h-px flex-1 bg-civic-border" /></div><GoogleAuthButton helperText="Google sign-in is for your convenience. You can still use your email." /></div>}
             <div className="mt-6 border-t border-neutral-200 pt-5 text-center text-sm leading-6 text-civic-muted">
                 {mode === 'login' ? <>New to IskoReach? <Link href="/register" className={'rounded font-semibold text-civic-teal ' + focusRing}>Create an account</Link></>
                     : mode === 'confirm' ? <Link href="/dashboard" className={'rounded font-semibold text-civic-teal ' + focusRing}>Return to my account</Link>
