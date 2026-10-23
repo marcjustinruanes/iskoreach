@@ -22,7 +22,7 @@ function RenewalDetails({ auth, renewal, documents }: SharedProps & { renewal: R
  const select = (value: 'submit' | 'approved' | 'rejected') => { form.setData({ action: value, version: renewal.version, confirmed: false, reason: '' }); setAction(value); };
  const submit = (event: FormEvent) => { event.preventDefault(); if (!request.begin()) return; form.patch(renewal.url, { preserveScroll: true, onSuccess: () => setAction(null), onFinish: request.finish }); };
  const complete = renewal.checklist.every(rule => !(rule.required || rule.attachment) || rule.complete);
- return <ChatShell title={'Renewal RN-' + renewal.id} description={renewal.scholarship}>
+ return <ChatShell title={'Renewal RN-' + renewal.id} description={renewal.scholarship}><div className="renewal-details-page">
  <Link href="/renewals" className={buttonStyles('outline') + ' mb-6'}>All renewals</Link>
  <div className="space-y-5"><Card><div className="flex flex-wrap justify-between gap-3"><div className="min-w-0"><p className="text-xs font-semibold text-civic-muted">AW-{renewal.award_id}</p><h2 className="mt-2 break-words text-xl font-bold">{renewal.scholarship}</h2><p className="mt-2 text-sm leading-6 text-civic-muted">{renewal.term}</p></div><StatusBadge status={renewal.status} /></div><p className="mt-4 text-sm leading-6">Deadline: {scholarshipDate(renewal.deadline_at)} (Philippine time)</p><p className="mt-3 text-sm leading-6 text-civic-muted">A renewal approval records the decision. Grant duration and benefit releases are managed separately.</p>
  {!renewal.eligible && <p role="status" className="mt-4 text-sm leading-6 text-civic-danger">This grant is currently ineligible for renewal changes. Recorded history remains available.</p>}
@@ -41,7 +41,7 @@ function RenewalDetails({ auth, renewal, documents }: SharedProps & { renewal: R
  <label className="flex items-start gap-3 text-sm leading-6"><input name="confirmed" type="checkbox" checked={form.data.confirmed} onChange={e => form.setData('confirmed', e.target.checked)} className={'mt-1 size-4 shrink-0 ' + focusRing} />{student ? 'I confirm my files and agree to share them for this renewal.' : 'I confirm this decision and the recorded reason.'}</label>
  {Object.entries(form.errors).map(([key, error]) => <p key={key} role="alert" className="text-sm text-civic-danger">{error}</p>)}{request.error && <p role="alert" className="text-sm text-civic-danger">{request.error}</p>}
  <div className="flex flex-wrap gap-3"><Button type="submit" loading={form.processing} disabled={!form.data.confirmed}>Confirm {action}</Button><Button variant="outline" disabled={form.processing} onClick={() => setAction(null)}>Cancel</Button><Button variant="outline" onClick={() => router.reload()}>Reload latest</Button></div></form></Modal>
- </ChatShell>;
+ </div></ChatShell>;
 }
 function Requirement({ rule, documents, renewal, editable }: { rule: Rule; documents: Vault[]; renewal: Renewal; editable: boolean }) {
  const form = useForm({ version: renewal.version, action: 'attach', requirement_index: rule.index, document_id: '', confirmed: false });

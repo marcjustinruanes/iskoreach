@@ -18,7 +18,7 @@ export default function Index({ auth, renewals, filters, awards, terms, filterTe
  const form = useForm({ award_id: '', academic_term_id: '', deadline_at: '', confirmed: false });
  const request = useRequestFeedback(form.cancel);
  const submit = (event: FormEvent) => { event.preventDefault(); if (!request.begin()) return; form.post('/renewals', { onSuccess: () => setOpen(false), onFinish: request.finish }); };
- return <ChatShell title="Renewals">
+ return <ChatShell title="Renewals"><div className="renewals-page">
  <div className="mb-5 flex flex-wrap items-end justify-between gap-4 rounded-xl border border-civic-panel-strong bg-white p-4 sm:p-5"><label className="block max-w-full text-sm font-semibold">Status<select aria-label="Renewal status" className={selectClass + ' mt-2'} value={filters.status} onChange={event => router.get('/renewals', { ...filters, status: event.target.value }, { preserveState: true })}><option value="">All statuses</option>{['pending', 'submitted', 'approved', 'rejected'].map(status => <option key={status} value={status}>{status[0].toUpperCase() + status.slice(1)}</option>)}</select></label>
  <label className="block text-sm font-semibold">Academic term<select aria-label="Renewal academic term" className={selectClass + ' mt-2'} value={filters.term} onChange={event => router.get('/renewals', { ...filters, term: event.target.value }, { preserveState: true })}><option value="">All terms</option>{filterTerms.map(term => <option key={term.id} value={term.id}>{term.label}</option>)}</select></label>{provider && <Button disabled={!awards.length || !terms.length} onClick={() => setOpen(true)}><Plus aria-hidden="true" className="size-4" />Open renewal request</Button>}</div>
  {provider && (!awards.length || !terms.length) && <p role="status" className="mb-5 rounded-xl border border-amber-200 bg-amber-50/60 p-4 text-xs leading-5 text-amber-900">To open a request, you need a confirmed active grant and an academic term with a future end date. Review grants in Grants and benefits. Academic-term setup is required if no eligible term is available.</p>}
@@ -34,5 +34,5 @@ export default function Index({ auth, renewals, filters, awards, terms, filterTe
  {Object.entries(form.errors).map(([key, error]) => <p key={key} role="alert" className="text-sm text-civic-danger">{error}</p>)}{request.error && <p role="alert" className="text-sm text-civic-danger">{request.error}</p>}
  <div className="flex flex-wrap gap-3"><Button type="submit" loading={form.processing} disabled={!form.data.confirmed}>Open request</Button><Button variant="outline" onClick={() => setOpen(false)} disabled={form.processing}>Cancel</Button></div></form></Modal>
  <Link href={provider ? '/provider/dashboard' : '/student/awards'} className={buttonStyles('outline') + ' mt-6'}>{provider ? 'Provider dashboard' : 'My grants'}</Link>
- </ChatShell>;
+ </div></ChatShell>;
 }
