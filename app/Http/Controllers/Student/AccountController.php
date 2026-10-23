@@ -36,6 +36,8 @@ class AccountController extends Controller
         $applications = Application::withTrashed()->where('student_id', $request->user()->id)
             ->whereNotNull('submitted_at')->whereIn('status', ApplicationStatus::countedValues());
         $counts = (clone $applications)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
+        $allStatusCounts = Application::withTrashed()->where('student_id', $request->user()->id)
+            ->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
 
         return Inertia::render('student/Dashboard', [
             'discoverScholarships' => app(ScholarshipCatalog::class)->recommendations($request->user())
@@ -49,8 +51,13 @@ class AccountController extends Controller
 
                 return ['title' => $item->scholarship->title, 'missing' => collect($checklist)->where('required', true)->where('complete', false)->count(), 'pending_review' => $item->submitted_at ? collect($checklist)->filter(fn ($row): bool => ($row['attachment']['review_status'] ?? null) === 'pending')->count() : 0, 'rejected' => collect($checklist)->filter(fn ($row): bool => ($row['attachment']['review_status'] ?? null) === 'rejected')->count(), 'deadline' => $item->scholarship->deadline_at?->toIso8601String(), 'url' => route('student.applications.show', $item)];
             })->filter(fn ($row): bool => $row['missing'] > 0 || $row['rejected'] > 0 || $row['pending_review'] > 0 || ($row['deadline'] && Carbon::parse($row['deadline'])->between(now(), now()->addDays(14))))->take(5)->collect()->values(),
-            'applicationSummary' => ['total' => (int) $counts->sum(), ...collect(ApplicationStatus::countedValues())
-                ->mapWithKeys(fn (string $status): array => [$status => (int) ($counts[$status] ?? 0)])->all()],
+            'applicationSummary' => [
+                'total' => (int) $counts->sum(),
+                'submitted' => (int) ($allStatusCounts['submitted'] ?? 0),
+                'in_progress' => (int) collect(['under_review', 'waitlisted'])->sum(fn (string $status): int => (int) ($allStatusCounts[$status] ?? 0)),
+                'drafts' => (int) ($allStatusCounts['not_started'] ?? 0),
+                'not_submitted' => (int) ($allStatusCounts['requirements_pending'] ?? 0),
+            ],
             'recentApplications' => (clone $applications)->with('scholarship.provider')->latest('submitted_at')->orderByDesc('id')->limit(5)->get()
                 ->map(fn (Application $item): array => ['id' => $item->id,
                     'title' => $item->submission_snapshot['program']['title'] ?? $item->scholarship->title,

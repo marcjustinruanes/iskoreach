@@ -10,9 +10,10 @@ import { useRequestFeedback } from '../../components/ui/useRequestFeedback';
 interface Award { id: number; scholarship: string; provider: string | null; status: string; active: boolean; consented: boolean; published: boolean; version: number; consent_url: string }
 export default function Awards({ awards }: SharedProps & { awards: Paginated<Award> }) {
     return <AppLayout title="My grants" description="Public listing requires your consent and administrator approval." actions={<Link href="/passers" className={buttonStyles('outline')}>View public passers list</Link>}>
-
+        <div className="my-grants-page">
         <div className="space-y-5">{awards.data.length ? awards.data.map(award => <AwardCard key={award.id + ':' + award.version} award={award} />) : <EmptyState title="No confirmed grants yet" description="Your confirmed scholarship grants will appear here. An accepted application is separate from a confirmed grant." />}</div>
         <Pagination page={awards} label="My grants pages" />
+        </div>
     </AppLayout>;
 }
 function AwardCard({ award }: { award: Award }) {
