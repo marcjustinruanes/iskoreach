@@ -75,6 +75,36 @@
 .location-lookup-retry { display: inline-flex; min-height: 2.75rem; align-items: center; gap: .5rem; border-radius: .5rem; padding-inline: .25rem; color: #123563; font-size: 1rem; font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
 @media (min-width: 640px) { .scholarship-search-card { padding: 2rem; } }
 @media (max-width: 639px) { .scholarship-discovery-page { padding-top: 2rem; } .scholarship-heading-rays { top: -1.8rem; left: 0; width: 1.6rem; height: 1.6rem; } }
+.auth-login-layout { position: relative; isolation: isolate; overflow: visible; background: radial-gradient(circle 9rem at 85% 22%, #e9f4fc 99%, transparent 100%), radial-gradient(circle 8rem at 14% 78%, #edf6fc 99%, transparent 100%); }
+.auth-login-layout::before { position: absolute; z-index: -1; top: 27%; left: 0; width: 8rem; height: 10rem; content: ''; opacity: .6; background-image: radial-gradient(#d8e8f6 4px, transparent 4px); background-size: 2rem 2rem; }
+.auth-login-layout::after { position: absolute; z-index: -1; right: 1rem; bottom: 1rem; width: 12rem; height: 12rem; border-radius: 9999px; background: linear-gradient(135deg, #ffd77d, #ffb72d); content: ''; }
+.auth-login-layout > * { position: relative; z-index: 1; }
+.auth-login-aside { padding-block: 2.5rem; }
+.auth-login-eyebrow { position: relative; width: fit-content; margin-bottom: 1.25rem; padding-bottom: .7rem; color: #657d9c; font-size: .85rem; letter-spacing: .22em; }
+.auth-login-eyebrow::after { position: absolute; bottom: 0; left: 0; width: 7rem; height: 2px; background: linear-gradient(90deg, #ffb21c 0 75%, #d9e4ee 75%); content: ''; }
+.auth-login-title { max-width: 24rem; font-size: 1.875rem; line-height: 2.5rem; letter-spacing: -.025em; }
+.auth-login-description { max-width: 24rem; font-size: 1rem; line-height: 1.75rem; }
+.auth-login-features { margin-top: 1.75rem; display: grid; gap: 1.25rem; }
+.auth-login-features > div { align-items: center; gap: 1rem; }
+.auth-login-feature-icon { width: 2.75rem; height: 2.75rem; border-radius: .5rem; background: #e6f0f7; color: #123563; }
+.auth-login-feature-icon svg { width: 1.25rem; height: 1.25rem; }
+.auth-login-features h3 { font-size: .875rem; }
+.auth-login-features p { max-width: 20rem; font-size: .875rem; line-height: 1.5rem; }
+.auth-login-recovery { margin-top: 2.5rem; max-width: 24rem; border-top: 0; padding-top: 0; font-size: .75rem; }
+.auth-login-card { max-width: 32rem; border-color: #d3dfeb; border-radius: .75rem; box-shadow: 0 12px 32px rgb(18 53 99 / .07); }
+.auth-login-card h1 { font-size: 1.5rem; line-height: 2rem; letter-spacing: -.02em; }
+.auth-login-card > p { font-size: .875rem; }
+.auth-login-card > div { margin-top: 1.25rem; }
+.auth-login-card form { gap: 1.25rem; }
+.auth-login-card form label { font-size: .875rem; }
+.auth-login-card form input { min-height: 2.75rem; border-radius: .5rem; font-size: .875rem; }
+.auth-login-card form button[type=submit] { min-height: 2.75rem; border-radius: .5rem; font-size: .875rem; }
+.auth-login-card form > div:has(> a[href="/forgot-password"]) { margin-top: -.5rem; }
+.auth-login-card .auth-login-google { margin-top: 1.25rem; }
+.auth-login-google > a, .auth-login-google > div > button { min-height: 2.75rem; border-radius: .5rem; font-size: .875rem; }
+.auth-login-card > div:last-child { margin-top: 1.5rem; padding-top: 1.25rem; font-size: .875rem; }
+.auth-login-aside ~ .auth-login-card h1 + p { color: #7085a2; }
+@media (max-width: 1023px) { .auth-login-layout { background: radial-gradient(circle 7rem at 84% 12%, #e9f4fc 99%, transparent 100%), radial-gradient(circle 6rem at 15% 84%, #edf6fc 99%, transparent 100%); } .auth-login-layout::after { right: 1rem; bottom: 1rem; left: auto; width: 8rem; height: 8rem; } .auth-login-card { margin-top: 1rem; } }
 .password-field::-ms-reveal,
 .password-field::-ms-clear {
     display: none;

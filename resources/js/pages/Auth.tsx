@@ -48,7 +48,7 @@ function AuthScreen({ mode, token = '', email = '', status }: AuthPageProps) {
     const titles: Record<Mode, string> = { 'google-link': 'Link your Google account', login: 'Log in', register: 'Create your account', forgot: 'Forgot password?', reset: 'Reset your password', confirm: 'Confirm your password' };
     const descriptions: Record<Mode, string> = {
         'google-link': 'Confirm your existing IskoReach password once to connect this Google account. Future Google sign-ins will not need your password.',
-        login: '',
+        login: 'Log in to continue your scholarship journey.',
         register: 'Choose your account type and enter your details below.',
         forgot: 'Enter the email address associated with your account.',
         reset: 'Choose a new password for your IskoReach account.',
@@ -85,7 +85,7 @@ function AuthScreen({ mode, token = '', email = '', status }: AuthPageProps) {
     };
 
     return <AuthLayout title={confirmation ? 'Check your email' : titles[mode]}
-        description={confirmation ? 'Your account recovery request has been received.' : descriptions[mode]}>
+        description={confirmation ? 'Your account recovery request has been received.' : descriptions[mode]} loginPage={mode === 'login'}>
         {confirmation ? <div>
             <span className="mb-5 flex size-14 items-center justify-center rounded-full bg-civic-panel"><MailCheck aria-hidden="true" className="size-7 text-civic-teal" /></span>
             <p role="status" className="text-sm leading-7 text-civic-muted">{status}</p>
@@ -102,12 +102,12 @@ function AuthScreen({ mode, token = '', email = '', status }: AuthPageProps) {
                 {mode !== 'forgot' && <PasswordField label="Password" name="password" value={form.data.password} onChange={e => form.setData('password', e.target.value)} autoComplete={mode === 'login' || mode === 'confirm' || mode === 'google-link' ? 'current-password' : 'new-password'} error={form.errors.password} hint={mode === 'reset' ? 'Use at least 8 characters and at most 72 UTF-8 bytes. Spaces and symbols are allowed; accented letters and emoji can use several bytes.' : undefined} required />}
                 {(mode === 'reset') && <PasswordField label="Confirm password" name="password_confirmation" value={form.data.password_confirmation} onChange={e => form.setData('password_confirmation', e.target.value)} autoComplete="new-password" error={form.errors.password_confirmation} required />}
                 {form.errors.token && <p role="alert" className="text-sm text-civic-danger">{form.errors.token}</p>}
-                {mode === 'login' && <div className="flex flex-wrap items-center justify-between gap-2">
+                {mode === 'login' && <div className="flex flex-wrap items-center justify-end gap-2">
                     <Link href="/forgot-password" className={'inline-flex min-h-11 items-center rounded text-sm font-semibold text-civic-teal ' + focusRing}>Forgot password?</Link>
                 </div>}
                 <Button type="submit" loading={form.processing} className="w-full">{form.processing ? 'Please wait…' : mode === 'forgot' ? 'Send reset instructions' : mode === 'reset' ? 'Save new password' : mode === 'google-link' ? 'Confirm and link Google' : titles[mode]}</Button>
             </form>
-            {mode === 'login' && <div className="mt-5 space-y-4"><div className="flex items-center gap-3 text-sm text-civic-muted"><span aria-hidden="true" className="h-px flex-1 bg-civic-border" /><span>or</span><span aria-hidden="true" className="h-px flex-1 bg-civic-border" /></div><GoogleAuthButton /></div>}
+            {mode === 'login' && <div className="auth-login-google mt-5 space-y-4"><div className="flex items-center gap-3 text-sm text-civic-muted"><span aria-hidden="true" className="h-px flex-1 bg-civic-border" /><span>OR</span><span aria-hidden="true" className="h-px flex-1 bg-civic-border" /></div><GoogleAuthButton /><p className="text-center text-sm leading-6 text-civic-muted">Google sign-in is for your convenience. You can still use your email.</p></div>}
             <div className="mt-6 border-t border-neutral-200 pt-5 text-center text-sm leading-6 text-civic-muted">
                 {mode === 'login' ? <>New to IskoReach? <Link href="/register" className={'rounded font-semibold text-civic-teal ' + focusRing}>Create an account</Link></>
                     : mode === 'confirm' ? <Link href="/dashboard" className={'rounded font-semibold text-civic-teal ' + focusRing}>Return to my account</Link>
