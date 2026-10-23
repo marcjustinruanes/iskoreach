@@ -59,7 +59,7 @@ export default function AwardMonitoring({ section, filters, records, statuses, p
             { key: 'dates', label: 'Release dates', render: record => <div className="space-y-1 text-xs leading-6"><p>Scheduled: {date(record.scheduled_at)}</p><p>Released: {date(record.released_at)}</p>{record.status === 'released' && !record.release_confirmed && <p className="font-semibold text-amber-800">Release timestamp missing</p>}</div> },
         );
     }
-    return <AdminLayout title={titles[section]}>
+    return <AdminLayout title={titles[section]} description={section === 'awards' ? 'Review confirmed grants, publication consent, and public passer listings.' : undefined}><div className="admin-record-page admin-grants-passers-page">
         <Card className="mb-5 p-5 sm:p-6"><form onSubmit={submit} aria-label={'Filter ' + section} className="space-y-4">
             <Input label="Search scholarships or providers" type="search" name="q" maxLength={200} value={form.data.q} onChange={e => form.setData('q', e.target.value)} error={form.errors.q} />
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -80,7 +80,7 @@ export default function AwardMonitoring({ section, filters, records, statuses, p
         </Card>}
         <p className="mt-5 text-sm leading-6 text-civic-muted">{section === 'awards' ? 'Public entries require a confirmed active grant, student consent, and publication approval. Accepted applications alone do not appear.' : section === 'renewals' ? 'Providers remain responsible for renewal decisions. Document checklists are not available in this monitoring view.' : 'Amounts are shown in their recorded currency. This page tracks releases; it does not transfer money.'}</p>
         {selected && <PublicationDialog key={selected.id + ':' + selected.publication_version} record={selected} close={() => setSelected(null)} />}
-    </AdminLayout>;
+    </div></AdminLayout>;
 }
 
 function ScholarshipPasserFilters({ scholarship, filters, terms, url }: { scholarship: Record; filters: Filters; terms: Props['terms']; url: string }) {

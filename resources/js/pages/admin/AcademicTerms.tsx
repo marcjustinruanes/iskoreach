@@ -29,8 +29,9 @@ export default function AcademicTerms({ terms, filters, storeUrl, termRecords }:
     const form = useForm(filters);
     const request = useRequestFeedback(form.cancel);
     const submit = (event: FormEvent) => { event.preventDefault(); if (!request.begin()) return; form.get('/admin/academic-terms', { preserveState: true, preserveScroll: true, onFinish: request.finish }); };
-    return <AdminLayout title="Academic terms" actions={<Button onClick={() => setEditor({ term: null })}><Plus aria-hidden="true" className="size-4" />Create term</Button>}>
-        <div className="mb-5 flex flex-wrap items-start justify-between gap-4 rounded-xl border border-teal-200 bg-teal-50 p-5"><div className="flex max-w-3xl gap-3"><CalendarDays aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-civic-teal" /><div><h2 className="text-sm font-semibold text-civic-navy">One shared term directory</h2><p className="mt-2 text-sm leading-6 text-civic-muted">Terms linked to records are read-only to preserve history. Terms can overlap; there is no global active term.</p></div></div></div>
+    return <AdminLayout title="Academic terms" description="Manage shared academic terms and review the grants and renewals linked to each term." actions={<Button onClick={() => setEditor({ term: null })}><Plus aria-hidden="true" className="size-4" />Create term</Button>}>
+        <div className="admin-record-page admin-academic-terms-page">
+        <div className="mb-5 flex flex-wrap items-start justify-between gap-4 rounded-xl border border-amber-200 bg-amber-50 p-5"><div className="flex max-w-3xl gap-3"><CalendarDays aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-amber-700" /><div><h2 className="text-sm font-semibold text-civic-navy">One shared term directory</h2><p className="mt-2 text-sm leading-6 text-civic-muted">Terms linked to records are read-only to preserve history. Terms can overlap; there is no global active term.</p></div></div></div>
         <Card className="mb-5"><form aria-label="Filter academic terms" onSubmit={submit} className="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
             <Input label="Search academic year" name="q" type="search" maxLength={100} value={form.data.q} onChange={event => form.setData('q', event.target.value)} error={form.errors.q} placeholder="e.g. 2026-2027" />
             <div><label htmlFor="term-usage" className="mb-2 block text-sm font-semibold">Usage</label><select id="term-usage" name="usage" value={form.data.usage} onChange={event => form.setData('usage', event.target.value)} className={'min-h-11 w-full rounded-lg border border-civic-control bg-white px-3 py-2.5 text-base ' + focusRing}><option value="">All terms</option><option value="unused">Unused · editable</option><option value="used">In use · read-only</option></select></div>
@@ -49,6 +50,7 @@ export default function AcademicTerms({ terms, filters, storeUrl, termRecords }:
             ]} /> : <p className="text-sm text-civic-muted">No {section.title.toLowerCase()} for this term from approved providers.</p>}<Pagination page={records} label={section.title + ' pages'} /></section>; })}</div>}
         </Card>
         {editor && <TermEditor key={editor.term ? editor.term.id + ':' + editor.term.version : 'new'} term={editor.term} storeUrl={storeUrl} onClose={() => setEditor(null)} />}
+        </div>
     </AdminLayout>;
 }
 

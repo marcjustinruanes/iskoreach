@@ -1,14 +1,15 @@
 import { Link, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import AdminLayout from '../../layouts/AdminLayout';
-import { Button, Card, Input, focusRing } from '../../components/ui/DesignSystem';
+import { AdminCard as Card } from '../../components/admin/AdminPanel';
+import { Button, Input, focusRing } from '../../components/ui/DesignSystem';
 import { Modal } from '../../components/ui/Overlays';
 
 interface PolicyDocument { kind: string; title: string; content: string; expected_version: number; published_version: string; published_at: string; is_draft: boolean; save_url: string; public_url: string }
 
 export default function Policies({ documents }: { documents: PolicyDocument[] }) {
     return <AdminLayout title="Registration policies" description="Edit drafts and publish the terms and privacy notice shown during registration.">
-        <div className="space-y-6">{documents.map(document => <PolicyEditor key={document.kind + ':' + document.expected_version} document={document} />)}</div>
+        <div className="admin-record-page admin-policies-page"><div className="space-y-6">{documents.map(document => <PolicyEditor key={document.kind + ':' + document.expected_version} document={document} />)}</div></div>
     </AdminLayout>;
 }
 

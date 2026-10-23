@@ -20,11 +20,11 @@ export default function Providers({ providers, filters, adminNavigation }: Provi
         form.clearErrors();
         router.get(adminNavigation.providers, {}, { preserveScroll: true });
     };
-    return <AdminLayout title="Provider reviews">
-        <Card className="mb-5 rounded-xl p-5 sm:p-6"><form onSubmit={search} className="grid items-end gap-4 md:grid-cols-[minmax(0,1fr)_12rem_auto]" aria-label="Search and filter providers">
+    return <AdminLayout title="Provider reviews" description="Review organization details and manage provider workspace access."><div className="admin-record-page admin-provider-reviews-page">
+        <Card className="mb-5 rounded-xl p-5 sm:p-6"><form onSubmit={search} className="space-y-4" aria-label="Search and filter providers">
             <Input label="Search providers" type="search" name="q" value={form.data.q} onChange={event => form.setData('q', event.target.value)} placeholder="Organization, contact person, or email" maxLength={200} error={form.errors.q} />
-            <div><label htmlFor="provider-status-filter" className="mb-2 block text-sm font-semibold">Verification status</label><select id="provider-status-filter" name="status" value={form.data.status} onChange={event => form.setData('status', event.target.value)} className={'min-h-11 w-full rounded-lg border border-civic-control bg-white px-3 py-2.5 text-base ' + focusRing}><option value="">All statuses</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="suspended">Suspended</option></select>{form.errors.status && <p role="alert" className="mt-2 text-sm text-civic-danger">{form.errors.status}</p>}</div>
-            <div className="flex gap-2"><Button type="submit" loading={form.processing}>Apply filters</Button><Button variant="outline" onClick={reset}>Reset</Button></div>
+            <div className="grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_auto]"><div><label htmlFor="provider-status-filter" className="mb-2 block text-sm font-semibold">Verification status</label><select id="provider-status-filter" name="status" value={form.data.status} onChange={event => form.setData('status', event.target.value)} className={'min-h-11 w-full rounded-lg border border-civic-control bg-white px-3 py-2.5 text-base ' + focusRing}><option value="">All statuses</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="suspended">Suspended</option></select>{form.errors.status && <p role="alert" className="mt-2 text-sm text-civic-danger">{form.errors.status}</p>}</div>
+            <div className="admin-form-actions flex flex-wrap gap-3 sm:col-span-2 lg:col-span-1"><Button type="submit" loading={form.processing}>Apply filters</Button><Button variant="outline" onClick={reset}>Reset</Button></div></div>
         </form></Card>
         <Card className="rounded-xl p-5 sm:p-6"><div className="mb-5"><h2 className="text-lg font-bold text-civic-navy">Provider accounts</h2><p aria-live="polite" className="mt-2 text-sm leading-6 text-civic-muted">{providers.total} matching {providers.total === 1 ? 'account' : 'accounts'}. Pending accounts appear first, followed by newest registrations.</p></div>
             {providers.data.length ? <Table rows={providers.data} rowKey={provider => provider.id} caption="Provider verification accounts" columns={[
@@ -37,5 +37,5 @@ export default function Providers({ providers, filters, adminNavigation }: Provi
             <Pagination page={providers} label="Provider list pages" />
         </Card>
         <p className="mt-5 max-w-3xl text-sm leading-6 text-civic-muted">Approval grants provider workspace access. An administrator must check the submitted information; account approval does not automatically prove an organization's legitimacy.</p>
-    </AdminLayout>;
+    </div></AdminLayout>;
 }

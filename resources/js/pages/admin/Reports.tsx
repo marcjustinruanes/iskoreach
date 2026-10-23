@@ -17,7 +17,8 @@ export default function Reports({ filters, definition, options, rows, export_url
     const form = useForm<Filters>(filters);
     if (!adminNavigation) return null;
     const submit = (event: FormEvent) => { event.preventDefault(); form.get(adminNavigation.reports, { preserveScroll: true, preserveState: true }); };
-    return <AdminLayout title="Reports">
+    return <AdminLayout title="Reports" description="Review platform activity across the selected reporting period.">
+        <div className="admin-record-page admin-reports-page">
         <Card className="mb-5 p-5 sm:p-6"><form onSubmit={submit} aria-label="Report filters" className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[2fr_1fr_1fr]"><div><label htmlFor="report-type" className="mb-2 block text-sm font-semibold">Report</label><select id="report-type" name="type" value={form.data.type} onChange={event => form.setData('type', event.target.value)} className={'min-h-11 w-full rounded-lg border border-civic-control bg-white px-3 py-2.5 text-base ' + focusRing}>{options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>{form.errors.type && <p role="alert" className="mt-2 text-sm text-civic-danger">{form.errors.type}</p>}</div>
                 <Input label="From date" name="from" type="date" required value={form.data.from} onChange={event => form.setData('from', event.target.value)} error={form.errors.from} />
@@ -30,5 +31,6 @@ export default function Reports({ filters, definition, options, rows, export_url
             {rows.data.length ? <Table rows={rows.data} rowKey={row => JSON.stringify(row)} caption={definition.title} columns={Object.entries(definition.columns).map(([key, title]) => ({ key, label: title, render: (row: Row) => <span className={typeof row[key] === 'number' || key === 'amount' ? 'tabular-nums' : 'break-words'}>{typeof row[key] === 'number' ? row[key].toLocaleString('en-PH') : ['role', 'status', 'visibility', 'scope', 'kind'].includes(key) ? label(String(row[key])) : row[key]}</span> }))} /> : <EmptyState title="No records in this reporting period" description="Choose another date range or report. Empty results are not estimates of unrecorded activity." />}
             <Pagination page={rows} label="Report summary pages" />
         </Card><p className="mt-4 text-xs leading-5 text-civic-muted">CSV includes every matching summary row using the applied filters. No individual student details are exported. Generated {new Date(generated_at).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })} (Asia/Manila).</p>
+        </div>
     </AdminLayout>;
 }

@@ -21,7 +21,7 @@ export default function Scholarships({ scholarships, filters, providers, categor
         { key: 'category' as const, label: 'Category', options: categories.map(category => [category, category]) },
         { key: 'records' as const, label: 'Record visibility', options: [['current', 'Current records'], ['retained', 'Retained after removal']] },
     ];
-    return <AdminLayout title="Scholarship monitoring">
+    return <AdminLayout title="Scholarship monitoring" description="Review published programs, application details, and retained scholarship records."><div className="admin-record-page admin-scholarship-monitoring-page">
         <Card className="mb-5 rounded-xl p-5 sm:p-6"><form onSubmit={search} aria-label="Search and filter scholarships" className="space-y-5">
             <Input label="Search scholarships" name="q" type="search" maxLength={200} placeholder="Scholarship title or provider organization" value={form.data.q} onChange={event => form.setData('q', event.target.value)} error={form.errors.q} />
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{choices.map(choice => <div key={choice.key}><label htmlFor={'scholarship-' + choice.key} className="mb-2 block text-sm font-semibold">{choice.label}</label><select id={'scholarship-' + choice.key} name={choice.key} value={form.data[choice.key]} onChange={event => form.setData(choice.key, event.target.value)} className={selectClass}><option value="">{choice.key === 'records' ? 'Current and retained records' : 'All'}</option>{choice.options.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>{form.errors[choice.key] && <p role="alert" className="mt-2 text-sm text-civic-danger">{form.errors[choice.key]}</p>}</div>)}<Input label="Location name or code" name="location" maxLength={100} placeholder="Nationwide, region, or city / municipality" value={form.data.location} onChange={event => form.setData('location', event.target.value)} error={form.errors.location} /></div>
@@ -41,5 +41,5 @@ export default function Scholarships({ scholarships, filters, providers, categor
             <Pagination page={scholarships} label="Scholarship list pages" />
         </Card>
         <p className="mt-5 text-sm leading-6 text-civic-muted">Open scholarships show submitted application totals, expected scholarship slots, and waitlisted applicants. Draft applications are excluded.</p>
-    </AdminLayout>;
+    </div></AdminLayout>;
 }

@@ -108,7 +108,7 @@ export interface MonitoredScholarshipDetails extends MonitoredScholarship {
 export interface ApplicantCountSummary { internal_count: number; external_count: number; waitlisted_count: number; public_count: number }
 
 export interface StudentDashboardData {
-    applicationSummary: { total: number; submitted: number; under_review: number; waitlisted: number; accepted: number; rejected: number };
+    applicationSummary: { total: number; submitted: number; in_progress: number; drafts: number; not_submitted: number };
     recentApplications: { id: number; title: string; provider: string; status: 'submitted' | 'under_review' | 'accepted' | 'rejected' | 'waitlisted'; submitted_at: string; retained: boolean; url: string }[];
     upcomingRenewals: { id: number; title: string; deadline_at: string; url: string }[];
 }

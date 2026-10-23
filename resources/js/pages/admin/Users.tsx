@@ -23,7 +23,7 @@ export default function Users({ accounts, filters, adminNavigation }: UsersProps
         form.clearErrors();
         router.get(adminNavigation.users, {}, { preserveScroll: true });
     };
-    return <AdminLayout title="User management">
+    return <AdminLayout title="User management" description="Find and review student and provider accounts across IskoReach."><div className="admin-record-page admin-user-management-page">
         <Card className="mb-5 rounded-xl p-5 sm:p-6"><form onSubmit={search} aria-label="Search and filter accounts" className="space-y-4">
             <Input label="Search accounts" type="search" name="q" placeholder="Name, email, or provider organization" value={form.data.q} onChange={event => form.setData('q', event.target.value)} maxLength={200} error={form.errors.q} />
             <div className="grid items-end gap-4 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_auto]">
@@ -44,5 +44,5 @@ export default function Users({ accounts, filters, adminNavigation }: UsersProps
             <Pagination page={accounts} label="Account list pages" />
         </Card>
         <p className="mt-5 text-sm leading-6 text-civic-muted">Student and provider workspace access requires administrator approval. Suspension and reactivation controls are not available.</p>
-    </AdminLayout>;
+    </div></AdminLayout>;
 }
