@@ -1,7 +1,7 @@
 import LocationSearchPicker from '../components/LocationSearchPicker';
 import { Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
-import { ArrowRight, Search } from 'lucide-react';
+import { ArrowRight, Search, FileText, Sparkles } from 'lucide-react';
 import type { SharedProps } from '../types';
 import { Badge, Button, Input, buttonStyles, focusRing } from '../components/ui/DesignSystem';
 import { Modal } from '../components/ui/Overlays';
@@ -23,8 +23,8 @@ export default function Welcome({ auth, recentScholarships, publicStats }: Share
         <main id="main-content">
             <LandingHero stats={publicStats}>
                 <form aria-label="Find scholarships" className="space-y-4" onSubmit={event => { event.preventDefault(); if (!request.begin()) return; form.get('/scholarships', { onFinish: request.finish }); }}>
-                    <Input label="Scholarship or provider" id="scholarship-search" name="q" type="search" maxLength={200} value={form.data.q} onChange={event => form.setData('q', event.target.value)} placeholder="Search programs or organizations" error={form.errors.q} />
-                    <LocationSearchPicker value={form.data.location} onChange={value => form.setData('location', value)} error={form.errors.location} />
+                    <Input label="Scholarship or provider" id="scholarship-search" name="q" type="search" maxLength={200} value={form.data.q} onChange={event => form.setData('q', event.target.value)} placeholder="Search scholarships or organizations" error={form.errors.q} />
+                    <LocationSearchPicker value={form.data.location} onChange={value => form.setData('location', value)} error={form.errors.location} label="Location" warningStyle />
                     <Button type="submit" loading={form.processing} className="w-full"><Search aria-hidden="true" className="size-4" />Find scholarships</Button>
                     {request.error && <p role="alert" className="text-sm text-civic-danger">{request.error}</p>}
                 </form>
@@ -32,7 +32,7 @@ export default function Welcome({ auth, recentScholarships, publicStats }: Share
             <section id="discover" className="scroll-mt-24 bg-white py-12 lg:py-16" aria-labelledby="directory-title"><div className={landingContainer}>
                 <div className="mb-7 flex flex-wrap items-end justify-between gap-4"><div><h2 id="directory-title" className={landingTitle}>Recently published scholarships</h2><p className="mt-3 text-sm leading-6 text-civic-muted">A few opportunities from the public directory. Review each provider's criteria before applying.</p></div><Link href="/scholarships" className={'inline-flex min-h-11 items-center gap-2 rounded text-sm font-semibold text-civic-navy underline underline-offset-4 ' + focusRing}>View all scholarships<ArrowRight aria-hidden="true" className="size-4" /></Link></div>
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3" data-testid="scholarship-grid">{recentScholarships.map(item => <ScholarshipCard key={item.id} item={item} />)}</div>
-                {!recentScholarships.length && <div className="rounded-xl border border-civic-border/60 bg-civic-canvas px-5 py-6"><h3 className="font-semibold text-civic-navy">No published scholarships yet</h3><p className="mt-2 text-sm leading-6 text-civic-muted">New programs will appear here when approved providers publish them.</p></div>}
+                {!recentScholarships.length && <div className="flex items-center gap-5 rounded-xl border border-civic-border/50 bg-gradient-to-r from-civic-canvas to-white px-5 py-4 sm:px-8"><span className="relative flex size-16 shrink-0 items-center justify-center rounded-full bg-[#e8eff5] text-civic-navy"><FileText aria-hidden="true" className="size-8" /><Sparkles aria-hidden="true" className="absolute -right-3 -top-1 size-6 text-civic-gold" /></span><div><h3 className="font-bold text-civic-navy">No published scholarships yet</h3><p className="mt-1 text-sm leading-6 text-civic-muted">New programs will appear here when approved providers publish them.</p></div></div>}
                 <p className="mt-6 text-xs leading-5 text-civic-muted">Deadlines are shown in Philippine time. Check each program for its full eligibility criteria.</p>
             </div></section>
             <LandingJourney /><LandingStudentTools /><LandingProviders accountHref={providerHref} onReview={() => setVerificationOpen(true)} />
