@@ -174,6 +174,50 @@
 @media (prefers-reduced-motion: reduce) { .registration-step-content { animation: none; } .registration-step-icon, .registration-form input, .registration-form select, .registration-upload, .registration-nav-button { transition: none; } .registration-nav-button:active:not(:disabled) { transform: none; } }
 @media (max-width: 380px) { .registration-nav-button { padding-left: .65rem; padding-right: .65rem; font-size: .75rem; gap: .375rem; } }
 
+/* Registration layout follows the two-panel account creation reference. */
+.auth-registration-layout { position: relative; isolation: isolate; max-width: 80rem; background: radial-gradient(circle 13rem at 8% 24%, #e5f2fb 99%, transparent 100%), radial-gradient(circle 18rem at 98% 78%, #e8f3fb 99%, transparent 100%), #f7fafc; }
+.auth-registration-layout::before { position: absolute; z-index: -1; top: 8%; left: 5%; width: 5rem; height: 9rem; content: ''; opacity: .55; background-image: radial-gradient(#ffbd35 1.5px, transparent 1.5px); background-size: 1.25rem 1.25rem; }
+.auth-registration-layout > * { position: relative; z-index: 1; }
+.auth-registration-layout > aside { min-width: 0; }
+#home:has(.auth-registration-layout) > div.mt-auto { position: relative; isolation: isolate; overflow: hidden; }
+#home:has(.auth-registration-layout) > div.mt-auto::before { position: absolute; z-index: -1; top: -5rem; left: -5rem; width: 14rem; height: 14rem; border-radius: 9999px; background: linear-gradient(135deg, #ffd36a, #ffb52e); content: ''; }
+#home:has(.auth-registration-layout) > div.mt-auto footer { position: relative; background: rgb(237 244 249 / .9); }
+.registration-info-panel { position: relative; isolation: isolate; display: flex; flex-direction: column; overflow: hidden; border-color: #294d75; border-radius: 1rem; padding: 1.75rem; background: radial-gradient(ellipse at 95% 8%, rgb(44 91 143 / .38), transparent 44%), linear-gradient(145deg, #153c69, #0d2d54 75%); box-shadow: 0 18px 40px rgb(18 53 99 / .13); }
+.registration-info-panel::before { position: absolute; z-index: -1; right: -4rem; top: -7rem; width: 15rem; height: 15rem; border-radius: 9999px; background: rgb(255 255 255 / .045); content: ''; }
+.registration-info-panel::after { position: absolute; z-index: -1; left: -4rem; bottom: -8rem; width: 15rem; height: 15rem; border: 1.25rem solid rgb(83 141 199 / .16); border-radius: 9999px; content: ''; }
+.registration-brand > span:first-child { width: 3.5rem; height: 3.5rem; border-radius: .85rem; background: transparent; }
+.registration-brand img { transform: scale(1.45); }
+.registration-panel-title { max-width: 20rem; font-size: 2rem; line-height: 1.3; letter-spacing: -.025em; }
+.registration-info-panel > p:first-of-type { font-size: .95rem; line-height: 1.8rem; }
+.registration-info-panel > .registration-stepper { flex: 1; align-content: space-evenly; padding-block: .5rem; }
+.registration-info-panel .registration-step { gap: 1rem; min-height: 4.5rem; padding-bottom: 0; }
+.registration-info-panel .registration-step:not(:last-child)::after { left: 19px; top: 43px; bottom: 2px; background-image: linear-gradient(to bottom, rgb(255 255 255 / .5) 50%, transparent 50%); background-size: 2px 7px; background-color: transparent; }
+.registration-info-panel .registration-step.is-complete::after { background: #e5bd69; }
+.registration-info-panel .registration-step-icon { width: 2.5rem; height: 2.5rem; border-radius: .75rem; font-size: 1rem; }
+.registration-info-panel .registration-step.is-upcoming .registration-step-icon { background: rgb(255 255 255 / .055); border-color: rgb(255 255 255 / .3); }
+.registration-info-panel .registration-step p:first-child { font-size: 1rem; line-height: 1.5rem; }
+.registration-info-panel .registration-step p + p { margin-top: .3rem; font-size: .875rem; line-height: 1.5rem; }
+.registration-card { align-self: stretch; max-width: none; border-color: #e1eaf2; border-radius: 1rem; padding: 1.5rem; box-shadow: 0 14px 40px rgb(18 53 99 / .08); }
+.registration-card h1 { font-size: 1.35rem; line-height: 1.75rem; }
+.registration-card > div { margin-top: 1rem; }
+.registration-card nav[aria-label="Registration type"] { margin-bottom: 1rem; }
+.registration-card .registration-heading { font-size: 1.2rem; line-height: 1.7rem; }
+.registration-card .registration-step-content { min-height: 0; }
+.registration-card .registration-form input:not([type=checkbox]):not([type=file]), .registration-card .registration-form select { min-height: 2.5rem; border-radius: .5rem; }
+.registration-card .registration-navigation { margin-top: 1.25rem; padding-top: 1rem; }
+@media (min-width: 1024px) {
+    .auth-registration-layout { grid-template-columns: minmax(0, .78fr) minmax(0, 1.22fr); gap: 1rem; }
+    .auth-registration-layout > aside { display: block; }
+    .registration-info-panel { padding: 1.75rem; }
+    .registration-card { padding: 1.5rem; }
+}
+@media (max-width: 1023px) {
+    .auth-registration-layout { background: radial-gradient(circle 9rem at 8% 10%, #e5f2fb 99%, transparent 100%), #f7fafc; }
+}
+@media (max-width: 639px) {
+    .registration-info-panel { padding: 1.25rem; }
+    .registration-card { padding: 1.25rem; }
+}
 /* A visible focus boundary on the dark role navigation. */
 nav[aria-label="Student navigation"] a:focus-visible, nav[aria-label="Provider navigation"] a:focus-visible, nav[aria-label="Administrative navigation"] a:focus-visible { outline-color: #fbad23; }
 
