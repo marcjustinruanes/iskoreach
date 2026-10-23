@@ -12,6 +12,7 @@ export interface SidebarItem {
 }
 export interface SidebarGroup {
     label: string;
+    section?: string;
     icon?: LucideIcon;
     items: SidebarItem[];
     expandable?: boolean;
@@ -40,6 +41,7 @@ export default function SidebarNavigation({ label, groups, currentPath, collapse
         const Icon = group.icon || group.items[0].icon;
         const panelId = id + '-' + index;
         return <div key={group.label} className={index ? 'border-t border-white/15 pt-3' : ''}>
+            {group.section && <p className="sidebar-section-label px-3 pb-1 pt-1 text-[10px] font-bold uppercase tracking-[.12em] text-slate-400">{group.section}</p>}
             {group.expandable && <button type="button" title={group.label} aria-label={group.label} aria-expanded={open} aria-controls={panelId} onClick={() => {
                 if (collapsed) onExpand();
                 setExpanded(values => ({ ...values, [group.label]: collapsed || !open }));
