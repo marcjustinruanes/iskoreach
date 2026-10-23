@@ -29,13 +29,21 @@ class ScholarshipController extends Controller
         foreach ($filters as $key => $value) {
             $filters[$key] = (string) ($request->validated($key) ?? '');
         }
+        $sort = $request->validated('sort') ?? 'deadline';
+        $filters['sort'] = $sort;
+        $scholarships = $catalog->browse($filters)->with(['provider:id,organization_name', 'locations', 'academicTerm']);
+        match ($sort) {
+            'published' => $scholarships->orderByDesc('published_at'),
+            'amount' => $scholarships->orderByRaw('benefit_amount IS NULL')->orderByDesc('benefit_amount'),
+            default => $scholarships->orderByRaw('deadline_at IS NULL')->orderBy('deadline_at'),
+        };
 
         $workspace = $request->routeIs('student.*');
 
         return Inertia::render('public/Scholarships', ['filters' => $filters,
             'studentWorkspace' => $workspace,
             'browseUrl' => route($workspace ? 'student.scholarships.index' : 'scholarships.index'),
-            'scholarships' => $catalog->browse($filters)->with(['provider:id,organization_name', 'locations', 'academicTerm'])->orderByDesc('published_at')->orderByDesc('id')->paginate(6)->withQueryString()->through(fn ($item): array => $this->scholarshipData($catalog, $item, $workspace)),
+            'scholarships' => $scholarships->orderByDesc('published_at')->orderByDesc('id')->paginate(6)->withQueryString()->through(fn ($item): array => $this->scholarshipData($catalog, $item, $workspace)),
             'types' => $catalog->visible()->where('scholarship_type', '!=', '')->select('scholarship_type')->distinct()->orderBy('scholarship_type')->pluck('scholarship_type'),
             'terms' => AcademicTerm::query()->whereIn('id', $catalog->visible()->select('academic_term_id'))->orderByDesc('academic_year')->orderBy('semester')->get()->map(fn ($term): array => ['id' => $term->id, 'label' => $term->academic_year])]);
     }
