@@ -23,7 +23,7 @@ class RequirementsController extends Controller
 {
     public function index(Request $request, PrivateDocuments $documents): Response
     {
-        return Inertia::render('student/Requirements', ['applications' => Application::where('student_id', $request->user()->id)->with('scholarship.requirements', 'academicTerm')->latest('updated_at')->paginate(8)->through(fn ($item): array => ['id' => $item->id, 'title' => $item->scholarship->title, 'semester' => $item->academicTerm?->academic_year.' '.$item->academicTerm?->semester, 'deadline' => $item->scholarship->deadline_at?->toIso8601String(), 'version' => $item->workflow_version, 'status' => $item->status->value, 'submitted' => $item->submitted_at !== null, 'url' => route('student.applications.show', $item), 'checklist' => $documents->checklist($item)]), 'upload_limit_kb' => $documents->uploadLimitKilobytes()]);
+        return Inertia::render('student/Requirements', ['applications' => Application::where('student_id', $request->user()->id)->with('scholarship.requirements', 'academicTerm')->latest('updated_at')->paginate(8)->through(fn ($item): array => ['id' => $item->id, 'title' => $item->scholarship->title, 'semester' => $item->academicTerm?->academic_year, 'deadline' => $item->scholarship->deadline_at?->toIso8601String(), 'version' => $item->workflow_version, 'status' => $item->status->value, 'submitted' => $item->submitted_at !== null, 'url' => route('student.applications.show', $item), 'checklist' => $documents->checklist($item)]), 'upload_limit_kb' => $documents->uploadLimitKilobytes()]);
     }
 
     public function upload(Request $request, Application $application, ScholarshipRequirement $requirement, PrivateDocuments $documents): RedirectResponse

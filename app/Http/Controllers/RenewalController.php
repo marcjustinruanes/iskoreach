@@ -25,14 +25,16 @@ class RenewalController extends Controller
         $user = $request->user();
         $provider = $user->role->value === 'provider';
         abort_if($provider && $user->providerProfile?->verification_status->value !== 'approved', 403);
-        $filters = $request->validate(['status' => ['nullable', 'in:pending,submitted,approved,rejected']]);
+        $filters = $request->validate(['status' => ['nullable', 'in:pending,submitted,approved,rejected'], 'term' => ['nullable', 'integer', 'exists:academic_terms,id']]);
         $query = Renewal::query()->whereHas('award.application', fn ($query) => $provider
         ? $query->whereHas('scholarship.provider', fn ($query) => $query->where('user_id', $user->id))
         : $query->where('student_id', $user->id));
+        $query->whereHas('award', fn ($query) => $query->approvedProvider());
+        $filterTerms = AcademicTerm::whereIn('id', (clone $query)->select('academic_term_id'))->orderByDesc('academic_year')->orderBy('semester')->get()->map(fn ($term) => ['id' => $term->id, 'label' => $term->academic_year]);
         $awards = $provider ? ScholarshipAward::active()->whereHas('application.scholarship.provider', fn ($query) => $query->where('user_id', $user->id))->with('application.scholarship')->get()->filter($workflow->eligible(...))->map(fn ($award) => ['id' => $award->id, 'label' => 'AW-'.$award->id.' · '.$award->application->scholarship->title])->values() : [];
 
-        return Inertia::render('renewals/Index', ['renewals' => $query->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))->with('award.application.scholarship', 'academicTerm')->latest('id')->paginate(10)->withQueryString()->through(fn ($item) => $this->summary($item)),
-            'filters' => ['status' => $filters['status'] ?? ''], 'awards' => $awards, 'terms' => $provider ? AcademicTerm::whereDate('ends_on', '>=', now('Asia/Manila')->toDateString())->orderBy('starts_on')->get()->map(fn ($term) => ['id' => $term->id, 'label' => $term->academic_year.' · '.$term->semester]) : []]);
+        return Inertia::render('renewals/Index', ['renewals' => $query->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))->when($filters['term'] ?? null, fn ($query, $term) => $query->where('academic_term_id', $term))->with('award.application.scholarship', 'award.application.student', 'academicTerm')->latest('id')->paginate(10)->withQueryString()->through(fn ($item) => $this->summary($item)),
+            'filterTerms' => $filterTerms, 'filters' => ['status' => $filters['status'] ?? '', 'term' => (string) ($filters['term'] ?? '')], 'awards' => $awards, 'terms' => $provider ? AcademicTerm::whereDate('ends_on', '>=', now('Asia/Manila')->toDateString())->orderBy('starts_on')->get()->map(fn ($term) => ['id' => $term->id, 'label' => $term->academic_year]) : []]);
     }
 
     public function store(Request $request, RenewalWorkflow $workflow): RedirectResponse
@@ -86,7 +88,8 @@ class RenewalController extends Controller
     private function summary(Renewal $renewal): array
     {
         return ['id' => $renewal->id, 'scholarship' => $renewal->award->application->scholarship->title, 'award_id' => $renewal->scholarship_award_id,
-            'term' => $renewal->academicTerm->academic_year.' · '.$renewal->academicTerm->semester, 'status' => $renewal->status->value,
+            'student_name' => request()->user()->role->value === 'provider' ? ($renewal->award->application->submission_snapshot['student']['name'] ?? $renewal->award->application->student?->name) : null,
+            'term' => $renewal->academicTerm->academic_year, 'status' => $renewal->status->value,
             'deadline_at' => $renewal->deadline_at?->toIso8601String(), 'submitted_at' => $renewal->submitted_at?->toIso8601String(),
             'url' => route('renewals.show', $renewal)];
     }

@@ -12,6 +12,19 @@ class RegistrationDuplicatesAndCoverageTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_student_numbers_cannot_be_reused_in_registration_or_profile_updates(): void
+    {
+        $profile = StudentProfile::factory()->create(['student_number' => '2026-001']);
+        $data = $this->studentRegistrationData();
+        $this->postJson('/register/validate-step', [...$data, 'step' => 2])->assertUnprocessable()->assertJsonValidationErrors('student_number');
+        $this->post('/register', $data)->assertSessionHasErrors('student_number');
+        $this->assertDatabaseCount('accounts', 1);
+        $this->actingAs($profile->user)->patch('/student/profiles/'.$profile->id, ['student_number' => '2026-001'])->assertSessionHasNoErrors();
+        StudentProfile::factory()->create(['student_number' => '2026-002']);
+        $this->patch('/student/profiles/'.$profile->id, ['student_number' => '2026-002'])->assertSessionHasErrors('student_number');
+        $this->assertSame('2026-001', $profile->fresh()->student_number);
+    }
+
     public function test_duplicate_student_identity_is_checked_as_one_set_at_next_and_submit(): void
     {
         $data = $this->studentRegistrationData(['suffix' => 'Jr.']);
@@ -49,9 +62,9 @@ class RegistrationDuplicatesAndCoverageTest extends TestCase
 
     public function test_provider_coverage_is_saved_with_api_names_and_office_address_is_removed(): void
     {
-        $data = $this->providerRegistrationData(['office_address' => 'Ignored old field', 'coverage_areas' => [['scope' => 'city', 'region_code' => '040000000', 'city_code' => '042101000']]]);
+        $data = $this->providerRegistrationData(['office_address' => 'Ignored old field', 'coverage_areas' => [['scope' => 'city', 'region_name' => '040000000', 'city_name' => '042101000']]]);
         $this->postJson('/register/validate-step', [...$data, 'step' => 4])->assertOk()->assertJsonPath('coverage_labels.0', 'Test Region / Test Province / Test City');
-        $this->postJson('/register/validate-step', [...$data, 'step' => 5, 'password_confirmation' => 'different'])->assertUnprocessable()->assertJsonValidationErrors('password');
+        $this->postJson('/register/validate-step', [...$data, 'step' => 6, 'password_confirmation' => 'different'])->assertUnprocessable()->assertJsonValidationErrors('password');
         $this->post('/register', $data)->assertSessionHasNoErrors();
         $profile = ProviderProfile::firstOrFail();
         $this->assertSame('Test City', $profile->coverage_areas[0]['city_name']);
@@ -63,7 +76,7 @@ class RegistrationDuplicatesAndCoverageTest extends TestCase
     public function test_provider_coverage_requires_valid_nonduplicated_api_locations(): void
     {
         $data = $this->providerRegistrationData();
-        foreach ([[], [['scope' => 'city', 'region_code' => '040000000', 'city_code' => '999999999']], [['scope' => 'province', 'region_code' => '130000000', 'province_code' => '042100000']], [['scope' => 'region', 'region_code' => '999999999']], [['scope' => 'nationwide'], ['scope' => 'region', 'region_code' => '040000000']], [['scope' => 'region', 'region_code' => '040000000'], ['scope' => 'region', 'region_code' => '040000000']]] as $areas) {
+        foreach ([[], [['scope' => 'city', 'region_name' => '040000000', 'city_name' => '999999999']], [['scope' => 'province', 'region_name' => '130000000', 'province_name' => '042100000']], [['scope' => 'region', 'region_name' => '999999999']], [['scope' => 'nationwide'], ['scope' => 'region', 'region_name' => '040000000']], [['scope' => 'region', 'region_name' => '040000000'], ['scope' => 'region', 'region_name' => '040000000']]] as $areas) {
             $response = $this->postJson('/register/validate-step', [...$data, 'step' => 4, 'coverage_areas' => $areas])->assertUnprocessable();
             $this->assertTrue(collect(array_keys($response->json('errors')))->contains(fn (string $key): bool => str_starts_with($key, 'coverage_areas')));
             $this->post('/register', [...$data, 'coverage_areas' => $areas])->assertSessionHasErrors();
@@ -74,13 +87,13 @@ class RegistrationDuplicatesAndCoverageTest extends TestCase
     public function test_added_coverage_areas_must_match_the_first_coverage_type(): void
     {
         $data = $this->providerRegistrationData(['coverage_areas' => [
-            ['scope' => 'region', 'region_code' => '040000000'],
-            ['scope' => 'province', 'region_code' => '040000000', 'province_code' => '042100000'],
+            ['scope' => 'region', 'region_name' => '040000000'],
+            ['scope' => 'province', 'region_name' => '040000000', 'province_name' => '042100000'],
         ]]);
         $this->postJson('/register/validate-step', [...$data, 'step' => 4])->assertUnprocessable()->assertJsonValidationErrors('coverage_areas.1.scope');
         $this->post('/register', $data)->assertSessionHasErrors('coverage_areas.1.scope');
         $this->assertDatabaseCount('accounts', 0);
-        $data['coverage_areas'][1] = ['scope' => 'region', 'region_code' => '130000000'];
+        $data['coverage_areas'][1] = ['scope' => 'region', 'region_name' => '130000000'];
         $this->postJson('/register/validate-step', [...$data, 'step' => 4])->assertOk();
         $this->post('/register', $data)->assertSessionHasNoErrors();
         $this->assertSame(['region', 'region'], array_column(ProviderProfile::firstOrFail()->coverage_areas, 'scope'));

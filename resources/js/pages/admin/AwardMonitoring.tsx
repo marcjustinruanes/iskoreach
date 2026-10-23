@@ -4,16 +4,16 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Paginated, SharedProps } from '../../types';
 import AdminLayout from '../../layouts/AdminLayout';
-import { Badge, Button, EmptyState, Input, buttonStyles, focusRing } from '../../components/ui/DesignSystem';
+import { Badge, Button, EmptyState, Input, focusRing } from '../../components/ui/DesignSystem';
 import { Pagination, Table } from '../../components/ui/DataDisplay';
 import type { TableColumn } from '../../components/ui/DataDisplay';
 import { Modal } from '../../components/ui/Overlays';
 import { useRequestFeedback } from '../../components/ui/useRequestFeedback';
 
 type Section = 'awards' | 'renewals' | 'releases';
-interface Filters { q: string; status: string; provider: string; term: string; award: string; from: string; to: string; activity: string; consent: string }
+interface Filters { q: string; status: string; provider: string; term: string; award: string; from: string; to: string; activity: string; consent: string; scholarship: string; passer_q: string; listing: string }
 interface Record {
-    id: number; award_id: number; application_reference: string; scholarship: string; scholarship_url: string; provider: string;
+    id: number; award_id: number; application_reference: string; scholarship_id: number; scholarship: string; scholarship_url: string; provider: string; passer_name?: string | null;
     term: string; status: string; active_award: boolean; retained: boolean; updated_at: string;
     starts_on?: string; ends_on?: string | null; consented_at?: string | null; published_at?: string | null;
     publicly_visible?: boolean; can_publish?: boolean; publication_version?: number; publication_url?: string;
@@ -22,7 +22,7 @@ interface Record {
 }
 interface Props extends SharedProps { section: Section; filters: Filters; records: Paginated<Record>; statuses: string[]; providers: { id: number; name: string }[]; terms: { id: number; name: string }[] }
 const titles = { awards: 'Grants and passers', renewals: 'Renewal monitoring', releases: 'Benefit releases' };
-const blank: Filters = { q: '', status: '', provider: '', term: '', award: '', from: '', to: '', activity: '', consent: '' };
+const blank: Filters = { q: '', status: '', provider: '', term: '', award: '', from: '', to: '', activity: '', consent: '', scholarship: '', passer_q: '', listing: '' };
 const selectClass = 'min-h-11 w-full rounded-lg border border-civic-control bg-white px-3 py-2 text-base ' + focusRing;
 const date = (value?: string | null) => value ? new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium', timeZone: 'Asia/Manila' }).format(new Date(value.length === 10 ? value + 'T00:00:00+08:00' : value)) : 'Not recorded';
 const label = (value: string) => value.charAt(0).toUpperCase() + value.slice(1).replaceAll('_', ' ');
@@ -30,6 +30,11 @@ const label = (value: string) => value.charAt(0).toUpperCase() + value.slice(1).
 export default function AwardMonitoring({ section, filters, records, statuses, providers, terms, adminNavigation }: Props) {
     const form = useForm<Filters>(filters);
     const [selected, setSelected] = useState<Record | null>(null);
+    const scholarshipGroups = Object.values(records.data.reduce<{ [id: number]: { scholarship: Record; records: Record[] } }>((groups, record) => {
+        const group = groups[record.scholarship_id] ??= { scholarship: record, records: [] };
+        group.records.push(record);
+        return groups;
+    }, {}));
     if (!adminNavigation) return null;
     const url = adminNavigation[section];
     const reset = () => { form.setData(blank); form.clearErrors(); router.get(url); };
@@ -40,6 +45,7 @@ export default function AwardMonitoring({ section, filters, records, statuses, p
         { key: 'status', label: 'Status', render: record => <div className="space-y-2"><Badge tone={['active', 'approved', 'released'].includes(record.status) ? 'green' : ['revoked', 'rejected'].includes(record.status) ? 'red' : 'neutral'}>{label(record.status)}</Badge>{record.overdue && <p className="text-xs font-semibold text-amber-800">Past deadline</p>}{section !== 'awards' && !record.active_award && <p className="text-xs text-civic-muted">Grant currently inactive</p>}</div> },
     ];
     if (section === 'awards') {
+        columns.splice(1, 1, { key: 'passer', label: 'Passer / academic term', render: record => <div><p className="font-semibold">{record.passer_name || 'Private grant'}</p><p className="mt-1 text-xs text-civic-muted">{record.term}</p></div> });
         columns.push(
             { key: 'dates', label: 'Grant period', render: record => <div className="text-xs leading-6"><p>From {date(record.starts_on)}</p><p>{record.ends_on ? 'Until ' + date(record.ends_on) : 'No end date recorded'}</p><p className="font-semibold">{record.active_award ? 'Currently active' : 'Currently inactive'}</p></div> },
             { key: 'publication', label: 'Public listing', render: record => <div className="space-y-2"><Badge tone={record.publicly_visible ? 'green' : 'neutral'}>{record.publicly_visible ? 'Publicly listed' : 'Hidden'}</Badge><p className="text-xs leading-5 text-civic-muted">{record.consented_at ? 'Student consent recorded' : 'Awaiting student consent'}</p>{record.published_at && <p className="text-xs leading-5 text-civic-muted">Approved {date(record.published_at)}</p>}<Button variant="outline" onClick={() => setSelected(record)}>{record.published_at ? 'Review publication' : 'Review listing'}</Button></div> },
@@ -54,7 +60,6 @@ export default function AwardMonitoring({ section, filters, records, statuses, p
         );
     }
     return <AdminLayout title={titles[section]}>
-        {section === 'awards' && <Link href="/passers" className={buttonStyles('outline') + ' mb-5'}>View public passers list</Link>}
         <Card className="mb-5 p-5 sm:p-6"><form onSubmit={submit} aria-label={'Filter ' + section} className="space-y-4">
             <Input label="Search scholarships or providers" type="search" name="q" maxLength={200} value={form.data.q} onChange={e => form.setData('q', e.target.value)} error={form.errors.q} />
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -69,13 +74,24 @@ export default function AwardMonitoring({ section, filters, records, statuses, p
             {(['status', 'provider', 'term', 'activity', 'consent'] as const).map(field => form.errors[field] && <p key={field} role="alert" className="text-sm text-civic-danger">{form.errors[field]}</p>)}
             <div className="admin-form-actions flex flex-wrap gap-3"><Button type="submit" loading={form.processing}>Apply filters</Button><Button variant="outline" onClick={reset}>Reset</Button></div>
         </form></Card>
-        <Card className="min-w-0 p-5 sm:p-6"><h2 className="text-lg font-bold text-civic-navy">Recorded {section === 'releases' ? 'benefit releases' : section}</h2><p aria-live="polite" className="mt-2 mb-5 text-sm leading-6 text-civic-muted">{records.total} matching {records.total === 1 ? 'record' : 'records'}. Dates use Asia/Manila.</p>
+        {section === 'awards' ? <section aria-label="Scholarship passer lists" className="space-y-5"><p aria-live="polite" className="text-sm text-civic-muted">{records.total} matching grants. Dates use Asia/Manila.</p>{scholarshipGroups.length ? scholarshipGroups.map(group => <Card key={group.scholarship.scholarship_id} className="min-w-0 p-5 sm:p-6"><h2 className="text-lg font-bold"><Link href={group.scholarship.scholarship_url} className={'rounded text-civic-teal underline ' + focusRing}>{group.scholarship.scholarship}</Link></h2><p className="mt-1 text-sm text-civic-muted">{group.scholarship.provider}</p><ScholarshipPasserFilters key={JSON.stringify(filters) + ':' + group.scholarship.scholarship_id} scholarship={group.scholarship} filters={filters} terms={terms} url={url} /><h3 className="my-4 font-semibold">Passers and grants</h3><Table rows={group.records} rowKey={record => record.id} columns={columns} caption={'Passers and grants for ' + group.scholarship.scholarship} /></Card>) : <Card><EmptyState title="No matching passers or grants" description="Try another academic term, name, publication status, or reset the filters." action={<Button variant="outline" onClick={reset}>Reset filters</Button>} /></Card>}<Pagination page={records} label="Scholarship passer list pages" /></section> : <Card className="min-w-0 p-5 sm:p-6"><h2 className="text-lg font-bold text-civic-navy">Recorded {section === 'releases' ? 'benefit releases' : section}</h2><p aria-live="polite" className="mt-2 mb-5 text-sm leading-6 text-civic-muted">{records.total} matching {records.total === 1 ? 'record' : 'records'}. Dates use Asia/Manila.</p>
             {records.data.length ? <Table rows={records.data} rowKey={record => record.id} columns={columns} caption={titles[section]} /> : <EmptyState title="No matching records" description="Records will appear when grants and provider tracking entries are recorded. Try resetting any active filters." />}
             <Pagination page={records} label={titles[section] + ' pages'} />
-        </Card>
+        </Card>}
         <p className="mt-5 text-sm leading-6 text-civic-muted">{section === 'awards' ? 'Public entries require a confirmed active grant, student consent, and publication approval. Accepted applications alone do not appear.' : section === 'renewals' ? 'Providers remain responsible for renewal decisions. Document checklists are not available in this monitoring view.' : 'Amounts are shown in their recorded currency. This page tracks releases; it does not transfer money.'}</p>
         {selected && <PublicationDialog key={selected.id + ':' + selected.publication_version} record={selected} close={() => setSelected(null)} />}
     </AdminLayout>;
+}
+
+function ScholarshipPasserFilters({ scholarship, filters, terms, url }: { scholarship: Record; filters: Filters; terms: Props['terms']; url: string }) {
+    const form = useForm({ ...filters, scholarship: String(scholarship.scholarship_id) });
+    return <form aria-label={'Filter passers for ' + scholarship.scholarship} className="mt-5 grid items-end gap-4 rounded-lg bg-civic-panel p-4 sm:grid-cols-2 xl:grid-cols-3" onSubmit={event => { event.preventDefault(); form.get(url, { preserveScroll: true, preserveState: true }); }}>
+        <Input label="Passer name" name="passer_q" maxLength={120} value={form.data.passer_q} onChange={event => form.setData('passer_q', event.target.value)} error={form.errors.passer_q} />
+        <label className="text-sm font-semibold">Academic term<select name="term" className={selectClass + ' mt-2'} value={form.data.term} onChange={event => form.setData('term', event.target.value)}><option value="">All terms</option>{terms.map(term => <option key={term.id} value={term.id}>{term.name}</option>)}</select></label>
+        <label className="text-sm font-semibold">Publication status<select name="listing" className={selectClass + ' mt-2'} value={form.data.listing} onChange={event => form.setData('listing', event.target.value)}><option value="">Passers and private grants</option><option value="public">Published passers</option><option value="private">Private grants</option></select></label>
+        <div className="flex flex-wrap gap-3"><Button type="submit" loading={form.processing}>Filter list</Button><Button variant="outline" onClick={() => router.get(url, { ...filters, scholarship: '', passer_q: '', listing: '', term: '' }, { preserveScroll: true })}>Reset list filters</Button></div>
+        {(form.errors.term || form.errors.listing || form.errors.scholarship) && <p role="alert" className="text-sm text-civic-danger">{form.errors.term || form.errors.listing || form.errors.scholarship}</p>}
+    </form>;
 }
 
 function Select({ label, field, value, options, change }: { label: string; field: string; value: string; options: { value: string; name: string }[]; change: (value: string) => void }) {

@@ -1,0 +1,9 @@
+import { useForm } from '@inertiajs/react';
+import { Button, Card, Input } from '../ui/DesignSystem';
+import type { FormEvent } from 'react';
+
+export default function ScholarshipCapacityEditor({ url, version, slots, waitlistSlots, used }: { url: string; version: number; slots: string; waitlistSlots: string; used: { applications: number; waitlisted: number } }) {
+    const form = useForm({ version, slots, waitlist_slots: waitlistSlots });
+    const submit = (event: FormEvent) => { event.preventDefault(); form.patch(url, { preserveScroll: true }); };
+    return <Card className="mt-6"><h2 className="text-lg font-bold">Application and waitlist slots</h2><p className="mt-2 text-sm leading-6 text-civic-muted">{used.applications} application slots and {used.waitlisted} waitlist slots are occupied. You can update these limits while the scholarship content is locked. Blank means no limit; 0 waitlist slots disables waitlisting.</p><form onSubmit={submit} className="mt-4 space-y-4"><div className="grid gap-4 sm:grid-cols-2"><Input label="Application slots" name="capacity-slots" type="number" min={Math.max(1, used.applications)} max={1000000} step={1} value={form.data.slots} onChange={event => { form.setData('slots', event.target.value); form.clearErrors('slots'); }} error={form.errors.slots} /><Input label="Waitlist slots" name="capacity-waitlist-slots" type="number" min={used.waitlisted} max={1000000} step={1} value={form.data.waitlist_slots} onChange={event => { form.setData('waitlist_slots', event.target.value); form.clearErrors('waitlist_slots'); }} error={form.errors.waitlist_slots} /></div>{form.errors.version && <p role="alert" className="text-sm text-civic-danger">{form.errors.version}</p>}<Button type="submit" loading={form.processing} disabled={!form.isDirty}>Save slot limits</Button></form></Card>;
+}

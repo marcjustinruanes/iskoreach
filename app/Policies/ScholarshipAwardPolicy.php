@@ -10,7 +10,8 @@ class ScholarshipAwardPolicy
 {
     public function view(User $user, ScholarshipAward $award): bool
     {
-        return $user->role === UserRole::Student && $award->application->student_id === $user->id || $this->manage($user, $award);
+        return $user->role === UserRole::Student && $award->application->student_id === $user->id
+            && $award->application->scholarship->provider->isApproved() || $this->manage($user, $award);
     }
 
     public function manage(User $user, ScholarshipAward $award): bool

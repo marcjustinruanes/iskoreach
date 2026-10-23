@@ -148,7 +148,7 @@ class InputValidationTest extends TestCase
     public function test_multibyte_description_limit_is_enforced_before_storage(): void
     {
         $profile = ProviderProfile::factory()->create(['verification_status' => ProviderVerificationStatus::Approved]);
-        $payload = ['title' => 'Valid scholarship', 'description' => str_repeat("\u{1f393}", 16384), 'scholarship_type' => 'Merit', 'currency' => 'PHP', 'accepts_existing_scholars' => false,
+        $payload = ['title' => 'Valid scholarship', 'description' => str_repeat("\u{1f393}", 16384), 'academic_year' => '2026-2027', 'scholarship_type' => 'Merit', 'currency' => 'PHP', 'accepts_existing_scholars' => false,
             'locations' => [['scope' => 'nationwide']], 'requirements' => []];
         $this->actingAs($profile->user)->post('/provider/scholarships', $payload)->assertSessionHasErrors('description');
         $this->assertDatabaseCount('scholarships', 0);

@@ -64,7 +64,7 @@ class DemoProvidersSeeder extends Seeder
                             'surname' => $provider['surname'], 'position' => 'Demo Scholarship Administrator',
                             'contact_number' => '0900000000'.($index + 1), 'organization_phone' => '0900000000'.($index + 1),
                             'organization_type' => $provider['type'],
-                            'region_code' => '130000000', 'city_code' => '137404000', 'region_name' => 'National Capital Region',
+                            'region_name' => 'NCR',
                             'city_name' => 'Quezon City', 'verification_status' => 'approved', 'verification_version' => 1,
                             'reviewed_at' => now(), 'registration_version' => 0, 'authorization_required' => false])->save();
                         $user->activityLogs()->create(['action' => 'demo.provider_seeded', 'subject_type' => ProviderProfile::class,
@@ -108,7 +108,7 @@ class DemoProvidersSeeder extends Seeder
                     $variant === 0 ? 'Nationwide coverage; applicants from any Philippine region may apply.' : 'For students residing or studying in the National Capital Region.',
                     'Demo use only; do not submit genuine sensitive documents to test fictional eligibility.']],
                 'status' => $closed ? 'closed' : 'published', 'published_at' => now()]);
-            $item->locations()->create($variant === 0 ? ['scope' => 'nationwide'] : ['scope' => 'region', 'region_code' => '130000000', 'region_name' => 'National Capital Region']);
+            $item->locations()->create($variant === 0 ? ['scope' => 'nationwide'] : ['scope' => 'region', 'region_name' => 'NCR']);
             foreach (['Certificate of Registration (COR)', 'Certificate of Grades', 'Valid Student ID', ...($index % 2 === 0 ? ['Certificate of Indigency'] : [])] as $order => $name) {
                 $item->requirements()->create(['name' => $name, 'description' => 'Upload a clearly labeled dummy '.$name.' for this demo application. Never upload real identity or financial documents for a demo.',
                     'required' => true, 'requirement_stage' => 'application', 'allowed_mime_types' => ['application/pdf', 'image/jpeg', 'image/png'], 'max_size_kb' => 1024, 'sort_order' => $order]);

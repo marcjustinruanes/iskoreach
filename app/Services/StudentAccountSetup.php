@@ -9,14 +9,14 @@ class StudentAccountSetup
 {
     public const PERSONAL = ['first_name', 'surname', 'date_of_birth', 'sex', 'contact_number'];
 
-    public const ACADEMIC = ['student_number', 'school', 'campus_region_code', 'campus_province_code', 'campus_city_code', 'education_level', 'course', 'year_level'];
+    public const ACADEMIC = ['student_number', 'school', 'campus_region_name', 'campus_province_name', 'campus_city_name', 'education_level', 'course', 'year_level'];
 
-    public const ADDRESS = ['region_code', 'province_code', 'city_code', 'barangay_code'];
+    public const ADDRESS = ['region_name', 'province_name', 'city_name', 'barangay_name'];
 
     public function data(User $user): array
     {
         $profile = $user->studentProfile()->firstOrFail();
-        $complete = fn (array $fields): bool => collect($fields)->every(fn ($field): bool => filled($profile->$field));
+        $complete = fn (array $fields): bool => collect($fields)->every(fn ($field): bool => ($field === 'student_number' && $profile->education_level === 'senior_high' && filled($profile->graduation_year)) || filled($profile->$field));
         $steps = collect(['personal' => self::PERSONAL, 'academic' => self::ACADEMIC, 'address' => self::ADDRESS])->map(fn ($fields, $key): array => ['key' => $key, 'label' => ucfirst($key).' information', 'complete' => $complete($fields), 'url' => route('student.profile').'#'.$key])->values()->all();
         $count = collect($steps)->where('complete', true)->count();
         $photo = $profile->photo_path;

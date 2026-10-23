@@ -20,23 +20,24 @@ class RegistrationStepController extends Controller
     {
         $providers->checkIntent($request->all());
         $input = $providers->normalize($request->all());
-        Validator::make($input, ['step' => ['required', 'integer', 'between:1,'.(($input['account_type'] ?? '') === 'provider' ? '5' : '4')], 'account_type' => ['required', 'in:student,provider']])->validate();
+        Validator::make($input, ['step' => ['required', 'integer', 'between:1,'.(($input['account_type'] ?? '') === 'provider' ? '6' : '4')], 'account_type' => ['required', 'in:student,provider']])->validate();
         $provider = $input['account_type'] === 'provider';
         $steps = $provider ? [
             ['first_name', 'surname', 'middle_name', 'no_middle_name', 'suffix', 'position', 'contact_number', 'work_email'],
-            ['organization_description', 'country', 'barangay_code', 'organization_name', 'organization_type', 'region_code', 'province_code', 'city_code', 'organization_email', 'organization_phone', 'website', 'authorization_required'],
+            ['organization_description', 'country', 'barangay_name', 'organization_name', 'organization_type', 'region_name', 'province_name', 'city_name', 'organization_email', 'organization_phone', 'website', 'authorization_required'],
             ProviderRegistration::DOCUMENTS,
-            ['coverage_areas', 'coverage_areas.*', 'coverage_areas.*.scope', 'coverage_areas.*.region_code', 'coverage_areas.*.province_code', 'coverage_areas.*.city_code'],
+            ['coverage_areas', 'coverage_areas.*', 'coverage_areas.*.scope', 'coverage_areas.*.region_name', 'coverage_areas.*.province_name', 'coverage_areas.*.city_name'],
+            ['priority_education_level', 'priority_courses', 'priority_courses.*', 'priority_year_levels', 'priority_year_levels.*'],
         ] : [
             ['first_name', 'surname', 'middle_name', 'no_middle_name', 'suffix', 'date_of_birth', 'sex', 'contact_number', 'email'],
-            ['student_number', 'school', 'campus', 'campus_region_code', 'campus_province_code', 'campus_city_code', 'education_level', 'course', 'year_level'],
-            ['region_code', 'province_code', 'city_code', 'barangay_code', 'street_address'],
+            ['student_number', 'school', 'campus_region_name', 'campus_province_name', 'campus_city_name', 'education_level', 'course', 'year_level', 'shs_graduate', 'graduation_year'],
+            ['region_name', 'province_name', 'city_name', 'barangay_name', 'street_address'],
         ];
         $steps[] = ['password', 'terms_accepted', 'privacy_accepted', 'terms_version', 'privacy_version'];
         $rules = new RegisterUserRequest;
         $rules->replace($input);
         Validator::make($input, array_intersect_key($rules->rules(), array_flip($steps[(int) $input['step'] - 1])))->validate();
-        $accountStep = $provider ? 5 : 4;
+        $accountStep = $provider ? 6 : 4;
         $coverage = [];
         if ((int) $input['step'] === 1) {
             app(RegistrationDuplicates::class)->validate($input, organizationPhone: false);
@@ -57,7 +58,7 @@ class RegistrationStepController extends Controller
             app(RegistrationPolicies::class)->accepted($input);
         }
         if ((! $provider && (int) $input['step'] === 3) || ($provider && (int) $input['step'] === 2)) {
-            $students->address($input, ! $provider || ! empty($input['barangay_code']));
+            $students->address($input, ! $provider || ! empty($input['barangay_name']));
         }
         if (! $provider && (int) $input['step'] === 2) {
             $students->campus($input);

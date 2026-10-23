@@ -40,7 +40,7 @@ class GeographicSearchTest extends TestCase
         $this->program([['scope' => 'city', 'region_name' => 'Other Region', 'city_name' => 'Quezon City']]);
         $this->program([['scope' => 'city', 'region_name' => 'Other Region', 'city_name' => 'Quezon City'], ['scope' => 'region', 'region_name' => 'NCR']]);
         $this->total('  qUeZoN   CITY   ncr  ', 1);
-        $this->total('137404000', 1);
+        $this->total('137404000', 0);
         $this->total('Quezon', 3);
         $this->total('Unlisted Place', 0);
         $this->total('', 3);
@@ -74,13 +74,13 @@ class GeographicSearchTest extends TestCase
         $this->assertDatabaseHas('scholarship_locations', ['scholarship_id' => $nationwide->id, 'region_name' => null]);
     }
 
-    public function test_legacy_codes_remain_searchable_without_inventing_names_or_hierarchy(): void
+    public function test_names_are_searchable_without_storing_or_exposing_location_codes(): void
     {
-        $program = $this->program([['scope' => 'city', 'region_code' => '130000000', 'city_code' => '137404000']]);
-        $this->total('137404000', 1);
-        $this->total('Quezon City', 0);
+        $program = $this->program([['scope' => 'city', 'region_name' => 'NCR', 'city_name' => 'Quezon City']]);
+        $this->total('137404000', 0);
+        $this->total('Quezon City', 1);
         $this->total('Barangay Example', 0);
         $this->get('/scholarships/'.$program->slug)->assertInertia(fn (Assert $page) => $page
-            ->where('scholarship.locations.0.city_name', null)->where('scholarship.locations.0.city_code', '137404000'));
+            ->where('scholarship.locations.0.city_name', 'Quezon City')->missing('scholarship.locations.0.city_code'));
     }
 }

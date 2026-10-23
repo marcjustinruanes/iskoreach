@@ -35,11 +35,11 @@ export default function Scholarships({ scholarships, filters, providers, categor
                 { key: 'dates', label: 'Application dates', render: item => <div className="min-w-44 text-xs leading-6"><p>Opens: {scholarshipDate(item.opens_at)}</p><p>Deadline: {scholarshipDate(item.deadline_at)}</p></div> },
                 { key: 'status', label: 'Status', render: item => <div className="space-y-2"><ScholarshipStatusBadge status={item.status} />{item.deleted_at && <Badge>Retained record</Badge>}</div> },
                 { key: 'eligibility', label: 'Existing scholars', render: item => <span className="block min-w-24 text-xs leading-6">{item.accepts_existing_scholars ? 'Allowed' : 'Not allowed'}</span> },
-                { key: 'count', label: 'Count preview', render: item => <Link href={item.counts_url} className={'inline-flex min-h-11 items-center rounded text-sm font-semibold text-civic-teal underline ' + focusRing}>{item.applicant_count.toLocaleString('en-PH')}</Link> },
+                { key: 'count', label: 'Applications', render: item => item.open ? <p className="text-sm leading-6">{item.applicant_count} applications / Expected: {item.slots ?? 'Not specified'} slots / Waitlisted: {item.waitlisted_count}</p> : 'Not open' },
                 { key: 'updated', label: 'Updated', render: item => <span className="block min-w-36 text-xs leading-6 text-civic-muted">{scholarshipDate(item.updated_at)}</span> },
             ]} /> : <EmptyState title={Object.values(filters).some(Boolean) ? 'No matching scholarship records' : 'No scholarship records yet'} description="No scholarship records match these filters. Try another search or reset the filters." action={Object.values(filters).some(Boolean) ? <Button variant="outline" onClick={reset}>Reset filters</Button> : undefined} />}
             <Pagination page={scholarships} label="Scholarship list pages" />
         </Card>
-        <p className="mt-5 text-sm leading-6 text-civic-muted">Count previews include internal submitted applications and verified external snapshots only. Scholarship approval and moderation actions are not defined.</p>
+        <p className="mt-5 text-sm leading-6 text-civic-muted">Open scholarships show submitted application totals, expected scholarship slots, and waitlisted applicants. Draft applications are excluded.</p>
     </AdminLayout>;
 }

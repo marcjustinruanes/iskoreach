@@ -116,7 +116,7 @@ class RegistrationEmailVerificationTest extends TestCase
         $this->assertArrayNotHasKey('code', session('registration_email'));
         $this->assertSame(64, strlen(session('registration_email.hash')));
         $this->postJson('/register/email/verify', [...$email, 'code' => $code])->assertOk()->assertJsonPath('verified', true);
-        $this->post('/register', $data)->assertSessionHasNoErrors()->assertRedirect('/dashboard');
+        $this->post('/register', $data)->assertSessionHasNoErrors()->assertRedirect('/login');
         $user = User::firstOrFail();
         $this->assertSame($data['email'], $user->email);
         $this->assertNull(session('registration_email'));
@@ -225,6 +225,7 @@ class RegistrationEmailVerificationTest extends TestCase
         $profile = User::where('email', 'office@gmail.com')->firstOrFail()->providerProfile;
         $this->assertSame('+639191234567', $profile->contact_number);
         $this->assertSame('+639181234567', $profile->organization_phone);
+        $this->actingAs($profile->user);
         $this->patch('/provider/profiles/'.$profile->id, ['organization_name' => $profile->organization_name, 'contact_email' => $profile->contact_email, 'contact_number' => '09191234567', 'organization_phone' => '09201234567'])->assertSessionHasNoErrors();
         $this->assertSame('+639191234567', $profile->fresh()->contact_number);
         $this->assertSame('+639201234567', $profile->fresh()->organization_phone);
@@ -237,6 +238,7 @@ class RegistrationEmailVerificationTest extends TestCase
         $this->assertNull($student->studentProfile->middle_name);
         $this->assertSame('Ana Cruz', $student->name);
         $student->studentProfile->forceFill(['registration_status' => 'approved'])->save();
+        $this->actingAs($student->fresh());
         $this->patch('/student/profiles/'.$student->studentProfile->id, ['middle_name' => 'Maria', 'no_middle_name' => false])->assertSessionHasNoErrors();
         $this->patch('/student/profiles/'.$student->studentProfile->id, ['no_middle_name' => true])->assertSessionHasNoErrors();
         $this->assertNull($student->studentProfile->fresh()->middle_name);
@@ -247,6 +249,7 @@ class RegistrationEmailVerificationTest extends TestCase
         $this->assertNull($provider->providerProfile->middle_name);
         $this->assertSame('Provider Contact', $provider->name);
         $profile = $provider->providerProfile;
+        $this->actingAs($provider);
         $this->patch('/provider/profiles/'.$profile->id, ['organization_name' => $profile->organization_name, 'contact_email' => $profile->contact_email, 'middle_name' => 'Maria', 'no_middle_name' => false])->assertSessionHasNoErrors();
         $this->patch('/provider/profiles/'.$profile->id, ['organization_name' => $profile->organization_name, 'contact_email' => $profile->contact_email, 'no_middle_name' => true])->assertSessionHasNoErrors();
         $this->assertNull($profile->fresh()->middle_name);

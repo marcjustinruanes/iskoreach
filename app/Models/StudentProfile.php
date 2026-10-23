@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['school', 'campus', 'campus_region_code', 'campus_province_code', 'campus_city_code', 'education_level', 'course', 'year_level', 'first_name', 'surname', 'middle_name', 'suffix', 'date_of_birth', 'sex', 'contact_number', 'student_number', 'region_code', 'province_code', 'city_code', 'barangay_code', 'region_name', 'province_name', 'city_name', 'barangay_name', 'street_address'])]
+#[Fillable(['school', 'campus_region_name', 'campus_province_name', 'campus_city_name', 'education_level', 'course', 'year_level', 'graduation_year', 'first_name', 'surname', 'middle_name', 'suffix', 'date_of_birth', 'sex', 'contact_number', 'student_number', 'region_name', 'province_name', 'city_name', 'barangay_name', 'street_address'])]
 #[Hidden(['photo_path'])]
 class StudentProfile extends Model
 {
@@ -19,7 +19,7 @@ class StudentProfile extends Model
 
     protected function casts(): array
     {
-        return ['year_level' => 'integer', 'date_of_birth' => 'date:Y-m-d'];
+        return ['graduation_year' => 'integer', 'year_level' => 'integer', 'date_of_birth' => 'date:Y-m-d'];
     }
 
     /** @return Attribute<never, int|string|null> */

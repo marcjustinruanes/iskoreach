@@ -15,6 +15,6 @@ class ScholarshipLifecycleRequest extends FormRequest
     public function rules(): array
     {
         return ['action' => ['required', Rule::in(['publish', 'unpublish', 'close', 'archive', 'remove'])],
-            'version' => ['required', 'integer', 'min:0'], 'reason' => ['required', 'string', 'min:5', 'max:1000'], 'confirmed' => ['required', 'accepted']];
+            'version' => ['required', 'integer', 'min:0'], 'reason' => ['required_unless:action,publish', 'nullable', 'string', 'min:5', 'max:1000'], 'confirmed' => ['required', 'accepted']];
     }
 }

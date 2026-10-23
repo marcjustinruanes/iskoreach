@@ -12,11 +12,11 @@ class ProviderCoverage
     {
         return [
             'coverage_areas' => ['required', 'array', 'min:1', 'max:20'],
-            'coverage_areas.*' => ['array:scope,region_code,province_code,city_code'],
+            'coverage_areas.*' => ['array:scope,region_name,province_name,city_name'],
             'coverage_areas.*.scope' => ['required', Rule::in(['nationwide', 'region', 'province', 'city'])],
-            'coverage_areas.*.region_code' => ['nullable', 'string', 'regex:/^[0-9]{9}$/D'],
-            'coverage_areas.*.province_code' => ['nullable', 'string', 'regex:/^[0-9]{9}$/D'],
-            'coverage_areas.*.city_code' => ['nullable', 'string', 'regex:/^[0-9]{9}$/D'],
+            'coverage_areas.*.region_name' => ['nullable', 'string', 'max:255'],
+            'coverage_areas.*.province_name' => ['nullable', 'string', 'max:255'],
+            'coverage_areas.*.city_name' => ['nullable', 'string', 'max:255'],
         ];
     }
 
@@ -31,7 +31,7 @@ class ProviderCoverage
             if ($scope !== $firstScope) {
                 throw ValidationException::withMessages(["coverage_areas.$index.scope" => 'All coverage areas must use the same type as Coverage 1.']);
             }
-            $area = ['scope' => $scope, 'region_code' => $scope === 'nationwide' ? '' : ($area['region_code'] ?? ''), 'province_code' => $scope === 'province' ? ($area['province_code'] ?? '') : '', 'city_code' => $scope === 'city' ? ($area['city_code'] ?? '') : ''];
+            $area = ['scope' => $scope, 'region_name' => $scope === 'nationwide' ? '' : ($area['region_name'] ?? ''), 'province_name' => in_array($scope, ['province', 'city'], true) ? ($area['province_name'] ?? '') : '', 'city_name' => $scope === 'city' ? ($area['city_name'] ?? '') : ''];
             $key = implode('|', $area);
             if (in_array($key, $seen, true)) {
                 throw ValidationException::withMessages(["coverage_areas.$index.scope" => 'This coverage area is already listed.']);
@@ -44,7 +44,7 @@ class ProviderCoverage
             } catch (\RuntimeException $error) {
                 throw ValidationException::withMessages(["coverage_areas.$index.scope" => 'Coverage verification is temporarily unavailable. Your selections are kept; retry shortly.']);
             }
-            $resolved[] = [...$area, ...$names];
+            $resolved[] = ['scope' => $scope, 'region_name' => $names['region_name'] ?? '', 'province_name' => $names['province_name'] ?? '', 'city_name' => $names['city_name'] ?? ''];
         }
         if (count($areas) > 1 && collect($areas)->contains('scope', 'nationwide')) {
             throw ValidationException::withMessages(['coverage_areas' => 'Choose nationwide on its own, or list specific coverage areas.']);

@@ -13,7 +13,7 @@ use Illuminate\Validation\ValidationException;
 
 class ProviderRegistration
 {
-    public const FIELDS = ['organization_description', 'country', 'barangay_code', 'first_name', 'surname', 'middle_name', 'suffix', 'position', 'contact_number', 'work_email', 'organization_name', 'organization_type', 'region_code', 'province_code', 'city_code', 'organization_phone', 'website', 'authorization_required'];
+    public const FIELDS = ['organization_description', 'country', 'barangay_name', 'first_name', 'surname', 'middle_name', 'suffix', 'position', 'contact_number', 'work_email', 'organization_name', 'organization_type', 'region_name', 'province_name', 'city_name', 'organization_phone', 'website', 'authorization_required'];
 
     public const DOCUMENTS = ['representative_id', 'organization_proof', 'administration_evidence', 'authorization_letter', 'accreditation'];
 
@@ -54,14 +54,14 @@ class ProviderRegistration
     public function rules(array $input = []): array
     {
         $student = app(StudentRegistration::class)->rules($input ?: request()->all());
-        $rules = array_intersect_key($student, array_flip(['first_name', 'surname', 'middle_name', 'no_middle_name', 'suffix', 'contact_number', 'region_code', 'province_code', 'city_code', 'terms_accepted', 'privacy_accepted']));
+        $rules = array_intersect_key($student, array_flip(['first_name', 'surname', 'middle_name', 'no_middle_name', 'suffix', 'contact_number', 'region_name', 'province_name', 'city_name', 'terms_accepted', 'privacy_accepted']));
         foreach (['position', 'organization_phone'] as $field) {
             $rules[$field] = ['required', 'string', 'max:255', InputRules::singleLine()];
         }
         $rules['organization_phone'] = $student['contact_number'];
         $rules['organization_description'] = ['required', 'string', 'min:10', 'max:4000'];
         $rules['country'] = ['sometimes', Rule::in(['PH'])];
-        $rules['barangay_code'] = $student['barangay_code'];
+        $rules['barangay_name'] = $student['barangay_name'];
         $rules['organization_type'] = ['required', Rule::enum(OrganizationType::class)];
         $rules['organization_name'] = ['required_unless:organization_type,individual', 'nullable', 'string', 'max:255', InputRules::singleLine()];
         $rules['work_email'] = InputRules::email(gmail: true);
@@ -82,7 +82,7 @@ class ProviderRegistration
             $rules[$kind] = array_values(array_filter(['bail', $applicability === 'sometimes' ? null : $applicability, $required, 'nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:1024']));
         }
 
-        return $rules + app(ProviderCoverage::class)->rules();
+        return $rules + app(ProviderCoverage::class)->rules() + app(ScholarshipAcademicPriority::class)->rules($input);
     }
 
     /** @param array<string, mixed> $input @return array<string, mixed> */

@@ -22,14 +22,15 @@ class AwardBenefitController extends Controller
         $user = $request->user();
         $provider = $user->role->value === 'provider';
         abort_if($provider && ! $user->providerProfile?->isApproved(), 403);
-        $filters = $request->validate(['status' => ['nullable', 'in:active,suspended,completed,revoked'], 'q' => ['nullable', 'string', 'max:120'], 'term' => ['nullable', 'integer', 'min:1'], 'renewal' => ['nullable', 'in:pending,submitted,approved,rejected,none']]);
-        $query = ScholarshipAward::whereHas('application', fn ($query) => $provider ? $query->whereHas('scholarship.provider', fn ($query) => $query->where('user_id', $user->id)) : $query->where('student_id', $user->id));
+        $filters = $request->validate(['status' => ['nullable', 'in:active,suspended,completed,revoked'], 'q' => ['nullable', 'string', 'max:120'], 'term' => ['nullable', 'integer', 'exists:academic_terms,id'], 'type' => ['nullable', 'in:new,renewal'], 'renewal' => ['nullable', 'in:pending,submitted,approved,rejected,none']]);
+        $query = ScholarshipAward::approvedProvider()->whereHas('application', fn ($query) => $provider ? $query->whereHas('scholarship.provider', fn ($query) => $query->where('user_id', $user->id)) : $query->where('student_id', $user->id));
+        $termIds = (clone $query)->pluck('academic_term_id')->merge(Renewal::whereIn('scholarship_award_id', (clone $query)->select('id'))->where('status', 'approved')->whereNotNull('reviewed_at')->pluck('academic_term_id'))->unique();
 
-        $query->when($filters['term'] ?? null, fn ($query, $term) => $query->where('academic_term_id', $term))
+        $query->forAcademicTerm(isset($filters['term']) ? (int) $filters['term'] : null, $filters['type'] ?? '')
             ->when(($filters['renewal'] ?? '') === 'none', fn ($query) => $query->whereDoesntHave('renewals'))
             ->when(in_array($filters['renewal'] ?? '', ['pending', 'submitted', 'approved', 'rejected'], true), fn ($query) => $query->whereHas('renewals', fn ($query) => $query->where('status', $filters['renewal'])));
 
-        return Inertia::render('benefits/Index', ['terms' => AcademicTerm::whereIn('id', (clone $query)->select('academic_term_id'))->orderByDesc('starts_on')->get()->map($this->termData(...)), 'awards' => $query->when($filters['status'] ?? null, fn ($query, $value) => $query->where('status', $value))->when($filters['q'] ?? null, fn ($query, $value) => $query->where(fn ($query) => $query->whereHas('application.scholarship', fn ($query) => $query->whereLike('title', '%'.$value.'%'))->orWhereHas('application', fn ($query) => $query->whereLike('submission_snapshot->student->name', '%'.$value.'%'))))->with('application.scholarship.provider', 'academicTerm')->latest('id')->paginate(10)->withQueryString()->through($this->awardData(...)), 'filters' => ['status' => $filters['status'] ?? '', 'q' => $filters['q'] ?? '', 'term' => (string) ($filters['term'] ?? ''), 'renewal' => $filters['renewal'] ?? '']]);
+        return Inertia::render('benefits/Index', ['terms' => AcademicTerm::whereIn('id', $termIds)->orderByDesc('academic_year')->orderBy('semester')->get()->map($this->termData(...)), 'awards' => $query->when($filters['status'] ?? null, fn ($query, $value) => $query->where('status', $value))->when($filters['q'] ?? null, fn ($query, $value) => $query->where(fn ($query) => $query->whereHas('application.scholarship', fn ($query) => $query->whereLike('title', '%'.$value.'%'))->orWhereHas('application', fn ($query) => $query->whereLike('submission_snapshot->student->name', '%'.$value.'%'))))->with('application.scholarship.provider', 'academicTerm', 'renewals.academicTerm')->latest('id')->paginate(10)->withQueryString()->through($this->awardData(...)), 'filters' => ['status' => $filters['status'] ?? '', 'q' => $filters['q'] ?? '', 'term' => (string) ($filters['term'] ?? ''), 'type' => $filters['type'] ?? '', 'renewal' => $filters['renewal'] ?? '']]);
     }
 
     public function create(Request $request, Application $application, AwardBenefits $workflow): Response
@@ -93,11 +94,14 @@ class AwardBenefitController extends Controller
         return ['id' => $award->id, 'version' => $award->workflow_version, 'application_id' => $award->application_id, 'scholarship' => $award->application->scholarship->title,
             'student_name' => request()->user()->role->value === 'provider' ? ($award->application->submission_snapshot['student']['name'] ?? 'Submitted account #'.$award->application->student_id) : null, 'provider' => $award->application->scholarship->provider->organization_name, 'student_reference' => 'Application #'.$award->application_id,
             'status' => $award->status->value, 'active' => $award->isCurrentlyActive(), 'starts_on' => $award->starts_on->toDateString(), 'ends_on' => $award->ends_on?->toDateString(),
-            'term' => $this->termData($award->academicTerm)['label'], 'url' => route('benefits.show', $award)];
+            'term' => $this->termData($award->academicTerm)['label'],
+            'renewal_terms' => $award->renewals->filter(fn (Renewal $renewal): bool => $renewal->status->value === 'approved' && $renewal->reviewed_at !== null)->map(fn (Renewal $renewal): string => $this->termData($renewal->academicTerm)['label'])->values(),
+            'published' => $award->canBePubliclyListed() && $award->published_at !== null && $award->public_name !== null,
+            'url' => route('benefits.show', $award)];
     }
 
     private function termData(AcademicTerm $term): array
     {
-        return ['id' => $term->id, 'label' => $term->academic_year.' · '.$term->semester];
+        return ['id' => $term->id, 'label' => $term->academic_year];
     }
 }

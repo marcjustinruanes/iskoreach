@@ -89,10 +89,10 @@ class AccountController extends Controller
             $user = User::lockForUpdate()->findOrFail($request->user()->id);
             $data = $request->safe()->except('no_middle_name');
             if (array_intersect(array_keys($data), StudentAccountSetup::ADDRESS)) {
-                $data += app(StudentRegistration::class)->address(array_replace($studentProfile->toArray(), $data));
+                $data = array_replace($data, app(StudentRegistration::class)->address(array_replace($studentProfile->toArray(), $data)));
             }
-            if (array_intersect(array_keys($data), ['campus_region_code', 'campus_province_code', 'campus_city_code'])) {
-                $data += app(StudentRegistration::class)->campus(array_replace($studentProfile->toArray(), $data));
+            if (array_intersect(array_keys($data), ['campus_region_name', 'campus_province_name', 'campus_city_name'])) {
+                $data = array_replace($data, app(StudentRegistration::class)->campus(array_replace($studentProfile->toArray(), $data)));
             }
             $studentProfile->fill($data);
             if ($studentProfile->isDirty()) {

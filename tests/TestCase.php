@@ -23,9 +23,9 @@ abstract class TestCase extends BaseTestCase
         return $this->withVerifiedRegistrationEmail(array_replace([
             'account_type' => 'student', 'first_name' => 'Ana', 'surname' => 'Cruz', 'middle_name' => 'Maria',
             'date_of_birth' => '2004-05-15', 'sex' => 'female', 'contact_number' => '09171234567',
-            'campus_region_code' => '040000000', 'campus_province_code' => '042100000', 'campus_city_code' => '042101000',
+            'campus_region_name' => '040000000', 'campus_province_name' => '042100000', 'campus_city_name' => '042101000',
             'student_number' => '2026-001', 'school' => 'Test University', 'education_level' => 'college', 'course' => 'BS Computer Science', 'year_level' => 2,
-            'region_code' => '040000000', 'province_code' => '042100000', 'city_code' => '042101000', 'barangay_code' => '042101001',
+            'region_name' => '040000000', 'province_name' => '042100000', 'city_name' => '042101000', 'barangay_name' => '042101001',
             'email' => 'new-student@gmail.com', 'password' => 'student-password', 'password_confirmation' => 'student-password', 'terms_accepted' => true, 'privacy_accepted' => true,
         ], $overrides));
     }
@@ -47,9 +47,9 @@ abstract class TestCase extends BaseTestCase
         return $this->withVerifiedRegistrationEmail(array_replace([
             'account_type' => 'provider', 'registration_intent' => $intent,
             'first_name' => 'Provider', 'surname' => 'Contact', 'middle_name' => 'Maria', 'position' => 'Director', 'contact_number' => '09171234567', 'work_email' => 'work@gmail.com',
-            'organization_description' => 'An education foundation providing student grants.', 'country' => 'PH', 'barangay_code' => '042101001', 'organization_name' => 'Example Foundation', 'organization_type' => 'foundation', 'organization_email' => 'office@gmail.com', 'organization_phone' => '09171234567', 'authorization_required' => false,
-            'coverage_areas' => [['scope' => 'nationwide', 'region_code' => '', 'province_code' => '', 'city_code' => '']],
-            'region_code' => '040000000', 'province_code' => '042100000', 'city_code' => '042101000',
+            'organization_description' => 'An education foundation providing student grants.', 'country' => 'PH', 'barangay_name' => '042101001', 'organization_name' => 'Example Foundation', 'organization_type' => 'foundation', 'organization_email' => 'office@gmail.com', 'organization_phone' => '09171234567', 'authorization_required' => false,
+            'coverage_areas' => [['scope' => 'nationwide', 'region_name' => '', 'province_name' => '', 'city_name' => '']],
+            'region_name' => '040000000', 'province_name' => '042100000', 'city_name' => '042101000',
             'representative_id' => UploadedFile::fake()->image('id.jpg'), 'organization_proof' => UploadedFile::fake()->image('registration.jpg'),
             'email' => 'provider@gmail.com', 'password' => 'provider-password', 'password_confirmation' => 'provider-password', 'terms_accepted' => true, 'privacy_accepted' => true,
         ], $overrides));

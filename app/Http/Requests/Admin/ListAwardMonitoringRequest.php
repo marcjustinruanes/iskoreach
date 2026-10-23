@@ -28,6 +28,9 @@ class ListAwardMonitoringRequest extends FormRequest
     {
         return [
             'q' => ['nullable', 'string', 'max:200'],
+            'scholarship' => ['nullable', 'integer', 'exists:scholarships,id'],
+            'passer_q' => ['nullable', 'string', 'max:120'],
+            'listing' => ['nullable', Rule::in(['public', 'private'])],
             'status' => ['nullable', Rule::enum(match ($this->route()->getName()) {
                 'admin.renewals.index' => RenewalStatus::class,
                 'admin.releases.index' => BenefitReleaseStatus::class,

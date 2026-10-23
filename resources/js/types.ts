@@ -18,7 +18,7 @@ export interface SharedProps {
 }
 
 export interface StudentProfile {
-    campus?: string | null; campus_region_code?: string | null; campus_province_code?: string | null; campus_city_code?: string | null;
+    campus_region_name?: string | null; campus_province_name?: string | null; campus_city_name?: string | null;
     first_name?: string | null; surname?: string | null; middle_name?: string | null; suffix?: string | null; date_of_birth?: string | null; sex?: string | null; contact_number?: string | null;
     student_number?: string | null; education_level?: string | null; region_name?: string | null; province_name?: string | null; city_name?: string | null; barangay_name?: string | null; street_address?: string | null;
     id: number;
@@ -28,7 +28,7 @@ export interface StudentProfile {
 }
 
 export interface ProviderProfile {
-    first_name?: string | null; surname?: string | null; middle_name?: string | null; suffix?: string | null; position?: string | null; contact_number?: string | null; work_email?: string | null; coverage_areas?: { scope: string; region_code: string; province_code?: string; city_code: string; region_name?: string | null; province_name?: string | null; city_name?: string | null }[] | null; organization_phone?: string | null; website?: string | null; organization_description?: string | null; country?: string | null;
+    first_name?: string | null; surname?: string | null; middle_name?: string | null; suffix?: string | null; position?: string | null; contact_number?: string | null; work_email?: string | null; coverage_areas?: { scope: string; region_name: string; province_name?: string; city_name: string }[] | null; organization_phone?: string | null; website?: string | null; organization_description?: string | null; country?: string | null;
     id: number;
     organization_name: string | null;
     contact_email: string | null;
@@ -44,7 +44,7 @@ export interface ProviderReview extends ProviderProfile {
 }
 
 export interface ProviderDetails extends ProviderReview {
-    registration_details: Record<string, string | boolean | null>; registration_version: number; documents_available: boolean; documents: { kind: string; name: string; url: string }[];
+    registration_details: Record<string, string | boolean | null>; registration_version: number; documents_available: boolean; documents: { kind: string; name: string; url: string; mime: string; preview_url: string }[];
     verification_version: number; reviewed_at: string | null; reviewer: string | null; review_url: string;
 }
 
@@ -92,8 +92,8 @@ export interface AdminDashboardProps extends SharedProps {
 }
 
 export type ScholarshipStatus = 'draft' | 'published' | 'closed' | 'archived';
-export interface ScholarshipLocation { province_code?: string | null; province_name?: string | null; id: number; scope: string; region_code: string | null; city_code: string | null; region_name?: string | null; city_name?: string | null }
-export interface MonitoredScholarship {
+export interface ScholarshipLocation { id: number; scope: string; region_name: string | null; province_name: string | null; city_name: string | null }
+export interface MonitoredScholarship { open: boolean; slots: number | null; waitlisted_count: number;
     id: number; title: string; provider: string; scholarship_type: string; status: ScholarshipStatus; locations: ScholarshipLocation[];
     opens_at: string | null; deadline_at: string | null; accepts_existing_scholars: boolean; updated_at: string | null;
     deleted_at: string | null; applicant_count: number; counts_url: string; show_url: string;

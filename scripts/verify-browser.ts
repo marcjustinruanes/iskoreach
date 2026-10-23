@@ -64,6 +64,14 @@ try {
     await command('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
     await command('Page.navigate', { url: appUrl });
     await waitFor("document.querySelector('h1')?.textContent.includes('Find scholarships.')");
+    for (const [section, label] of [['discover', 'Scholarships'], ['about', 'About'], ['contact', 'Contact']]) {
+        await evaluate(`(() => { const target = document.getElementById(${JSON.stringify(section)}); window.scrollTo({ top: target.getBoundingClientRect().top + scrollY - 100, behavior: 'instant' }); })()`);
+        await waitFor(`document.querySelector('nav[aria-label="Main navigation"] [aria-current="page"]')?.textContent === ${JSON.stringify(label)}`);
+        assert.equal(await evaluate("document.querySelectorAll('nav[aria-label=\"Main navigation\"] [aria-current=page]').length"), 1, 'Exactly one navigation link follows the visible section');
+    }
+    await evaluate("history.replaceState(history.state, '', '/#about'); window.scrollTo({ top: 0, behavior: 'instant' })");
+    await waitFor("document.querySelector('nav[aria-label=\"Main navigation\"] [aria-current=page]')?.textContent === 'Home'");
+    await evaluate("history.replaceState(history.state, '', '/')");
     await waitFor("getComputedStyle(document.querySelector('h1')).fontSize === '48px'");
     await evaluate('document.fonts.ready.then(() => true)');
     assert.equal(await evaluate("(() => { const style = getComputedStyle(document.querySelector('h1')); return parseFloat(style.lineHeight) >= parseFloat(style.fontSize); })()"), true, 'Hero headline lines do not overlap');
@@ -764,15 +772,15 @@ $attachment->forceFill(['submitted_at'=>now(),'review_status'=>'rejected','revie
             await fill('input[name=course]', 'Computer Science');
             await choose('year_level', '2');
             await choose('enrollment_status', 'enrolled');
-            await next('select[name=region_code]');
-            await waitFor("document.querySelector('select[name=region_code] option[value=\"040000000\"]') !== null");
-            await choose('region_code', '040000000');
-            await waitFor("document.querySelector('select[name=province_code] option[value=\"042100000\"]') !== null");
-            await choose('province_code', '042100000');
-            await waitFor("document.querySelector('select[name=city_code]').options.length > 1");
-            await choose('city_code', await evaluate("document.querySelector('select[name=city_code]').options[1].value") as string);
-            await waitFor("document.querySelector('select[name=barangay_code]').options.length > 1");
-            await choose('barangay_code', await evaluate("document.querySelector('select[name=barangay_code]').options[1].value") as string);
+            await next('select[name=region_name]');
+            await waitFor("document.querySelector('select[name=region_name] option[value=\"040000000\"]') !== null");
+            await choose('region_name', '040000000');
+            await waitFor("document.querySelector('select[name=province_name] option[value=\"042100000\"]') !== null");
+            await choose('province_name', '042100000');
+            await waitFor("document.querySelector('select[name=city_name]').options.length > 1");
+            await choose('city_name', await evaluate("document.querySelector('select[name=city_name]').options[1].value") as string);
+            await waitFor("document.querySelector('select[name=barangay_name]').options.length > 1");
+            await choose('barangay_name', await evaluate("document.querySelector('select[name=barangay_name]').options[1].value") as string);
             await next('input[name=email]');
             await fill('input[name=email]', registrationEmail);
             await fill('input[name=password]', 'temporary-test-password');
@@ -783,7 +791,7 @@ $attachment->forceFill(['submitted_at'=>now(),'review_status'=>'rejected','revie
             await evaluate("document.querySelector('button[aria-label=\"Edit Academic information\"]').click()");
             await waitFor("document.querySelector('input[name=school]') !== null");
             assert.equal(await evaluate("document.querySelector('input[name=school]').value"), 'Browser Test University');
-            await next('select[name=region_code]'); await next('input[name=email]');
+            await next('select[name=region_name]'); await next('input[name=email]');
             await evaluate("document.querySelector('form').requestSubmit()");
             await waitFor("document.body.textContent.includes('Review your registration')");
             await previous('input[name=email]');
@@ -830,14 +838,14 @@ echo Illuminate\\Support\\Facades\\URL::temporarySignedRoute('verification.verif
             assert.equal(await evaluate("document.querySelector('input[name=organization_name]') === null"), true);
             await choose('organization_type', 'foundation');
             assert.equal(await evaluate("document.querySelector('input[name=organization_name]').value"), 'Browser Foundation');
-            await waitFor("document.querySelector('select[name=region_code] option[value=\"040000000\"]') !== null");
-            await choose('region_code', '040000000');
-            await waitFor("document.querySelector('select[name=province_code] option[value=\"042100000\"]') !== null");
-            await choose('province_code', '042100000');
-            await waitFor("document.querySelector('select[name=city_code]').options.length > 1");
-            await choose('city_code', await evaluate("document.querySelector('select[name=city_code]').options[1].value") as string);
-            await waitFor("document.querySelector('select[name=barangay_code]').options.length > 1");
-            await choose('barangay_code', await evaluate("document.querySelector('select[name=barangay_code]').options[1].value") as string);
+            await waitFor("document.querySelector('select[name=region_name] option[value=\"040000000\"]') !== null");
+            await choose('region_name', '040000000');
+            await waitFor("document.querySelector('select[name=province_name] option[value=\"042100000\"]') !== null");
+            await choose('province_name', '042100000');
+            await waitFor("document.querySelector('select[name=city_name]').options.length > 1");
+            await choose('city_name', await evaluate("document.querySelector('select[name=city_name]').options[1].value") as string);
+            await waitFor("document.querySelector('select[name=barangay_name]').options.length > 1");
+            await choose('barangay_name', await evaluate("document.querySelector('select[name=barangay_name]').options[1].value") as string);
             await fill('input[name=organization_email]', providerEmail); await fill('input[name=organization_phone]', '09171234567');
             await next('input[name=representative_id]');
             await screenshot('registration-provider-documents');
@@ -2991,11 +2999,14 @@ echo 'Notification fixture ready.';
         await fillRegistration('coverage-search', '');
         assert.equal(await evaluate("document.querySelectorAll('input[name=coverage-choice]:checked').length"), 2);
         const otherCoverageRegion = await evaluate(`([...document.querySelectorAll('#region-0 option')].find(option => option.value && option.value !== ${JSON.stringify(coverageRegion)})).value`) as string;
-        await selectCoverage('#region-0', otherCoverageRegion);
-        assert.equal(await evaluate("document.body.textContent.includes('2 of 20 provinces selected')"), true, 'Selections survive browsing another region');
-        await selectCoverage('#region-0', coverageRegion);
-        await waitFor("document.querySelectorAll('input[name=coverage-choice]:checked').length === 2");
+        await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Add another region').click()");
+        await waitFor("document.querySelector('#region-1') !== null");
+        assert.equal(await evaluate("document.querySelectorAll('input[name=coverage-choice]:checked').length"), 2, 'Adding another region preserves existing selections');
+        await selectCoverage('#region-1', otherCoverageRegion);
+        assert.equal(await evaluate("document.querySelector('#region-0').value"), coverageRegion);
+        assert.equal(await evaluate("document.querySelectorAll('#region-1 option[value=\"' + document.querySelector('#region-0').value + '\"]').length"), 0, 'A region cannot be selected twice');
         await selectCoverage('#scope-0', 'city');
+        await waitFor("document.querySelectorAll('#region-0 option').length > 2 && !document.querySelector('#region-0').disabled");
         await selectCoverage('#region-0', coverageRegion);
         await waitFor("document.querySelectorAll('input[name=coverage-choice]').length > 1 && document.querySelector('#coverage-province-filter').disabled === false");
         await evaluate("document.querySelector('input[name=coverage-choice]').click()");
@@ -3007,6 +3018,25 @@ echo 'Notification fixture ready.';
         }
         await selectCoverage('#scope-0', 'nationwide');
         await waitFor("document.querySelector('input[name=coverage-choice]') === null");
+        await evaluate("document.querySelector('form.registration-form').requestSubmit()");
+        await waitFor("document.querySelector('select[name=priority_education_level]') !== null");
+        await selectCoverage('select[name=priority_education_level]', 'college');
+        assert.equal(await evaluate("document.body.textContent.includes('Eligible courses / programs') && document.body.textContent.includes('Year 1') && !document.body.textContent.includes('Grade 11')"), true);
+        await evaluate("document.querySelector('button[aria-label=\"Select all courses or strands\"]').click()");
+        assert.equal(await evaluate("(() => { const section = document.querySelector('select[name=priority_education_level]').closest('section'); const fieldset = [...section.querySelectorAll('fieldset')][0]; return fieldset.querySelectorAll('input[type=checkbox]').length > 0 && fieldset.querySelectorAll('input[type=checkbox]:not(:checked)').length === 0; })()"), true);
+        await evaluate("document.querySelector('button[aria-label=\"Select all year levels\"]').click()");
+        assert.equal(await evaluate("document.querySelector('select[name=priority_education_level]').closest('section').querySelectorAll('input[type=checkbox]:not(:checked)').length"), 0);
+        await evaluate("document.querySelector('button[aria-label=\"Clear course or strand selections\"]').click()");
+        await evaluate("document.querySelector('button[aria-label=\"Clear year level selections\"]').click()");
+        assert.equal(await evaluate("document.querySelector('select[name=priority_education_level]').closest('section').querySelectorAll('input[type=checkbox]:checked').length"), 0);
+        await selectCoverage('select[name=priority_education_level]', 'senior_high');
+        assert.equal(await evaluate("document.body.textContent.includes('Eligible strands / tracks') && document.body.textContent.includes('Grade 11') && !document.body.textContent.includes('Year 1')"), true);
+        await selectCoverage('select[name=priority_education_level]', 'shs_graduate');
+        assert.equal(await evaluate("document.body.textContent.includes('Eligible strands / tracks') && !document.body.textContent.includes('Eligible year levels')"), true);
+        for (const width of [320, 768, 1440]) {
+            await command('Emulation.setDeviceMetricsOverride', { width, height: 1000, deviceScaleFactor: 1, mobile: width < 768 });
+            assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true, 'Provider academic eligibility fits at ' + width);
+        }
         await evaluate("document.querySelector('form.registration-form').requestSubmit()");
         await waitFor("document.querySelectorAll('input[type=password]').length === 2");
         assert.equal(await evaluate("document.querySelector('input[name=email]') === null && document.querySelector('input[name=organization_email]') === null"), true, 'Account setup contains no separate email field');
@@ -3045,6 +3075,7 @@ echo 'Notification fixture ready.';
         assert.deepEqual(await evaluate("[...document.querySelector('button[aria-label=\"Edit Account setup\"]').closest('section').querySelectorAll('dt')].map(item => item.textContent)"), ['Email', 'Password']);
         assert.equal(await evaluate("document.querySelector('button[aria-label=\"Edit Account setup\"]').closest('section').textContent.includes('Password set')"), true);
         assert.equal(await evaluate("document.querySelector('button[aria-label=\"Edit Coverage areas\"]').closest('section').textContent.includes('Nationwide')"), true);
+        assert.equal(await evaluate("document.querySelector('button[aria-label=\"Edit Scholarship eligibility\"]').closest('section').textContent.includes('SHS graduate')"), true);
         for (const noMiddleName of [false, true]) {
             await command('Page.navigate', { url: appUrl + '/register/student' });
             await waitFor("document.querySelector('input[name=middle_name]') !== null");
@@ -3055,7 +3086,7 @@ echo 'Notification fixture ready.';
                 await fillRegistration('middle_name', 'Samplemiddle');
             }
             await fillRegistration('email', 'review.student@gmail.com');
-            for (const nextField of ['select[name=education_level]', 'select[name=region_code]', 'input[name=password]', 'button[aria-label="Edit Account setup"]']) {
+            for (const nextField of ['select[name=education_level]', 'select[name=region_name]', 'input[name=password]', 'button[aria-label="Edit Account setup"]']) {
                 await evaluate("document.querySelector('form.registration-form').requestSubmit()");
                 await waitFor(`document.querySelector(${JSON.stringify(nextField)}) !== null`);
             }
@@ -3064,6 +3095,27 @@ echo 'Notification fixture ready.';
             assert.equal(reviewLabels.includes('no middle name'), noMiddleName);
             assert.equal(await evaluate("document.querySelector('button[aria-label=\"Edit Account setup\"]').closest('section').textContent.includes('review.student@gmail.com')"), true);
         }
+        await command('Page.navigate', { url: appUrl + '/register/student' });
+        await waitFor("document.querySelector('input[name=first_name]') !== null");
+        await evaluate("window.__graduateOriginalFetch = window.fetch; window.fetch = (url, options) => String(url).endsWith('/register/validate-step') ? Promise.resolve(new Response(JSON.stringify({ valid: true }), { status: 200, headers: { 'Content-Type': 'application/json' } })) : window.__graduateOriginalFetch(url, options)");
+        await evaluate("document.querySelector('form.registration-form').requestSubmit()");
+        await waitFor("document.querySelector('select[name=education_level]') !== null");
+        await evaluate("(() => { const select = document.querySelector('select[name=education_level]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, 'senior_high'); select.dispatchEvent(new Event('change', { bubbles: true })); })()");
+        await waitFor("document.querySelector('input[name=shs_graduate]') !== null");
+        await evaluate("document.querySelector('input[name=shs_graduate]').click()");
+        await waitFor("document.querySelector('input[name=graduation_year]') !== null");
+        assert.equal(await evaluate("document.querySelector('input[name=student_number]').required"), false);
+        assert.equal(await evaluate("document.querySelector('select[name=year_level]') === null"), true);
+        assert.equal(await evaluate("document.querySelector('select[name=course]').required"), true, 'SHS graduates still select their strand');
+        assert.equal(await evaluate("document.querySelector('input[name=graduation_year]').required"), true);
+        for (const width of [320, 768, 1440]) {
+            await command('Emulation.setDeviceMetricsOverride', { width, height: 1000, deviceScaleFactor: 1, mobile: width < 768 });
+            assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true, 'SHS graduate fields fit at ' + width);
+        }
+        await evaluate("document.querySelector('input[name=shs_graduate]').click()");
+        await waitFor("document.querySelector('select[name=year_level]') !== null");
+        assert.equal(await evaluate("document.querySelector('input[name=graduation_year]') === null && document.querySelector('input[name=student_number]').required"), true);
+        console.log('PASS: SHS graduates use strand and graduation year without a college student number; toggling back restores current-student fields.');
         console.log('PASS: password toggles remain available, student review shows only the applicable middle-name field, and account review contains only email and password status.');
         console.log('PASS: terms and privacy open in modals, require scrolling and read confirmation before enabling each consent checkbox, and do not grant consent automatically.');
         console.log('PASS: registration errors clear on editing, phones use +63 and stop at 10 national digits, leave/stay uses a custom modal, provider documents enlarge locally, and account setup has passwords without another email field.');
@@ -3073,31 +3125,31 @@ echo 'Notification fixture ready.';
         await waitFor("document.querySelector('input[name=first_name]') !== null");
         await evaluate("window.__campusOriginalFetch = window.fetch; window.fetch = (url, options) => String(url).endsWith('/register/validate-step') ? Promise.resolve(new Response(JSON.stringify({ valid: true }), { status: 200, headers: { 'Content-Type': 'application/json' } })) : window.__campusOriginalFetch(url, options)");
         await evaluate("document.querySelector('form.registration-form').requestSubmit()");
-        await waitFor("document.querySelector('select[name=campus_region_code] option[value=\"040000000\"]') !== null");
+        await waitFor("document.querySelector('select[name=campus_region_name] option[value=\"040000000\"]') !== null");
         const selectCampus = async (name: string, value: string) => {
             await evaluate(`(() => { const input = document.querySelector('select[name="${name}"]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(input, ${JSON.stringify(value)}); input.dispatchEvent(new Event('change', { bubbles: true })); })()`);
         };
-        await selectCampus('campus_region_code', '040000000');
-        await waitFor("document.querySelectorAll('select[name=campus_province_code] option').length > 2 && document.querySelector('select[name=campus_province_code]').disabled === false");
-        const province = await evaluate("document.querySelector('select[name=campus_province_code] option:not([value=\"\"]):not([value=none])').value") as string;
-        await selectCampus('campus_province_code', province);
-        await waitFor("document.querySelectorAll('select[name=campus_city_code] option').length > 1 && document.querySelector('select[name=campus_city_code]').disabled === false");
-        const city = await evaluate("document.querySelector('select[name=campus_city_code] option:not([value=\"\"])').value") as string;
-        await selectCampus('campus_city_code', city);
+        await selectCampus('campus_region_name', '040000000');
+        await waitFor("document.querySelectorAll('select[name=campus_province_name] option').length > 2 && document.querySelector('select[name=campus_province_name]').disabled === false");
+        const province = await evaluate("document.querySelector('select[name=campus_province_name] option:not([value=\"\"]):not([value=none])').value") as string;
+        await selectCampus('campus_province_name', province);
+        await waitFor("document.querySelectorAll('select[name=campus_city_name] option').length > 1 && document.querySelector('select[name=campus_city_name]').disabled === false");
+        const city = await evaluate("document.querySelector('select[name=campus_city_name] option:not([value=\"\"])').value") as string;
+        await selectCampus('campus_city_name', city);
         for (const width of [320, 768, 1440]) {
             await command('Emulation.setDeviceMetricsOverride', { width, height: 1000, deviceScaleFactor: 1, mobile: width < 768 });
             assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true, 'Campus selectors fit mobile and desktop');
         }
         await evaluate("document.querySelector('form.registration-form').requestSubmit()");
-        await waitFor("document.querySelector('select[name=region_code]') !== null");
-        assert.equal(await evaluate("document.querySelector('select[name=region_code]').value"), '', 'Campus selection does not fill the home address');
-        assert.equal(await evaluate("document.querySelector('select[name=city_code]').value"), '');
+        await waitFor("document.querySelector('select[name=region_name]') !== null");
+        assert.equal(await evaluate("document.querySelector('select[name=region_name]').value"), '', 'Campus selection does not fill the home address');
+        assert.equal(await evaluate("document.querySelector('select[name=city_name]').value"), '');
         await evaluate("[...document.querySelectorAll('form.registration-form button')].find(button => button.textContent.includes('Previous')).click()");
-        await waitFor("document.querySelector('select[name=campus_city_code]') !== null");
-        assert.equal(await evaluate("document.querySelector('select[name=campus_city_code]').value"), city, 'Campus selection survives step navigation');
-        await selectCampus('campus_region_code', '130000000');
-        assert.equal(await evaluate("document.querySelector('select[name=campus_province_code]').value"), '');
-        assert.equal(await evaluate("document.querySelector('select[name=campus_city_code]').value"), '');
+        await waitFor("document.querySelector('select[name=campus_city_name]') !== null");
+        assert.equal(await evaluate("document.querySelector('select[name=campus_city_name]').value"), city, 'Campus selection survives step navigation');
+        await selectCampus('campus_region_name', '130000000');
+        assert.equal(await evaluate("document.querySelector('select[name=campus_province_name]').value"), '');
+        assert.equal(await evaluate("document.querySelector('select[name=campus_city_name]').value"), '');
         await evaluate("window.fetch = window.__campusOriginalFetch; delete window.__campusOriginalFetch");
         console.log('PASS: campus province/city selectors use the location API, remain separate from the home address, preserve selections between steps, reset dependent choices, and fit mobile/desktop.');
     }

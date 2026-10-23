@@ -7,7 +7,6 @@ use App\Models\ProviderProfile;
 use App\Models\Scholarship;
 use App\Models\ScholarshipLocation;
 use App\Models\ScholarshipRequirement;
-use App\Services\ExternalApplicants;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -40,7 +39,7 @@ class PublicScholarshipDiscoveryTest extends TestCase
         $application = Application::factory()->create(['scholarship_id' => $item->id, 'status' => 'waitlisted']);
         Application::factory()->create(['scholarship_id' => $item->id, 'status' => 'not_started', 'submitted_at' => null]);
         for ($index = 0; $index < 7; $index++) {
-            app(ExternalApplicants::class)->store($item->provider->user, $item, ['name' => 'External Person', 'email' => 'outside-'.$index.'@example.test']);
+            Application::factory()->create(['scholarship_id' => $item->id, 'student_id' => null, 'applicant_source' => 'external', 'applicant_name' => 'External Person', 'applicant_email' => 'outside-'.$index.'@example.test']);
         }
         $this->get('/scholarships/'.$item->slug)->assertInertia(fn (Assert $page) => $page
             ->component('public/ScholarshipDetails')->where('scholarship.internal_count', 1)->where('scholarship.external_count', 7)->where('scholarship.applicant_count', 8)
@@ -53,7 +52,7 @@ class PublicScholarshipDiscoveryTest extends TestCase
     public function test_filters_support_any_location_nationwide_programs_future_opening_dates_and_currency_ranges(): void
     {
         $target = $this->published(['scholarship_type' => 'Academic', 'benefit_amount' => '5000.00', 'accepts_existing_scholars' => true, 'opens_at' => now()->addDay()]);
-        ScholarshipLocation::factory()->create(['scholarship_id' => $target->id, 'scope' => 'region', 'region_code' => 'NCR']);
+        ScholarshipLocation::factory()->create(['scholarship_id' => $target->id, 'scope' => 'region', 'region_name' => 'NCR']);
         $nationwide = $this->published();
         ScholarshipLocation::factory()->create(['scholarship_id' => $nationwide->id]);
         $usd = $this->published(['currency' => 'USD', 'benefit_amount' => '5000.00']);

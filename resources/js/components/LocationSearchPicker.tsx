@@ -11,7 +11,7 @@ export default function LocationSearchPicker({ value, onChange, error }: { value
     const provinceCode = value === selection.value ? selection.province : '';
     const provinces = useLocationOptions(regionCode ? '/locations/regions/' + regionCode + '/provinces' : null, retry);
     const cities = useLocationOptions(regionCode ? '/locations/regions/' + regionCode + '/cities' : null, retry);
-    const cityOptions = provinceCode ? cities.data.filter(city => city.province_code === provinceCode) : cities.data;
+    const cityOptions = provinceCode ? cities.data.filter(city => city.province_name === provinceCode) : cities.data;
     const lookupError = regions.error || provinces.error || cities.error;
     const control = 'min-h-11 w-full rounded-lg border border-civic-border bg-white px-3 py-2.5 text-base text-civic-ink disabled:bg-civic-panel ' + focusRing;
     const choose = (region: string, province: string, name: string) => {

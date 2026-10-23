@@ -85,7 +85,7 @@ class AdminReportsTest extends TestCase
         $target = Scholarship::factory()->create(['status' => 'published']);
         $retained = Scholarship::factory()->create(['status' => 'published']);
         $retained->delete();
-        ScholarshipLocation::factory()->count(2)->create(['scholarship_id' => $target->id, 'scope' => 'region', 'region_code' => 'NCR']);
+        ScholarshipLocation::factory()->count(2)->create(['scholarship_id' => $target->id, 'scope' => 'region', 'region_name' => 'NCR']);
         $this->get('/admin/reports?'.$this->filters('scholarships'))->assertInertia(fn (Assert $page) => $page
             ->where('rows.total', 2)->where('rows.data.0.visibility', 'current')->where('rows.data.0.count', 1)
             ->where('rows.data.1.visibility', 'retained')->where('rows.data.1.count', 1));

@@ -19,6 +19,9 @@ class StudentRegistrationApprovalTest extends TestCase
         $this->post('/register', $this->studentRegistrationData(['registration_status' => 'approved']))->assertSessionHasNoErrors();
         $student = User::firstOrFail();
         $this->assertSame('pending', $student->studentProfile->registration_status);
+        $this->assertGuest();
+        $this->get('/student/registration-status')->assertRedirect('/login');
+        $this->post('/login', ['email' => $student->email, 'password' => 'student-password'])->assertRedirect();
         foreach (['/dashboard', '/student/dashboard', '/student/applications', '/student/documents', '/messages', '/student/profile'] as $path) {
             $this->get($path)->assertRedirect(route('student.registration-status'));
         }

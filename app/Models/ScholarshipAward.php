@@ -41,6 +41,26 @@ class ScholarshipAward extends Model
         return $this->belongsTo(AcademicTerm::class);
     }
 
+    public function scopeApprovedProvider(Builder $query): Builder
+    {
+        return $query->whereHas('application.scholarship.provider', fn (Builder $query) => $query
+            ->where('verification_status', 'approved')->whereHas('user', fn (Builder $query) => $query->where('role', UserRole::Provider)));
+    }
+
+    public function scopeForAcademicTerm(Builder $query, ?int $termId, string $type = ''): Builder
+    {
+        return $query->where(function (Builder $query) use ($termId, $type): void {
+            if ($type !== 'renewal') {
+                $query->where(fn (Builder $query) => $query->when($termId, fn (Builder $query) => $query->where('academic_term_id', $termId)));
+            }
+            if ($type !== 'new' && ($termId !== null || $type === 'renewal')) {
+                $method = $type === 'renewal' ? 'whereHas' : 'orWhereHas';
+                $query->$method('renewals', fn (Builder $query) => $query->where('status', 'approved')->whereNotNull('reviewed_at')
+                    ->when($termId, fn (Builder $query) => $query->where('academic_term_id', $termId)));
+            }
+        });
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         $today = now('Asia/Manila')->toDateString();

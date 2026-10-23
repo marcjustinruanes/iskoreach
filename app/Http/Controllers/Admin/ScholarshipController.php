@@ -45,7 +45,7 @@ class ScholarshipController extends Controller
                 ->through(fn (Scholarship $scholarship): array => $this->scholarshipData($scholarship)),
             'providers' => ProviderProfile::query()->whereHas('scholarships', fn ($query) => $query->withTrashed())->orderBy('organization_name')->get(['id', 'organization_name'])
                 ->map(fn (ProviderProfile $provider): array => ['id' => $provider->id, 'name' => $provider->organization_name ?: 'Organization #'.$provider->id]),
-            'categories' => Scholarship::withTrashed()->select('scholarship_type')->distinct()->orderBy('scholarship_type')->pluck('scholarship_type'),
+            'categories' => Scholarship::withTrashed()->where('scholarship_type', '!=', '')->select('scholarship_type')->distinct()->orderBy('scholarship_type')->pluck('scholarship_type'),
         ]);
     }
 
@@ -61,7 +61,7 @@ class ScholarshipController extends Controller
                 'eligibility_rules' => $scholarship->eligibility_rules, 'published_at' => $scholarship->published_at?->toIso8601String(),
                 'provider_status' => $scholarship->provider->verification_status->value,
                 'provider_url' => route('admin.providers.show', $scholarship->provider),
-                'academic_term' => $scholarship->academicTerm ? $scholarship->academicTerm->academic_year.' · '.$scholarship->academicTerm->semester : null,
+                'academic_term' => $scholarship->academicTerm ? $scholarship->academicTerm->academic_year : null,
                 'requirements' => $scholarship->requirements->map(fn ($requirement): array => $requirement->only('id', 'name', 'description', 'required', 'allowed_mime_types', 'max_size_kb', 'requirement_stage')),
             ],
         ]);
@@ -69,14 +69,18 @@ class ScholarshipController extends Controller
 
     private function scholarshipData(Scholarship $scholarship): array
     {
+        $counts = app(ApplicantCounts::class)->summary($scholarship);
+
         return [
             'id' => $scholarship->id, 'title' => $scholarship->title, 'provider' => $scholarship->provider->organization_name ?: 'Organization #'.$scholarship->provider_id,
             'scholarship_type' => $scholarship->scholarship_type, 'status' => $scholarship->status->value,
-            'locations' => $scholarship->locations->map(fn ($location): array => $location->only('id', 'scope', 'region_code', 'city_code', 'region_name', 'city_name')),
+            'locations' => $scholarship->locations->map(fn ($location): array => $location->only('id', 'scope', 'region_name', 'city_name', 'region_name', 'city_name')),
             'opens_at' => $scholarship->opens_at?->toIso8601String(), 'deadline_at' => $scholarship->deadline_at?->toIso8601String(),
             'accepts_existing_scholars' => $scholarship->accepts_existing_scholars,
             'updated_at' => $scholarship->updated_at?->toIso8601String(), 'deleted_at' => $scholarship->deleted_at?->toIso8601String(),
-            'applicant_count' => app(ApplicantCounts::class)->summary($scholarship)['public_count'],
+            'applicant_count' => $counts['public_count'], 'waitlisted_count' => $counts['waitlisted_count'],
+            'slots' => $scholarship->eligibility_rules['provider_settings']['slots'] ?? null,
+            'open' => ! $scholarship->trashed() && $scholarship->status->value === 'published' && $scholarship->opens_at?->lte(now()) && $scholarship->deadline_at?->gt(now()),
             'counts_url' => route('admin.applicant-counts.show', $scholarship), 'show_url' => route('admin.scholarships.show', $scholarship),
         ];
     }

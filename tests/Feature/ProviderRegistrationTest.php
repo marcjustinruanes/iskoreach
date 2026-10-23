@@ -49,7 +49,7 @@ class ProviderRegistrationTest extends TestCase
     {
         Notification::fake();
         $data = $this->providerRegistrationData(['middle_name' => 'Maria', 'suffix' => 'Jr.', 'role' => 'admin', 'verification_status' => 'approved']);
-        $this->post('/register', $data)->assertSessionHasNoErrors()->assertRedirect('/dashboard');
+        $this->post('/register', $data)->assertSessionHasNoErrors()->assertRedirect('/login');
         $user = User::firstOrFail();
         $profile = $user->providerProfile;
         $this->assertSame('Provider Maria Contact Jr.', $user->name);
@@ -62,7 +62,8 @@ class ProviderRegistrationTest extends TestCase
         foreach ($profile->verification_documents as $document) {
             Storage::disk('documents')->assertExists($document['path']);
         }
-        $this->get('/provider/workspace')->assertForbidden();
+        $this->assertGuest();
+        $this->get('/provider/workspace')->assertRedirect('/login');
         $this->actingAs($user->fresh())->get('/provider/workspace')->assertForbidden();
         $this->get(route('provider-verification.show', [$profile, 'representative_id']))->assertDownload('representative_id.jpg')->assertHeader('X-Content-Type-Options', 'nosniff');
     }
@@ -120,7 +121,7 @@ class ProviderRegistrationTest extends TestCase
         $data = $this->studentRegistrationData(['step' => 1]);
         unset($data['password'], $data['school']);
         $this->postJson('/register/validate-step', $data)->assertOk()->assertJson(['valid' => true]);
-        $this->postJson('/register/validate-step', $this->studentRegistrationData(['step' => 3, 'barangay_code' => '999999999']))->assertUnprocessable()->assertJsonValidationErrors('barangay_code');
+        $this->postJson('/register/validate-step', $this->studentRegistrationData(['step' => 3, 'barangay_name' => '999999999']))->assertUnprocessable()->assertJsonValidationErrors('barangay_name');
         $this->postJson('/register/validate-step', $this->studentRegistrationData(['step' => 4, 'password_confirmation' => 'different']))->assertUnprocessable()->assertJsonValidationErrors('password');
         $data = $this->providerRegistrationData(['step' => 2]);
         unset($data['representative_id'], $data['organization_proof'], $data['password']);

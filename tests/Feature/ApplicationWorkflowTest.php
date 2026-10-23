@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ApplicationStatus;
 use App\Enums\UserRole;
 use App\Models\Application;
 use App\Models\ProviderProfile;
@@ -12,7 +13,6 @@ use App\Models\StudentProfile;
 use App\Models\User;
 use App\Services\ApplicantCounts;
 use App\Services\ApplicationWorkflow;
-use App\Services\ExternalApplicants;
 use App\Services\ScholarshipManagement;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -72,7 +72,7 @@ class ApplicationWorkflowTest extends TestCase
         $item = $this->draft();
         $program = $item->scholarship;
         for ($index = 0; $index < 7; $index++) {
-            app(ExternalApplicants::class)->store($program->provider->user, $program, ['name' => 'External Person', 'email' => 'outside-'.$index.'@example.test']);
+            Application::factory()->create(['scholarship_id' => $program->id, 'student_id' => null, 'applicant_source' => 'external', 'applicant_name' => 'External Person', 'applicant_email' => 'outside-'.$index.'@example.test']);
         }
         $this->assertSame(7, app(ApplicantCounts::class)->summary($program)['public_count']);
         $name = $item->student->name;
@@ -121,9 +121,21 @@ class ApplicationWorkflowTest extends TestCase
         $item->refresh();
         $this->patch('/student/applications/'.$item->id.'/submit', $this->submission($item))->assertSessionHasErrors('conflict_confirmed');
         $this->patch('/student/applications/'.$item->id.'/submit', [...$this->submission($item), 'conflict_confirmed' => true])->assertSessionHasNoErrors();
+        $this->assertSame(ApplicationStatus::Waitlisted, $item->fresh()->status);
         $this->assertTrue($item->fresh()->low_priority);
         $this->assertTrue($item->fresh()->has_existing_scholarship);
         $this->assertSame(1, $item->fresh()->conflict_rule_snapshot['active_award_count']);
+    }
+
+    public function test_existing_scholars_are_waitlisted_even_without_the_legacy_low_priority_setting(): void
+    {
+        $item = $this->draft();
+        $active = Application::factory()->create(['student_id' => $item->student_id, 'status' => 'accepted']);
+        ScholarshipAward::factory()->create(['application_id' => $active->id]);
+        $item->scholarship->update(['accepts_existing_scholars' => true, 'existing_scholars_low_priority' => false]);
+        $item->refresh();
+        $this->actingAs($item->student)->patch('/student/applications/'.$item->id.'/submit', $this->submission($item))->assertSessionHasNoErrors();
+        $this->assertSame(ApplicationStatus::Waitlisted, $item->fresh()->status);
     }
 
     public function test_inactive_expired_future_and_revoked_awards_do_not_create_conflicts(): void

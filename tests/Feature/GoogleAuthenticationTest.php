@@ -37,7 +37,7 @@ class GoogleAuthenticationTest extends TestCase
         $provider = User::where('email', 'office@gmail.com')->firstOrFail();
         $this->assertSame('organization-google-subject', $provider->google_subject);
         $this->assertSame('work@gmail.com', $provider->providerProfile->work_email);
-        $this->assertAuthenticatedAs($provider);
+        $this->assertGuest();
     }
 
     private function startGoogle(string $intent = 'login'): string
@@ -117,14 +117,14 @@ class GoogleAuthenticationTest extends TestCase
         $this->fakeRegistrationLocations();
         $data = $this->studentRegistrationData(['first_name' => 'Chosen', 'surname' => 'Name', 'google_subject' => 'attacker', 'role' => 'admin']);
         $this->withSession(['registration_email' => null]);
-        $this->post('/register', $data)->assertSessionHasNoErrors()->assertRedirect('/dashboard')->assertSessionMissing('google_registration');
+        $this->post('/register', $data)->assertSessionHasNoErrors()->assertRedirect('/login')->assertSessionMissing('google_registration');
         $user = User::firstOrFail();
         $this->assertSame('google-person-123', $user->google_subject);
         $this->assertSame('Chosen', $user->studentProfile->first_name);
         $this->assertSame('Name', $user->studentProfile->surname);
         $this->assertSame(UserRole::Student, $user->role);
         $this->assertArrayNotHasKey('google_subject', $user->toArray());
-        $this->assertAuthenticatedAs($user);
+        $this->assertGuest();
     }
 
     public function test_google_signup_cannot_skip_required_fields_policies_or_provider_documents(): void
@@ -151,7 +151,8 @@ class GoogleAuthenticationTest extends TestCase
         $this->assertSame('google-person-123', $user->google_subject);
         $this->assertSame(UserRole::Provider, $user->role);
         $this->assertFalse($user->providerProfile->isApproved());
-        $this->get('/provider/workspace')->assertForbidden();
+        $this->assertGuest();
+        $this->get('/provider/workspace')->assertRedirect('/login');
     }
 
     public function test_google_registration_proof_is_session_bound_email_bound_and_expires(): void

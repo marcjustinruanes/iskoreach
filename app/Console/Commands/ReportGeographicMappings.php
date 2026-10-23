@@ -30,7 +30,7 @@ class ReportGeographicMappings extends Command
                     throw new RuntimeException('Coverage JSON must contain a list.');
                 }
             } else {
-                $rows = DB::table('scholarship_locations')->select(GeographicLegacyMapping::FIELDS)->orderBy('id')->cursor();
+                $rows = DB::table('scholarship_locations')->select(['id', 'scholarship_id', 'scope', 'region_name', 'city_name', 'created_at', 'updated_at'])->selectRaw('NULL AS region_code, NULL AS city_code')->orderBy('id')->cursor();
             }
             $this->line(json_encode($mapping->report($this->argument('manifest'), $rows), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
 

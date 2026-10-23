@@ -48,8 +48,8 @@ class AdminScholarshipMonitoringTest extends TestCase
         $admin = User::factory()->create(['role' => UserRole::Admin]);
         $target = Scholarship::factory()->create(['title' => 'Campus Merit Grant', 'status' => ScholarshipStatus::Published]);
         $target->provider->update(['organization_name' => 'Campus Foundation']);
-        ScholarshipLocation::factory()->create(['scholarship_id' => $target->id, 'scope' => 'region', 'region_code' => 'NCR']);
-        ScholarshipLocation::factory()->create(['scholarship_id' => $target->id, 'scope' => 'city', 'region_code' => 'NCR', 'city_code' => 'CITY-TEST']);
+        ScholarshipLocation::factory()->create(['scholarship_id' => $target->id, 'scope' => 'region', 'region_name' => 'NCR']);
+        ScholarshipLocation::factory()->create(['scholarship_id' => $target->id, 'scope' => 'city', 'region_name' => 'NCR', 'city_name' => 'CITY-TEST']);
         Scholarship::factory()->create(['scholarship_type' => 'Need based']);
         $filters = ['q' => 'Campus', 'status' => 'published', 'category' => 'Merit', 'provider' => $target->provider_id, 'location' => 'NCR'];
         $this->actingAs($admin)->get('/admin/scholarships?'.http_build_query($filters))->assertInertia(fn (Assert $page) => $page
@@ -94,7 +94,7 @@ class AdminScholarshipMonitoringTest extends TestCase
             ->component('admin/ScholarshipDetails')->where('scholarship.eligibility_rules.minimum_grade', 85)
             ->where('scholarship.accepts_existing_scholars', true)->where('scholarship.requirements.0.name', 'First requirement')
             ->where('scholarship.applicant_count', 0)->where('scholarship.benefit_amount', '15000.00')
-            ->where('scholarship.academic_term', '2026-2027 · First semester')->missing('scholarship.contact_email'))
+            ->where('scholarship.academic_term', '2026-2027')->missing('scholarship.contact_email'))
             ->assertDontSee('private-provider-contact@example.test');
     }
 

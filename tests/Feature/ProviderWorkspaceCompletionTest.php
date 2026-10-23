@@ -29,19 +29,20 @@ class ProviderWorkspaceCompletionTest extends TestCase
         $this->actingAs($provider->user)->get('/provider/dashboard')->assertInertia(fn (Assert $page) => $page->where('nextTasks.upcoming', 1)->where('nextTasks.deadlines', 1)->where('nextTasks.renewals', 0)->where('nextTasks.benefits', 0));
     }
 
-    public function test_external_method_is_saved_and_public_but_cannot_be_used_to_create_an_internal_application(): void
+    public function test_shared_scholarships_accept_internal_applications_and_reject_external_methods(): void
     {
         $provider = ProviderProfile::factory()->create(['verification_status' => 'approved']);
-        $payload = ['title' => 'External education program', 'description' => 'Apply using the official external form.', 'scholarship_type' => 'Education', 'accepts_existing_scholars' => true, 'eligibility_criteria' => 'Currently enrolled', 'purpose' => 'Education access', 'benefits_description' => 'Tuition and school supplies', 'slots' => 5, 'application_method' => 'external', 'external_application_url' => 'https://example.com/application', 'locations' => [['scope' => 'nationwide']], 'requirements' => [], 'opens_at' => now('Asia/Manila')->subDay()->format('Y-m-d\TH:i'), 'deadline_at' => now('Asia/Manila')->addWeek()->format('Y-m-d\TH:i')];
-        $this->actingAs($provider->user)->post('/provider/scholarships', [...$payload, 'external_application_url' => 'javascript:alert(1)'])->assertSessionHasErrors('external_application_url');
+        $payload = ['title' => 'External education program', 'description' => 'Apply using the official external form.', 'academic_year' => '2026-2027', 'scholarship_type' => 'Education', 'accepts_existing_scholars' => true, 'eligibility_criteria' => 'Currently enrolled', 'purpose' => 'Education access', 'benefits_description' => 'Tuition and school supplies', 'slots' => 5, 'application_method' => 'internal', 'locations' => [['scope' => 'nationwide']], 'requirements' => [], 'opens_at' => now('Asia/Manila')->subDay()->format('Y-m-d\TH:i'), 'deadline_at' => now('Asia/Manila')->addWeek()->format('Y-m-d\TH:i')];
+        $this->actingAs($provider->user)->post('/provider/scholarships', [...$payload, 'application_method' => 'external'])->assertSessionHasErrors('application_method');
         $this->post('/provider/scholarships', $payload)->assertSessionHasNoErrors();
         $program = Scholarship::firstOrFail();
         $this->assertSame(5, $program->eligibility_rules['provider_settings']['slots']);
         $this->patch('/provider/scholarships/'.$program->id.'/lifecycle', ['version' => 1, 'action' => 'publish', 'reason' => 'Ready for publication', 'confirmed' => true])->assertSessionHasNoErrors();
+        $program->update(['eligibility_rules' => array_replace_recursive($program->eligibility_rules, ['provider_settings' => ['application_method' => 'external', 'external_application_url' => 'https://example.com/old-form']])]);
         $student = StudentProfile::factory()->create()->user;
-        $this->actingAs($student)->get('/scholarships/'.$program->slug)->assertInertia(fn (Assert $page) => $page->where('scholarship.application_method', 'external')->where('scholarship.benefits_description', 'Tuition and school supplies'));
-        $this->post('/student/scholarships/'.$program->id.'/applications')->assertSessionHasErrors('application');
-        $this->assertDatabaseCount('applications', 0);
+        $this->actingAs($student)->get('/scholarships/'.$program->slug)->assertInertia(fn (Assert $page) => $page->missing('scholarship.external_application_url')->where('scholarship.benefits_description', 'Tuition and school supplies'));
+        $this->post('/student/scholarships/'.$program->id.'/applications')->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('applications', 1);
     }
 
     public function test_provider_deadline_reminders_are_owned_linked_and_idempotent(): void

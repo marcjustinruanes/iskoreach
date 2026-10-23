@@ -41,7 +41,7 @@ class CreateNewUser implements CreatesNewUsers
             app(RegistrationEmailVerification::class)->ensureVerified(request(), $data['work_email'], 'provider', 'work');
         }
         $name = $registration->name($data);
-        $address = $registration->address($data, $student || ! empty($data['barangay_code']));
+        $address = $registration->address($data, $student || ! empty($data['barangay_name']));
         $campus = $student ? $registration->campus($data) : [];
         $coverage = $student ? [] : app(ProviderCoverage::class)->resolve($data['coverage_areas']);
         $google = app(GoogleAuthentication::class)->registration(request());
@@ -68,10 +68,10 @@ class CreateNewUser implements CreatesNewUsers
 
                 if ($user->role === UserRole::Provider) {
                     $data['organization_name'] = $data['organization_type'] === 'individual' ? $name : $data['organization_name'];
-                    $profile = $user->providerProfile()->create(collect($data)->only(ProviderRegistration::FIELDS)->all() + $address + [
+                    $profile = $user->providerProfile()->create(array_replace(collect($data)->only(ProviderRegistration::FIELDS)->all(), $address, [
                         'organization_name' => $data['organization_name'] ?? $name,
                         'contact_email' => $data['organization_email'],
-                    ]);
+                    ]));
                     $documents = [];
                     foreach (ProviderRegistration::DOCUMENTS as $kind) {
                         if (isset($data[$kind])) {
@@ -81,9 +81,9 @@ class CreateNewUser implements CreatesNewUsers
                             $documents[$kind] = ['path' => $path, 'name' => $kind.'.'.$file->extension(), 'mime' => $file->getMimeType(), 'size' => $file->getSize(), 'sha256' => hash_file('sha256', $file->getRealPath())];
                         }
                     }
-                    $profile->forceFill(['registration_version' => 1, 'verification_documents' => $documents, 'coverage_areas' => $coverage])->save();
+                    $profile->forceFill(['registration_version' => 1, 'verification_documents' => $documents, 'coverage_areas' => $coverage, 'scholarship_eligibility' => ['priority_education_level' => $data['priority_education_level'] ?? null, 'priority_courses' => $data['priority_courses'] ?? [], 'priority_year_levels' => $data['priority_year_levels'] ?? []]])->save();
                 } else {
-                    $profile = $user->studentProfile()->make(collect($data)->only(StudentRegistration::FIELDS)->all() + $address + $campus);
+                    $profile = $user->studentProfile()->make(array_replace(collect($data)->only(StudentRegistration::FIELDS)->all(), $address, $campus));
                     $profile->registration_status = 'pending';
                     $profile->save();
                 }

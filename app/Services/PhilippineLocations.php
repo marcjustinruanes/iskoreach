@@ -9,6 +9,47 @@ use RuntimeException;
 
 class PhilippineLocations
 {
+    public const NO_PROVINCE = 'Not applicable (independent city)';
+
+    public function choice(array $choices, ?string $value): ?array
+    {
+        return collect($choices)->first(fn (array $choice): bool => $choice['code'] === $value || $choice['name'] === $value);
+    }
+
+    public function cityChoice(string $region, ?string $city, ?string $province = null): ?array
+    {
+        $matches = array_values(array_filter($this->cities($region)['data'], fn (array $choice): bool => $choice['name'] === $city || $choice['code'] === $city));
+        if (count($matches) < 2) {
+            return $matches[0] ?? null;
+        }
+        if (! filled($province)) {
+            throw ValidationException::withMessages(['province_name' => 'Select the province to distinguish cities or municipalities with the same name.']);
+        }
+        $provinceCode = in_array($province, ['none', self::NO_PROVINCE], true) ? null : ($this->choice($this->provinces($region)['data'], $province)['code'] ?? 'unknown');
+
+        return collect($matches)->first(fn (array $choice): bool => ($choice['province_code'] ?? null) === $provinceCode);
+    }
+
+    public function namedOptions(string $kind, ?string $region = null, ?string $city = null, ?string $province = null): array
+    {
+        $regionChoice = $region ? $this->choice($this->regions()['data'], $region) : null;
+        if ($region !== null && ! $regionChoice) {
+            throw ValidationException::withMessages(['region' => 'Select an available region.']);
+        }
+        $result = match ($kind) {
+            'regions' => $this->regions(),
+            'provinces' => $this->provinces($regionChoice['code']),
+            'cities' => $this->cities($regionChoice['code']),
+            'barangays' => $this->barangays($this->cityChoice($regionChoice['code'], $city, $province)['code'] ?? ''),
+        };
+        $provinces = $kind === 'cities' ? $this->provinces($regionChoice['code'])['data'] : [];
+        $result['data'] = array_map(function (array $choice) use ($provinces): array {
+            return ['code' => $choice['name'], 'name' => $choice['name'], 'province_name' => isset($choice['province_code']) ? ($this->choice($provinces, $choice['province_code'])['name'] ?? null) : null];
+        }, $result['data']);
+
+        return $result;
+    }
+
     public function regions(): array
     {
         return $this->lookup('regions/');
@@ -83,12 +124,12 @@ class PhilippineLocations
         if ($location['scope'] === 'nationwide') {
             return ['region_name' => null, 'city_name' => null];
         }
-        $region = collect($this->regions()['data'])->firstWhere('code', $location['region_code']);
+        $region = $this->choice($this->regions()['data'], $location['region_name'] ?? $location['region_code'] ?? null);
         if (! $region) {
             throw ValidationException::withMessages(['location' => 'Choose a region from the available location options.']);
         }
         if ($location['scope'] === 'province') {
-            $province = collect($this->provinces($region['code'])['data'])->firstWhere('code', $location['province_code'] ?? '');
+            $province = $this->choice($this->provinces($region['code'])['data'], $location['province_name'] ?? $location['province_code'] ?? null);
             if (! $province) {
                 throw ValidationException::withMessages(['location' => 'Choose a province belonging to the selected region.']);
             }
@@ -97,7 +138,7 @@ class PhilippineLocations
         }
         $city = null;
         if ($location['scope'] === 'city') {
-            $city = collect($this->cities($region['code'])['data'])->firstWhere('code', $location['city_code']);
+            $city = $this->cityChoice($region['code'], $location['city_name'] ?? $location['city_code'] ?? null, $location['province_name'] ?? $location['province_code'] ?? null);
             if (! $city) {
                 throw ValidationException::withMessages(['location' => 'Choose a city or municipality belonging to the selected region.']);
             }
@@ -105,6 +146,6 @@ class PhilippineLocations
 
         $province = $city && isset($city['province_code']) ? collect($this->provinces($region['code'])['data'])->firstWhere('code', $city['province_code']) : null;
 
-        return ['region_name' => $region['name'], 'city_name' => $city['name'] ?? null, 'province_name' => $province['name'] ?? null, 'province_code' => $province['code'] ?? null];
+        return ['region_name' => $region['name'], 'city_name' => $city['name'] ?? null, 'province_name' => $province['name'] ?? null];
     }
 }

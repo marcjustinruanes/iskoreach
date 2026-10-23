@@ -16,7 +16,7 @@ class AwardController extends Controller
     public function index(Request $request): Response
     {
         return Inertia::render('student/Awards', [
-            'awards' => ScholarshipAward::query()->whereHas('application', fn ($query) => $query->where('student_id', $request->user()->id))
+            'awards' => ScholarshipAward::query()->approvedProvider()->whereHas('application', fn ($query) => $query->where('student_id', $request->user()->id))
                 ->with(['application.scholarship.provider', 'application.student:id,role', 'academicTerm'])->latest('id')->paginate(10)->through(fn (ScholarshipAward $award): array => [
                     'id' => $award->id, 'scholarship' => $award->application->scholarship->title,
                     'provider' => $award->application->scholarship->provider->organization_name,

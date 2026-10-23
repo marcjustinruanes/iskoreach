@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\UserRole;
 use App\Models\Application;
 use App\Models\BenefitRelease;
+use App\Models\ProviderProfile;
 use App\Models\Renewal;
 use App\Models\ScholarshipAward;
 use App\Models\User;
@@ -21,7 +22,7 @@ class AdminAwardMonitoringTest extends TestCase
         foreach (['awards', 'renewals', 'releases'] as $section) {
             $this->get('/admin/'.$section)->assertRedirect('/login');
         }
-        $award = ScholarshipAward::factory()->create();
+        $award = $this->award();
         foreach ([$award->application->student, $award->application->scholarship->provider->user] as $user) {
             foreach (['awards', 'renewals', 'releases'] as $section) {
                 $this->actingAs($user)->get('/admin/'.$section)->assertForbidden();
@@ -49,17 +50,17 @@ class AdminAwardMonitoringTest extends TestCase
     public function test_active_awards_use_confirmed_student_awards_and_inclusive_manila_dates(): void
     {
         $this->travelTo(now()->setDateTime(2026, 10, 19, 16, 0, 0));
-        $valid = ScholarshipAward::factory()->create(['starts_on' => '2026-10-20', 'ends_on' => '2026-10-20']);
-        ScholarshipAward::factory()->create(['starts_on' => '2026-10-21']);
-        ScholarshipAward::factory()->create(['starts_on' => '2026-10-19', 'ends_on' => '2026-10-19']);
-        ScholarshipAward::factory()->create(['revoked_at' => now()]);
-        ScholarshipAward::factory()->create(['status' => 'revoked']);
-        ScholarshipAward::factory()->create(['status' => 'completed']);
-        $draft = ScholarshipAward::factory()->create();
+        $valid = $this->award(['starts_on' => '2026-10-20', 'ends_on' => '2026-10-20']);
+        $this->award(['starts_on' => '2026-10-21']);
+        $this->award(['starts_on' => '2026-10-19', 'ends_on' => '2026-10-19']);
+        $this->award(['revoked_at' => now()]);
+        $this->award(['status' => 'revoked']);
+        $this->award(['status' => 'completed']);
+        $draft = $this->award();
         $draft->application->update(['status' => 'submitted']);
-        $notSubmitted = ScholarshipAward::factory()->create();
+        $notSubmitted = $this->award();
         $notSubmitted->application->update(['submitted_at' => null]);
-        $wrongRole = ScholarshipAward::factory()->create();
+        $wrongRole = $this->award();
         $wrongRole->application->student->forceFill(['role' => UserRole::Provider])->save();
         Application::factory()->create(['status' => 'accepted']);
         $this->actingAs($this->admin())->get('/admin/awards?activity=active')->assertInertia(fn (Assert $page) => $page
@@ -70,10 +71,10 @@ class AdminAwardMonitoringTest extends TestCase
 
     public function test_combined_filters_scope_all_three_monitoring_pages_and_preserve_pagination(): void
     {
-        $target = ScholarshipAward::factory()->create();
+        $target = $this->award();
         $target->application->scholarship->update(['title' => 'Campus Future Grant']);
         $target->application->scholarship->provider->update(['organization_name' => 'Campus Foundation']);
-        ScholarshipAward::factory()->create();
+        $this->award();
         Renewal::factory()->count(12)->create(['scholarship_award_id' => $target->id, 'status' => 'submitted']);
         BenefitRelease::factory()->create(['scholarship_award_id' => $target->id, 'academic_term_id' => $target->academic_term_id]);
         BenefitRelease::factory()->create();
@@ -100,7 +101,7 @@ class AdminAwardMonitoringTest extends TestCase
         foreach (['renewals', 'releases'] as $section) {
             $this->get('/admin/'.$section.'?from=2026-10-19&to=2026-10-19')->assertInertia(fn (Assert $page) => $page->where('records.total', 2));
         }
-        ScholarshipAward::factory()->create(['starts_on' => '2026-10-19']);
+        $this->award(['starts_on' => '2026-10-19']);
         $this->get('/admin/awards?from=2026-10-19&to=2026-10-19')->assertInertia(fn (Assert $page) => $page->where('records.total', 1));
     }
 
@@ -117,7 +118,7 @@ class AdminAwardMonitoringTest extends TestCase
 
     public function test_retained_award_monitoring_excludes_private_student_and_provider_review_data(): void
     {
-        $award = ScholarshipAward::factory()->create();
+        $award = $this->award();
         $award->application->student->update(['name' => 'Private Student', 'email' => 'private-student@example.test']);
         $award->application->update(['decision_reason' => 'Private application reason']);
         $award->application->delete();
@@ -148,6 +149,32 @@ class AdminAwardMonitoringTest extends TestCase
         $this->get('/admin/renewals?status=submitted')->assertInertia(fn (Assert $page) => $page->where('records.data.0.overdue', true));
         $this->get('/admin/releases?status=released')->assertInertia(fn (Assert $page) => $page
             ->where('records.data.0.id', $incomplete->id)->where('records.data.0.release_confirmed', false)->where('records.data.0.amount', '5000.00'));
+    }
+
+    private function award(array $attributes = []): ScholarshipAward
+    {
+        return ScholarshipAward::factory()->recycle(ProviderProfile::factory()->create(['verification_status' => 'approved']))->create($attributes);
+    }
+
+    public function test_scholarship_passer_filters_keep_lists_scoped_and_private_names_hidden(): void
+    {
+        $this->freezeTime();
+        $public = $this->award();
+        $program = $public->application->scholarship;
+        $program->forceFill(['status' => 'published', 'published_at' => now()])->save();
+        $public->forceFill(['public_listing_consented_at' => now(), 'published_at' => now(), 'public_name' => 'Published Scholar'])->save();
+        $private = ScholarshipAward::factory()->create(['application_id' => Application::factory()->create(['scholarship_id' => $program->id, 'status' => 'accepted'])->id, 'academic_term_id' => $public->academic_term_id]);
+        $private->forceFill(['public_name' => 'Hidden Scholar'])->save();
+        $other = $this->award();
+
+        $this->actingAs($this->admin())->get('/admin/awards?'.http_build_query(['scholarship' => $program->id, 'listing' => 'public', 'term' => $public->academic_term_id, 'passer_q' => 'Published']))->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('records.total', 1)->where('records.data.0.scholarship_id', $program->id)->where('records.data.0.passer_name', 'Published Scholar'));
+        $this->get('/admin/awards?scholarship='.$program->id.'&listing=private')->assertInertia(fn (Assert $page) => $page
+            ->where('records.total', 1)->where('records.data.0.id', $private->id)->where('records.data.0.passer_name', null))->assertDontSee('Hidden Scholar');
+        $this->get('/admin/awards?scholarship='.$other->application->scholarship_id.'&passer_q=Published')->assertInertia(fn (Assert $page) => $page->where('records.total', 0));
+        $this->get('/admin/awards?passer_q=Hidden')->assertInertia(fn (Assert $page) => $page->where('records.total', 0));
+        $this->get('/admin/awards?listing=invalid')->assertSessionHasErrors('listing');
+        $this->get('/admin/awards?scholarship=999999')->assertSessionHasErrors('scholarship');
     }
 
     private function admin(): User

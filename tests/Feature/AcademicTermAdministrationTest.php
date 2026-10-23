@@ -166,7 +166,7 @@ class AcademicTermAdministrationTest extends TestCase
         $application->forceFill(['status' => 'accepted', 'submitted_at' => now()])->save();
         $this->get('/benefits/applications/'.$application->id.'/create')->assertInertia(fn (Assert $page) => $page->where('terms.0.id', $term->id));
         $this->get('/scholarships?term='.$term->id)->assertInertia(fn (Assert $page) => $page->where('scholarships.total', 1)->where('terms.0.id', $term->id));
-        $this->actingAs($student)->get('/student/applications/'.$application->id)->assertInertia(fn (Assert $page) => $page->where('application.academic_term', '2026-2027 / First semester'));
+        $this->actingAs($student)->get('/student/applications/'.$application->id)->assertInertia(fn (Assert $page) => $page->where('application.academic_term', '2026-2027'));
         $this->assertSame($term->id, $application->fresh()->academic_term_id);
     }
 

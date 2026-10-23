@@ -46,7 +46,7 @@ class AwardMonitoringController extends Controller
 
     private function listing(ListAwardMonitoringRequest $request, string $section): Response
     {
-        $filters = array_fill_keys(['q', 'status', 'provider', 'term', 'award', 'from', 'to', 'activity', 'consent'], '');
+        $filters = array_fill_keys(['q', 'status', 'provider', 'term', 'award', 'from', 'to', 'activity', 'consent', 'scholarship', 'passer_q', 'listing'], '');
         foreach ($filters as $key => $value) {
             $filters[$key] = trim((string) ($request->validated($key) ?? ''));
         }
@@ -55,7 +55,19 @@ class AwardMonitoringController extends Controller
             'renewals' => Renewal::query(), 'releases' => BenefitRelease::query(), default => ScholarshipAward::query()
         };
         $prefix = $awards ? '' : 'award.';
-        $query->with([$prefix.'application.scholarship.provider:id,organization_name,verification_status', $prefix.'application.student:id,role', 'academicTerm']);
+        if ($awards) {
+            $query->approvedProvider();
+            $query->when($filters['scholarship'] !== '', fn (Builder $query) => $query->whereHas('application', fn (Builder $query) => $query->where('scholarship_id', $filters['scholarship'])));
+            if ($filters['passer_q'] !== '') {
+                $query->whereIn('id', ScholarshipAward::publiclyListed()->whereLike('public_name', '%'.$filters['passer_q'].'%')->select('id'));
+            }
+            if ($filters['listing'] === 'public') {
+                $query->whereIn('id', ScholarshipAward::publiclyListed()->select('id'));
+            } elseif ($filters['listing'] === 'private') {
+                $query->whereNotIn('id', ScholarshipAward::publiclyListed()->select('id'));
+            }
+        }
+        $query->with([$prefix.'application.scholarship.provider:id,user_id,organization_name,verification_status', $prefix.'application.student:id,role', 'academicTerm']);
         $application = $prefix.'application';
         $query->when($filters['q'] !== '', fn (Builder $query) => $query->whereHas($application.'.scholarship', fn (Builder $query) => $query
             ->where(fn (Builder $query) => $query->whereLike('title', '%'.$filters['q'].'%')->orWhereHas('provider', fn (Builder $query) => $query->whereLike('organization_name', '%'.$filters['q'].'%')))));
@@ -92,8 +104,8 @@ class AwardMonitoringController extends Controller
             'section' => $section, 'filters' => $filters,
             'records' => $query->orderByDesc('updated_at')->orderByDesc('id')->paginate(10)->withQueryString()->through(fn ($record): array => $this->recordData($record)),
             'statuses' => array_map(fn ($status): string => $status->value, $enum::cases()),
-            'providers' => ProviderProfile::query()->orderBy('organization_name')->get(['id', 'organization_name'])->map(fn ($provider): array => ['id' => $provider->id, 'name' => $provider->organization_name ?: 'Organization #'.$provider->id]),
-            'terms' => AcademicTerm::query()->orderByDesc('academic_year')->orderBy('semester')->get()->map(fn ($term): array => ['id' => $term->id, 'name' => $term->academic_year.' · '.$term->semester]),
+            'providers' => ProviderProfile::query()->where('verification_status', 'approved')->whereHas('user', fn (Builder $query) => $query->where('role', 'provider'))->orderBy('organization_name')->get(['id', 'organization_name'])->map(fn ($provider): array => ['id' => $provider->id, 'name' => $provider->organization_name ?: 'Organization #'.$provider->id]),
+            'terms' => AcademicTerm::query()->orderByDesc('academic_year')->orderBy('semester')->get()->map(fn ($term): array => ['id' => $term->id, 'name' => $term->academic_year]),
         ]);
     }
 
@@ -103,17 +115,20 @@ class AwardMonitoringController extends Controller
         $application = $award->application;
         $scholarship = $application->scholarship;
         $data = [
-            'id' => $record->id, 'award_id' => $award->id, 'application_reference' => 'APP-'.$application->id,
+            'id' => $record->id, 'award_id' => $award->id, 'application_reference' => 'APP-'.$application->id, 'scholarship_id' => $scholarship->id,
             'scholarship' => $scholarship->title, 'scholarship_url' => route('admin.scholarships.show', $scholarship),
             'provider' => $scholarship->provider->organization_name ?: 'Organization #'.$scholarship->provider_id,
-            'term' => $record->academicTerm->academic_year.' · '.$record->academicTerm->semester,
+            'term' => $record->academicTerm->academic_year,
             'status' => $record->status->value, 'active_award' => $award->isCurrentlyActive(),
             'retained' => $application->trashed() || $scholarship->trashed(), 'updated_at' => $record->updated_at->toIso8601String(),
         ];
         if ($record instanceof ScholarshipAward) {
+            $publiclyVisible = $record->canBePubliclyListed() && $record->published_at !== null && $record->public_name !== null;
+
             return [...$data, 'starts_on' => $record->starts_on->toDateString(), 'ends_on' => $record->ends_on?->toDateString(),
+                'passer_name' => $publiclyVisible ? $record->public_name : null,
                 'consented_at' => $record->public_listing_consented_at?->toIso8601String(), 'published_at' => $record->published_at?->toIso8601String(),
-                'publicly_visible' => $record->canBePubliclyListed() && $record->published_at !== null && $record->public_name !== null,
+                'publicly_visible' => $publiclyVisible,
                 'can_publish' => $record->canBePubliclyListed(), 'publication_version' => $record->publication_version,
                 'publication_url' => route('admin.awards.publication', $record)];
         }

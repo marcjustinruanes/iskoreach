@@ -6,8 +6,11 @@ use App\Enums\ApplicationStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Provider\SaveScholarshipRequest;
 use App\Http\Requests\Provider\ScholarshipLifecycleRequest;
+use App\Http\Requests\Provider\UpdateScholarshipCapacityRequest;
 use App\Models\AcademicTerm;
 use App\Models\Scholarship;
+use App\Services\RegistrationOptions;
+use App\Services\ScholarshipCapacity;
 use App\Services\ScholarshipCatalog;
 use App\Services\ScholarshipManagement;
 use Illuminate\Http\RedirectResponse;
@@ -33,7 +36,9 @@ class ScholarshipController extends Controller
             ->when($filters['availability'] === 'open', fn ($query) => $query->where('status', 'published')->where('opens_at', '<=', now())->where('deadline_at', '>', now()))
             ->when($filters['availability'] === 'ended', fn ($query) => $query->where(fn ($query) => $query->where('status', 'closed')->orWhere('deadline_at', '<=', now())))
             ->withCount(['applications as applicant_count' => fn ($query) => $query->whereNotNull('submitted_at')->whereIn('status', ApplicationStatus::countedValues())->whereHas('student', fn ($query) => $query->where('role', 'student')),
-                'applications as pending_count' => fn ($query) => $query->whereNotNull('submitted_at')->whereIn('status', ['submitted', 'under_review'])]);
+                'applications as pending_count' => fn ($query) => $query->whereNotNull('submitted_at')->whereIn('status', ['submitted', 'under_review']),
+                'applications as waitlisted_count' => fn ($query) => $query->withValidApplicant()->whereNotNull('submitted_at')->where('status', 'waitlisted'),
+                'applications as submitted_count' => fn ($query) => $query->withValidApplicant()->whereNotNull('submitted_at')->whereIn('status', ApplicationStatus::countedValues())]);
         match ($filters['sort']) {
             'deadline' => $query->orderByRaw('deadline_at IS NULL')->orderBy('deadline_at'),
             'created' => $query->latest('created_at'),
@@ -43,6 +48,8 @@ class ScholarshipController extends Controller
 
         return Inertia::render('provider/Scholarships', ['filters' => $filters, 'scholarships' => $query->orderByDesc('id')->paginate(10)->withQueryString()->through(fn ($item): array => [
             'id' => $item->id, 'title' => $item->title, 'status' => $item->status->value, 'version' => $item->management_version,
+            'open' => ! $item->trashed() && $item->status->value === 'published' && $item->opens_at?->lte(now()) && $item->deadline_at?->gt(now()),
+            'slots' => $item->eligibility_rules['provider_settings']['slots'] ?? null, 'waitlist_slots' => $item->eligibility_rules['provider_settings']['waitlist_slots'] ?? null, 'waitlisted_count' => $item->waitlisted_count, 'submitted_count' => $item->submitted_count,
             'category' => $item->scholarship_type, 'opens_at' => $item->opens_at?->toIso8601String(), 'deadline_at' => $item->deadline_at?->toIso8601String(), 'applicant_count' => $item->applicant_count, 'pending_count' => $item->pending_count,
             'preview_url' => $item->trashed() ? null : route('provider.scholarships.preview', $item), 'retained' => $item->trashed(), 'updated_at' => $item->updated_at->toIso8601String(),
             'edit_url' => $item->trashed() ? null : route('provider.scholarships.edit', $item),
@@ -67,7 +74,7 @@ class ScholarshipController extends Controller
     {
         Gate::authorize('create', Scholarship::class);
 
-        return Inertia::render('provider/ScholarshipForm', ['scholarship' => null, 'formData' => null, 'locked' => false, 'terms' => $this->terms()]);
+        return Inertia::render('provider/ScholarshipForm', ['registrationEligibility' => request()->user()->providerProfile?->scholarship_eligibility, 'scholarship' => null, 'formData' => null, 'locked' => false, 'academicOptions' => app(RegistrationOptions::class)->data(), 'terms' => $this->terms()]);
     }
 
     public function store(SaveScholarshipRequest $request, ScholarshipManagement $management): RedirectResponse
@@ -81,8 +88,8 @@ class ScholarshipController extends Controller
     {
         Gate::authorize('manage', $scholarship);
 
-        return Inertia::render('provider/ScholarshipForm', ['scholarship' => ['id' => $scholarship->id, 'status' => $scholarship->status->value, 'lifecycle_url' => route('provider.scholarships.lifecycle', $scholarship), 'preview_url' => route('provider.scholarships.preview', $scholarship)],
-            'formData' => $management->formData($scholarship), 'locked' => $scholarship->status->value === 'published' || $scholarship->applications()->whereNotNull('submitted_at')->exists(), 'terms' => $this->terms()]);
+        return Inertia::render('provider/ScholarshipForm', ['scholarship' => ['id' => $scholarship->id, 'status' => $scholarship->status->value, 'lifecycle_url' => route('provider.scholarships.lifecycle', $scholarship), 'preview_url' => route('provider.scholarships.preview', $scholarship), 'capacity_url' => route('provider.scholarships.capacity', $scholarship), 'public_url' => $scholarship->published_at && in_array($scholarship->status->value, ['published', 'closed']) ? route('scholarships.show', $scholarship->slug) : null],
+            'capacity' => app(ScholarshipCapacity::class)->summary($scholarship), 'academicOptions' => app(RegistrationOptions::class)->data(), 'formData' => $management->formData($scholarship), 'locked' => $scholarship->status->value === 'published' || $scholarship->applications()->whereNotNull('submitted_at')->exists(), 'terms' => $this->terms()]);
     }
 
     public function update(SaveScholarshipRequest $request, Scholarship $scholarship, ScholarshipManagement $management): RedirectResponse
@@ -90,6 +97,13 @@ class ScholarshipController extends Controller
         $management->save($request->user(), $request->validated(), $scholarship);
 
         return back()->with('status', 'Scholarship details saved.');
+    }
+
+    public function capacity(UpdateScholarshipCapacityRequest $request, Scholarship $scholarship, ScholarshipManagement $management): RedirectResponse
+    {
+        $management->updateCapacity($request->user(), $scholarship, $request->validated());
+
+        return back()->with('status', 'Application and waitlist slots updated.');
     }
 
     public function lifecycle(ScholarshipLifecycleRequest $request, Scholarship $scholarship, ScholarshipManagement $management): RedirectResponse
@@ -101,6 +115,6 @@ class ScholarshipController extends Controller
 
     private function terms(): array
     {
-        return AcademicTerm::query()->orderByDesc('academic_year')->orderBy('semester')->get()->map(fn ($term): array => ['id' => $term->id, 'label' => $term->academic_year.' · '.$term->semester])->all();
+        return AcademicTerm::query()->orderByDesc('academic_year')->orderBy('semester')->get()->map(fn ($term): array => ['id' => $term->id, 'label' => $term->academic_year])->all();
     }
 }

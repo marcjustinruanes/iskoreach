@@ -9,9 +9,11 @@ use App\Http\Requests\Admin\ListProvidersRequest;
 use App\Http\Requests\Admin\ReviewProviderRequest;
 use App\Models\ActivityLog;
 use App\Models\ProviderProfile;
+use App\Models\Scholarship;
 use App\Notifications\ProviderVerificationDecision;
 use App\Services\AccountNotifications;
 use App\Services\ProviderRegistration;
+use App\Services\ScholarshipAcademicPriority;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -53,10 +55,10 @@ class ProviderReviewController extends Controller
         return Inertia::render('admin/ProviderDetails', [
             'provider' => [
                 ...$this->providerData($providerProfile),
-                'registration_details' => $providerProfile->only(ProviderRegistration::FIELDS) + ['coverage_areas' => collect($providerProfile->coverage_areas ?? [])->map(fn (array $area): string => $area['scope'] === 'nationwide' ? 'Nationwide' : implode(' / ', array_filter([$area['region_name'] ?? null, $area['province_name'] ?? null, $area['city_name'] ?? null])))->implode('; ')],
+                'registration_details' => $providerProfile->only(ProviderRegistration::FIELDS) + ['scholarship_eligibility' => app(ScholarshipAcademicPriority::class)->summary(new Scholarship(['eligibility_rules' => ['provider_settings' => $providerProfile->scholarship_eligibility ?? []]])) ?? 'All education levels', 'coverage_areas' => collect($providerProfile->coverage_areas ?? [])->map(fn (array $area): string => $area['scope'] === 'nationwide' ? 'Nationwide' : implode(' / ', array_filter([$area['region_name'] ?? null, $area['province_name'] ?? null, $area['city_name'] ?? null])))->implode('; ')],
                 'registration_version' => $providerProfile->registration_version,
                 'documents_available' => $providerProfile->registration_version === 0 || app(ProviderRegistration::class)->documentsAreAvailable($providerProfile),
-                'documents' => collect($providerProfile->verification_documents ?? [])->map(fn (array $document, string $kind): array => ['kind' => $kind, 'name' => $document['name'], 'url' => route('provider-verification.show', [$providerProfile, $kind])])->values(),
+                'documents' => collect($providerProfile->verification_documents ?? [])->map(fn (array $document, string $kind): array => ['kind' => $kind, 'name' => $document['name'], 'mime' => $document['mime'], 'preview_url' => route('provider-verification.show', [$providerProfile, $kind, 'preview' => 1]), 'url' => route('provider-verification.show', [$providerProfile, $kind])])->values(),
                 'verification_version' => $providerProfile->verification_version,
                 'reviewed_at' => $providerProfile->reviewed_at?->toIso8601String(),
                 'reviewer' => $providerProfile->reviewer?->name,

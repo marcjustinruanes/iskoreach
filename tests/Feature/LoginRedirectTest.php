@@ -11,6 +11,17 @@ class LoginRedirectTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_provider_sees_status_only_after_signing_in_following_registration(): void
+    {
+        $data = $this->providerRegistrationData();
+        $this->post('/register', $data)->assertRedirect('/login')->assertSessionHas('status');
+        $this->assertGuest();
+        $this->get('/provider/status')->assertRedirect('/login');
+        $this->withSession(['url.intended' => '/scholarships'])->post('/login', ['email' => $data['organization_email'], 'password' => $data['password']])->assertRedirect('/dashboard')->assertSessionMissing('url.intended');
+        $this->get('/dashboard')->assertRedirect('/provider/status');
+        $this->get('/provider/status')->assertOk();
+    }
+
     public function test_student_login_discards_a_saved_provider_destination(): void
     {
         $student = StudentProfile::factory()->create()->user;

@@ -9,6 +9,17 @@ use Illuminate\Validation\Rules\Password;
 
 class InputRules
 {
+    public static function academicYear(): array
+    {
+        return ['string', function (string $attribute, mixed $value, Closure $fail): void {
+            if (! is_string($value) || ! preg_match('/^([1-9]\d{3})-([1-9]\d{3})$/', $value, $years)) {
+                $fail('Enter the academic year as YYYY-YYYY, for example 2025-2026.');
+            } elseif ((int) $years[2] !== (int) $years[1] + 1) {
+                $fail('Use consecutive academic years, for example 2025-2026.');
+            }
+        }];
+    }
+
     public static function contactNumber(string $value): string
     {
         $value = preg_replace('/[ ()-]/', '', $value);

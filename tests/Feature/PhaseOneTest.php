@@ -21,7 +21,7 @@ class PhaseOneTest extends TestCase
     public function test_student_registration_creates_a_profile_with_preverified_email(): void
     {
         $this->fakeRegistrationLocations();
-        $this->post('/register', $this->studentRegistrationData())->assertRedirect('/dashboard');
+        $this->post('/register', $this->studentRegistrationData())->assertRedirect('/login');
 
         $user = User::firstOrFail();
         $this->assertSame(UserRole::Student, $user->role);
@@ -35,7 +35,7 @@ class PhaseOneTest extends TestCase
 
     public function test_provider_registration_is_pending_and_cannot_enter_the_workspace(): void
     {
-        $this->post('/register', $this->providerRegistrationData(['verification_status' => 'approved', 'role' => 'admin']))->assertRedirect('/dashboard');
+        $this->post('/register', $this->providerRegistrationData(['verification_status' => 'approved', 'role' => 'admin']))->assertRedirect('/login');
 
         $user = User::firstOrFail();
         $this->assertSame(UserRole::Provider, $user->role);

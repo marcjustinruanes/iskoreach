@@ -2,6 +2,7 @@
 
 namespace App\Http\Responses;
 
+use App\Enums\UserRole;
 use Illuminate\Http\Request;
 use Laravel\Fortify\Http\Responses\LoginResponse as FortifyLoginResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -13,6 +14,9 @@ class LoginResponse extends FortifyLoginResponse
     /** @param Request $request */
     public function toResponse($request): Response
     {
+        if ($request->user()?->role === UserRole::Provider && ! $request->user()->providerProfile?->isApproved()) {
+            $request->session()->forget('url.intended');
+        }
         $intended = $request->session()->get('url.intended');
         if ($intended !== null && (! is_string($intended) || ! $this->canVisit($request, $intended))) {
             $request->session()->forget('url.intended');

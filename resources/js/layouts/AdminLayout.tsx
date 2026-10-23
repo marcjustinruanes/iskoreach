@@ -10,8 +10,8 @@ import type { ReactNode } from 'react';
 import type { SharedProps } from '../types';
 import Brand from '../components/Brand';
 import SidebarToggle, { useSidebarCollapsed } from '../components/SidebarToggle';
-import { buttonStyles, focusRing } from '../components/ui/DesignSystem';
-import { Drawer, Modal } from '../components/ui/Overlays';
+import { focusRing } from '../components/ui/DesignSystem';
+import { Drawer } from '../components/ui/Overlays';
 
 export default function AdminLayout({ title, description, actions, children }: { title: string; description?: string; actions?: ReactNode; children: ReactNode }) {
     const { props, url } = usePage<SharedProps>();
@@ -19,7 +19,6 @@ export default function AdminLayout({ title, description, actions, children }: {
     const { auth, adminNavigation: navigation, status } = props;
     const { collapsed, toggle } = useSidebarCollapsed('admin');
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [workOpen, setWorkOpen] = useState(false);
     if (!auth.user || auth.user.role !== 'admin' || !navigation) return null;
 
     const items = [
@@ -38,7 +37,7 @@ export default function AdminLayout({ title, description, actions, children }: {
     const groups: SidebarGroup[] = [
         { label: 'Overview', items: [items[0], items[3], { label: 'Notifications', href: '/notifications', icon: Bell, count: unreadNotifications }] },
         { label: 'Verification', icon: ShieldCheck, expandable: true, items: [{ ...items[1], count: navigation.pendingProviders }, items[2], items[5]] },
-        { label: 'Scholarship operations', icon: BookOpen, expandable: true, items: [items[4], { label: 'Browse scholarships', href: '/scholarships', icon: BookOpen }, { label: 'Public passers', href: '/passers', icon: Award }, items[6], items[7], items[8], items[9]] },
+        { label: 'Scholarship operations', icon: BookOpen, expandable: true, items: [{ label: 'Browse scholarships', href: '/scholarships', icon: BookOpen }, items[6], items[7], items[8], items[9]] },
         { label: 'Reports & activity', icon: ChartNoAxesCombined, expandable: true, items: [...items.slice(10), { label: 'Registration policies', href: navigation.policies, icon: FileText }] },
     ];
     const links = (mobile = false) => <SidebarNavigation label="Administrative navigation" groups={groups} currentPath={url.split('?')[0]} collapsed={!mobile && collapsed} onExpand={toggle} onNavigate={() => setSidebarOpen(false)} />;
@@ -55,7 +54,7 @@ export default function AdminLayout({ title, description, actions, children }: {
             <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-2 border-b border-neutral-200 bg-white px-3 sm:px-6 lg:px-8">
                 <div className="flex min-w-0 items-center gap-2"><SidebarToggle collapsed={collapsed} onToggle={toggle} controls="admin-sidebar" /><button type="button" onClick={() => setSidebarOpen(true)} aria-label="Open admin navigation" aria-expanded={sidebarOpen} className={'flex size-11 shrink-0 items-center justify-center rounded-lg hover:bg-civic-panel lg:hidden ' + focusRing}><MenuIcon aria-hidden="true" className="size-5" /></button><WorkspaceBreadcrumbs role="admin" title={title} path={url.split('?')[0]} /></div>
                 <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-                    <NotificationBell unread={unreadNotifications} /><button type="button" onClick={() => setWorkOpen(true)} aria-label={'Pending work: ' + navigation.pendingProviders + ' providers and ' + 0 + ' external count reports awaiting review'} className={'relative flex size-11 items-center justify-center rounded-lg hover:bg-civic-panel ' + focusRing}><ListChecks aria-hidden="true" className="size-5" />{(navigation.pendingProviders > 0 || 0 > 0) && <span aria-hidden="true" className="absolute top-1 right-1 size-2 rounded-full bg-civic-teal" />}</button>
+                    <NotificationBell unread={unreadNotifications} />
 
                 </div>
             </header>
@@ -66,6 +65,5 @@ export default function AdminLayout({ title, description, actions, children }: {
             </main>
         </div>
         <Drawer open={sidebarOpen} onClose={() => setSidebarOpen(false)} hideScrollbar footer={<div className="rounded-lg bg-civic-navy px-3 pb-2"><SidebarAccount user={auth.user} onSignOut={()=>setSidebarOpen(false)} /></div>} title="Administration" description="IskoReach platform oversight."><div className="rounded-xl bg-civic-navy p-3">{links(true)}</div><Link href={navigation.home} className={'mt-4 flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold ' + focusRing}><span>View public site</span><ArrowUpRight aria-hidden="true" className="size-4" /></Link></Drawer>
-        <Modal open={workOpen} onClose={() => setWorkOpen(false)} title="Pending work" description="Provider accounts awaiting an administrator decision."><p className="text-sm leading-6 text-civic-muted">{navigation.pendingProviders > 0 ? navigation.pendingProviders + (navigation.pendingProviders === 1 ? ' provider account is awaiting review.' : ' provider accounts are awaiting review.') : 'No providers are awaiting review.'}</p><p className="mt-3 text-xs leading-5 text-civic-muted">This summary updates when you visit an admin page. Open the queue to review current provider information.</p><Link href={navigation.providers} onClick={() => setWorkOpen(false)} className={buttonStyles('secondary') + ' mt-6'}>Open provider queue</Link><p className="mt-5 text-sm leading-6 text-civic-muted">{0} external count reports await verification.</p><Link href={navigation.counts + '?pending=1'} onClick={() => setWorkOpen(false)} className={buttonStyles('outline') + ' mt-3'}>Review external counts</Link></Modal>
     </div>;
 }

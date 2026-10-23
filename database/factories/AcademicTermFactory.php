@@ -10,6 +10,8 @@ class AcademicTermFactory extends Factory
 {
     public function definition(): array
     {
-        return ['academic_year' => fake()->unique()->numerify('20##-20##'), 'semester' => 'First semester'];
+        $year = fake()->unique()->numberBetween(1000, 9998);
+
+        return ['academic_year' => $year.'-'.($year + 1), 'semester' => 'First semester'];
     }
 }

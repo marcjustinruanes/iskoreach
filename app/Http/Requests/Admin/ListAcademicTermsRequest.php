@@ -16,6 +16,6 @@ class ListAcademicTermsRequest extends FormRequest
     public function rules(): array
     {
         return ['q' => ['nullable', 'string', 'max:100'], 'usage' => ['nullable', Rule::in(['used', 'unused'])],
-            'sort' => ['nullable', Rule::in(['year_desc', 'year_asc', 'latest'])]];
+            'sort' => ['nullable', Rule::in(['year_desc', 'year_asc', 'latest'])], 'term' => ['nullable', 'integer', 'exists:academic_terms,id']];
     }
 }

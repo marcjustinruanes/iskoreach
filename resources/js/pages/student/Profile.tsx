@@ -11,14 +11,15 @@ import { useRequestFeedback } from '../../components/ui/useRequestFeedback';
 
 const sections = [
     {key:'personal',label:'Personal',description:'Your identity and contact information.',fields:['first_name','surname','middle_name','suffix','date_of_birth','sex','contact_number']},
-    {key:'academic',label:'Academic',description:'Your current school and enrollment details.',fields:['student_number','school','campus','campus_region_code','campus_province_code','campus_city_code','education_level','course','year_level']},
-    {key:'address',label:'Address',description:'Your home address and location.',fields:['region_code','province_code','city_code','barangay_code','street_address']},
+    {key:'academic',label:'Academic',description:'Your current school and enrollment details.',fields:['student_number','school','campus_region_name','campus_province_name','campus_city_name','education_level','course','year_level','shs_graduate','graduation_year']},
+    {key:'address',label:'Address',description:'Your home address and location.',fields:['region_name','province_name','city_name','barangay_name','street_address']},
     {key:'photo',label:'Picture',description:'Your optional profile picture.',fields:[]},
 ];
 const hashPage=()=>Math.max(0,sections.findIndex(section=>section.key===window.location.hash.slice(1)));
 export default function Profile({ auth, profile, accountSetup }: SharedProps & { profile: StudentProfile; accountSetup: AccountSetup; accountCreatedAt: string | null }) {
     const initial={...studentRegistrationDefaults};
-    for(const key of Object.keys(initial) as (keyof typeof initial)[]) {if(key==='terms_accepted'||key==='privacy_accepted'||key==='no_middle_name')continue;const value=(profile as unknown as Record<string,unknown>)[key];initial[key]=value==null?'':key==='date_of_birth'?String(value).slice(0,10):String(value);}
+    for(const key of Object.keys(initial) as (keyof typeof initial)[]) {if(key==='terms_accepted'||key==='privacy_accepted'||key==='no_middle_name'||key==='shs_graduate')continue;const value=(profile as unknown as Record<string,unknown>)[key];initial[key]=value==null?'':key==='date_of_birth'?String(value).slice(0,10):String(value);}
+    initial.shs_graduate=Boolean((profile as unknown as Record<string,unknown>).graduation_year);
     initial.no_middle_name=!profile.middle_name;
     const form=useForm(initial);
     const request=useRequestFeedback(form.cancel);

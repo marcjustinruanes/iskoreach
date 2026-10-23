@@ -16,6 +16,7 @@ use App\Services\StudentRegistration;
 use App\Support\InputRules;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -83,12 +84,15 @@ class AccountController extends Controller
         ]);
     }
 
-    public function status(Request $request): Response|RedirectResponse
+    public function status(Request $request): Response|RedirectResponse|JsonResponse
     {
         $profile = $request->user()->providerProfile;
         abort_unless($profile, 403, 'Run the account profile migration before using this page.');
         Gate::authorize('view', $profile);
 
+        if ($request->expectsJson()) {
+            return response()->json(['verification_status' => $profile->verification_status->value, 'rejection_reason' => $profile->rejection_reason, 'reviewed_at' => $profile->reviewed_at?->toIso8601String()], 200, ['Cache-Control' => 'no-store, private']);
+        }
         if ($profile->isApproved()) {
             return to_route('provider.dashboard');
         }

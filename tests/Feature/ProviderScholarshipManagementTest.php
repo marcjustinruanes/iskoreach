@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Enums\UserRole;
+use App\Models\AcademicTerm;
+use App\Models\ActivityLog;
 use App\Models\Application;
 use App\Models\ProviderProfile;
 use App\Models\Scholarship;
@@ -14,6 +16,53 @@ use Tests\TestCase;
 class ProviderScholarshipManagementTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_provider_can_create_without_scholarship_type_and_publish_without_a_reason(): void
+    {
+        $this->freezeTime();
+        $provider = $this->provider();
+        $data = $this->data();
+        unset($data['scholarship_type']);
+
+        $this->actingAs($provider->user)->post('/provider/scholarships', $data)->assertSessionHasNoErrors();
+        $item = Scholarship::sole();
+        $this->assertSame('', $item->scholarship_type);
+        $this->get('/provider/scholarships/'.$item->id.'/edit')->assertInertia(fn (Assert $page) => $page->where('scholarship.public_url', null));
+        $this->patch('/provider/scholarships/'.$item->id.'/lifecycle', ['action' => 'publish', 'version' => $item->management_version, 'confirmed' => true])->assertSessionHasNoErrors();
+        $this->assertSame('published', $item->fresh()->status->value);
+        $publicUrl = route('scholarships.show', $item->slug);
+        $this->get('/provider/scholarships/'.$item->id.'/edit')->assertInertia(fn (Assert $page) => $page->where('scholarship.public_url', $publicUrl));
+        $this->get('/provider/scholarships')->assertInertia(fn (Assert $page) => $page->where('scholarships.data.0.public_url', $publicUrl));
+        $this->assertNull(ActivityLog::where('action', 'scholarship.publish')->sole()->changes['reason']);
+        $this->patch('/provider/scholarships/'.$item->id.'/lifecycle', ['action' => 'archive', 'version' => $item->fresh()->management_version, 'confirmed' => true])->assertSessionHasErrors('reason');
+    }
+
+    public function test_typed_academic_year_reuses_or_creates_existing_term_records_and_validates_the_range(): void
+    {
+        $this->freezeTime();
+        $provider = $this->provider();
+        $term = AcademicTerm::factory()->create(['academic_year' => '2025-2026']);
+
+        $this->actingAs($provider->user)->post('/provider/scholarships', [...$this->data(), 'academic_year' => '2025 - 2026'])->assertSessionHasNoErrors();
+        $item = Scholarship::sole();
+        $this->assertSame($term->id, $item->academic_term_id);
+        $this->get('/provider/scholarships/'.$item->id.'/edit')->assertInertia(fn (Assert $page) => $page->where('formData.academic_year', '2025-2026')->where('terms.0.label', '2025-2026'));
+        $this->patch('/provider/scholarships/'.$item->id, [...$this->data(), 'version' => $item->management_version, 'academic_year' => '2035-2036'])->assertSessionHasNoErrors();
+        $newTerm = $item->fresh()->academicTerm;
+        $this->assertSame('2035-2036', $newTerm->academic_year);
+        $this->assertSame('2036-12-31', $newTerm->ends_on->toDateString());
+        $this->assertDatabaseCount('academic_terms', 2);
+        $this->post('/provider/scholarships', [...$this->data(), 'academic_year' => '2035-2036'])->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('academic_terms', 2);
+        $this->post('/provider/scholarships', [...$this->data(), 'academic_year' => '2035-2037'])->assertSessionHasErrors('academic_year');
+        $this->post('/provider/scholarships', [...$this->data(), 'academic_year' => 'invalid'])->assertSessionHasErrors('academic_year');
+    }
+
+    public function test_admin_can_add_a_year_only_term_without_entering_a_semester(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => UserRole::Admin]))->post('/admin/academic-terms', ['academic_year' => '2040 - 2041', 'confirmed' => true])->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('academic_terms', ['academic_year' => '2040-2041', 'semester' => 'Academic year']);
+    }
 
     public function test_management_filters_counts_sorting_and_private_preview_use_owned_database_records(): void
     {
@@ -118,16 +167,22 @@ class ProviderScholarshipManagementTest extends TestCase
         $profile = $this->provider();
         $this->actingAs($profile->user);
         $bad = $this->data();
-        $bad['locations'] = [['scope' => 'city', 'region_code' => '', 'city_code' => '']];
+        $bad['locations'] = [['scope' => 'city', 'region_name' => '', 'city_name' => '']];
         $bad['benefit_amount'] = '-1';
         $bad['requirements'][0]['allowed_mime_types'] = ['text/html'];
         $this->post('/provider/scholarships', $bad)->assertSessionHasErrors(['benefit_amount', 'requirements.0.allowed_mime_types.0']);
-        $this->post('/provider/scholarships', [...$this->data(), 'locations' => $bad['locations']])->assertSessionHasErrors(['locations.0.region_code', 'locations.0.city_code']);
+        $this->post('/provider/scholarships', [...$this->data(), 'locations' => $bad['locations']])->assertSessionHasErrors(['locations.0.region_name', 'locations.0.city_name']);
         $this->post('/provider/scholarships', [...$this->data(), 'locations' => [['scope' => 'nationwide'], ['scope' => 'nationwide']]])->assertSessionHasErrors('locations.1.scope');
         $this->post('/provider/scholarships', $this->data())->assertSessionHasNoErrors();
         Scholarship::factory()->create(['title' => 'Other private draft']);
         $this->get('/provider/scholarships?q=Test&status=draft')->assertInertia(fn (Assert $page) => $page->where('scholarships.total', 1))->assertDontSee('Other private draft');
         $this->get('/provider/scholarships?status=bad')->assertSessionHasErrors('status');
+    }
+
+    public function test_academic_year_is_required(): void
+    {
+        $provider = $this->provider();
+        $this->actingAs($provider->user)->post('/provider/scholarships', [...$this->data(), 'academic_year' => '', 'academic_term_id' => null])->assertSessionHasErrors('academic_year');
     }
 
     private function provider(): ProviderProfile
@@ -142,9 +197,9 @@ class ProviderScholarshipManagementTest extends TestCase
 
     private function data(): array
     {
-        return ['title' => 'Test scholarship', 'description' => 'An accurate program description.', 'scholarship_type' => 'Academic', 'currency' => 'PHP', 'benefit_amount' => '5000.25', 'academic_term_id' => null,
+        return ['title' => 'Test scholarship', 'description' => 'An accurate program description.', 'academic_year' => '2026-2027', 'scholarship_type' => 'Academic', 'currency' => 'PHP', 'benefit_amount' => '5000.25', 'academic_term_id' => null,
             'opens_at' => now('Asia/Manila')->addDay()->format('Y-m-d\TH:i'), 'deadline_at' => now('Asia/Manila')->addDays(30)->format('Y-m-d\TH:i'), 'accepts_existing_scholars' => false, 'eligibility_criteria' => "Enrolled student\nMeets published criteria",
-            'locations' => [['scope' => 'nationwide', 'region_code' => '', 'city_code' => '']],
+            'locations' => [['scope' => 'nationwide', 'region_name' => '', 'city_name' => '']],
             'requirements' => [['name' => 'Proof of enrollment', 'description' => 'Current enrollment record', 'required' => true, 'requirement_stage' => 'application', 'allowed_mime_types' => ['application/pdf'], 'max_size_kb' => 5120]]];
     }
 }

@@ -187,7 +187,7 @@ class GeographicLegacyMappingTest extends TestCase
         $before = DB::table('scholarship_locations')->get()->toJson();
         $this->artisan('geography:mapping-report', ['manifest' => $this->manifest, '--current' => true])->assertSuccessful();
         $this->assertSame($before, DB::table('scholarship_locations')->get()->toJson());
-        $this->assertDatabaseHas('scholarship_locations', ['id' => $location->id, 'city_code' => '990010100', 'city_name' => 'Repeated Place']);
+        $this->assertDatabaseHas('scholarship_locations', ['id' => $location->id, 'city_name' => 'Repeated Place']);
         $this->assertFalse(Schema::hasTable('geographic_datasets'));
     }
 }

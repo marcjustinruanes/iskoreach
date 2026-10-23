@@ -73,14 +73,14 @@ class ScholarshipCatalog
     {
         $summary = app(ApplicantCounts::class)->summary($item);
 
-        return [...collect($item->eligibility_rules['provider_settings'] ?? [])->only(['purpose', 'benefits_description', 'slots', 'application_method', 'external_application_url'])->all(), 'id' => $item->id, 'title' => $item->title, 'provider' => $item->provider->organization_name,
+        return ['capacity' => app(ScholarshipCapacity::class)->summary($item), ...collect($item->eligibility_rules['provider_settings'] ?? [])->only(['purpose', 'benefits_description', 'slots', 'waitlist_slots'])->all(), 'academic_priority' => app(ScholarshipAcademicPriority::class)->summary($item), 'id' => $item->id, 'title' => $item->title, 'provider' => $item->provider->organization_name,
             'type' => $item->scholarship_type, 'amount' => $item->benefit_amount, 'currency' => $item->currency,
             'opens_at' => $item->opens_at?->toIso8601String(), 'deadline_at' => $item->deadline_at?->toIso8601String(),
             'availability' => $item->status->value === 'closed' || $item->deadline_at?->lte(now()) ? 'Closed' : (! $item->opens_at || ! $item->deadline_at ? 'Dates not recorded' : ($item->opens_at->isFuture() ? 'Opens later' : 'Open now')),
             'accepts_existing_scholars' => $item->accepts_existing_scholars,
-            'locations' => $item->locations->map(fn ($location): array => $location->only('id', 'scope', 'region_code', 'city_code', 'region_name', 'city_name', 'province_code', 'province_name')),
-            'academic_term' => $item->academicTerm ? $item->academicTerm->academic_year.' · '.$item->academicTerm->semester : null,
-            'internal_count' => $summary['internal_count'], 'external_count' => $summary['external_count'], 'applicant_count' => $summary['public_count'],
+            'locations' => $item->locations->map(fn ($location): array => $location->only('id', 'scope', 'region_name', 'province_name', 'city_name')),
+            'academic_term' => $item->academicTerm ? $item->academicTerm->academic_year : null,
+            'internal_count' => $summary['internal_count'], 'external_count' => $summary['external_count'], 'applicant_count' => $summary['public_count'], 'waitlisted_count' => $summary['waitlisted_count'],
             'show_url' => route('scholarships.show', $item->slug)];
     }
 }

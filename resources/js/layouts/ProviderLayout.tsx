@@ -4,7 +4,7 @@ import SidebarNavigation, { type SidebarGroup } from '../components/SidebarNavig
 import SidebarAccount from '../components/SidebarAccount';
 import NotificationBell, { useNotificationSummary } from '../components/NotificationBell';
 import { Head, Link, usePage } from '@inertiajs/react';
-import { Bell, Megaphone, FileText, ShieldCheck, Building2, LayoutDashboard, Menu as MenuIcon, GraduationCap, UsersRound, MessagesSquare, CalendarClock, Award, ChartNoAxesCombined, PanelsTopLeft, ArrowUpRight } from 'lucide-react';
+import { Bell, Megaphone, FileText, ShieldCheck, Building2, LayoutDashboard, Menu as MenuIcon, GraduationCap, UsersRound, MessagesSquare, CalendarClock, Award, PanelsTopLeft, ArrowUpRight } from 'lucide-react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import type { SharedProps } from '../types';
@@ -31,15 +31,13 @@ export default function ProviderLayout({ title, description, actions, children }
                 { label: 'Browse scholarships', href: '/scholarships', icon: GraduationCap },
                 { label: 'My scholarships', href: '/provider/scholarships', icon: GraduationCap },
                 { label: 'Applicants', href: '/provider/applications', icon: UsersRound },
-                { label: 'Applicant counts', href: context.counts, icon: ChartNoAxesCombined },
             ] },
             { label: 'Communication', icon: MessagesSquare, expandable: true, items: [
                 { label: 'Messages', href: '/messages', icon: MessagesSquare },
                 { label: 'Announcements', href: '/scholarship-announcements', icon: Megaphone },
             ] },
             { label: 'Grants & renewals', icon: Award, expandable: true, items: [
-                { label: 'Public passers', href: '/passers', icon: GraduationCap },
-                { label: 'Scholars & benefits', href: '/benefits', icon: Award },
+                { label: 'Passers, grants & benefits', href: '/benefits', icon: Award },
                 { label: 'Semester renewals', href: '/renewals', icon: CalendarClock },
             ] },
         ] : []),

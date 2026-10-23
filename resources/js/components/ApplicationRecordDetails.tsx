@@ -6,7 +6,7 @@ import type { statusMap } from './ui/DesignSystem';
 import { scholarshipDate } from './ScholarshipDisplay';
 
 export function SubmissionProfile({ profile }: { profile: StudentSubmissionProfile }) {
-    return <dl className="grid gap-4 text-sm sm:grid-cols-2">{Object.entries({ Name: profile.name, School: profile.school, 'School / campus location': profile.campus, 'Course or program': profile.course, 'Year level': profile.year_level }).map(([label, value]) => <div key={label}><dt className="font-semibold">{label}</dt><dd className="mt-1 break-words leading-6 text-civic-muted">{value ?? 'Not provided'}</dd></div>)}</dl>;
+    return <dl className="grid gap-4 text-sm sm:grid-cols-2">{Object.entries({ Name: profile.name, School: profile.school, 'School / campus location': [profile.campus_city_name, profile.campus_province_name, profile.campus_region_name].filter(Boolean).join(', ') || null, 'Course or program': profile.course, 'Year level': profile.graduation_year ? 'SHS graduate' : profile.year_level, 'Year graduated': profile.graduation_year }).map(([label, value]) => <div key={label}><dt className="font-semibold">{label}</dt><dd className="mt-1 break-words leading-6 text-civic-muted">{value ?? 'Not provided'}</dd></div>)}</dl>;
 }
 export default function ApplicationRecordDetails({ application: item, documentsPanel }: { application: ApplicationDetails; documentsPanel?: ReactNode }) {
     return <div className="space-y-6">

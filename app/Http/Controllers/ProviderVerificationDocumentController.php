@@ -63,6 +63,13 @@ class ProviderVerificationDocumentController extends Controller
         abort_unless($document && Storage::disk('documents')->exists($document['path']), 404);
         abort_unless(hash_equals($document['sha256'], hash('sha256', Storage::disk('documents')->get($document['path']))), 409, 'This document failed its integrity check.');
 
+        if ($request->boolean('preview')) {
+            $mime = Storage::disk('documents')->mimeType($document['path']);
+            abort_unless(in_array($mime, ['application/pdf', 'image/jpeg', 'image/png'], true), 415, 'Preview is available for PDF, JPG and PNG files.');
+
+            return Storage::disk('documents')->response($document['path'], $document['name'], ['Content-Type' => $mime, 'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff', 'X-Frame-Options' => 'SAMEORIGIN'], 'inline');
+        }
+
         return Storage::disk('documents')->download($document['path'], $document['name'], ['Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff']);
     }
 }

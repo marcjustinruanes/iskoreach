@@ -25,9 +25,11 @@ class FoundationTest extends TestCase
     public function test_registration_cannot_escalate_a_role(): void
     {
         $this->fakeRegistrationLocations();
-        $this->post('/register', $this->studentRegistrationData(['role' => 'provider']))->assertRedirect('/dashboard');
+        $this->post('/register', $this->studentRegistrationData(['role' => 'provider']))->assertRedirect('/login');
 
         $user = User::firstOrFail();
+        $this->assertGuest();
+        $this->post('/login', ['email' => $user->email, 'password' => 'student-password'])->assertRedirect();
         $this->assertAuthenticatedAs($user);
         $this->assertSame(UserRole::Student, $user->role);
         $this->assertFalse(Gate::forUser($user)->allows('access-provider'));

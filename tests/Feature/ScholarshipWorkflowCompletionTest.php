@@ -52,7 +52,7 @@ class ScholarshipWorkflowCompletionTest extends TestCase
         $this->get('/scholarship-announcements')->assertRedirect('/login');
         $this->post('/scholarship-announcements/1')->assertRedirect('/login');
         $this->patch('/document-reviews/1')->assertRedirect('/login');
-        $this->post('/provider/applicant-counts/1/import')->assertRedirect('/login');
+        $this->post('/provider/applicant-counts/1/import')->assertNotFound();
     }
 
     public function test_upcoming_program_preparation_keeps_two_applications_separate_and_blocks_early_submission(): void
@@ -75,11 +75,11 @@ class ScholarshipWorkflowCompletionTest extends TestCase
     public function test_province_filter_returns_saved_coverage_and_nationwide_regardless_of_student_location(): void
     {
         $program = $this->program();
-        $program->locations()->create(['scope' => 'province', 'region_code' => '040000000', 'province_code' => '042100000', 'province_name' => 'Cavite', 'region_name' => 'CALABARZON']);
+        $program->locations()->create(['scope' => 'province', 'region_name' => '040000000', 'province_name' => '042100000', 'province_name' => 'Cavite', 'region_name' => 'CALABARZON']);
         $other = $this->program();
         $other->locations()->create(['scope' => 'nationwide']);
         $this->get('/scholarships?location=Cavite')->assertInertia(fn (Assert $page) => $page->where('scholarships.total', 2));
-        $this->get('/scholarships?location=042100000')->assertInertia(fn (Assert $page) => $page->where('scholarships.total', 2));
+        $this->get('/scholarships?location=042100000')->assertInertia(fn (Assert $page) => $page->where('scholarships.total', 1));
         $this->get('/scholarships?location=Unrelated')->assertInertia(fn (Assert $page) => $page->where('scholarships.total', 1));
     }
 
@@ -174,10 +174,10 @@ class ScholarshipWorkflowCompletionTest extends TestCase
         Http::fake([$base.'/regions/' => Http::response([['code' => '040000000', 'name' => 'CALABARZON']]),
             $base.'/regions/040000000/provinces/' => Http::response([['code' => '042100000', 'name' => 'Cavite', 'regionCode' => '040000000']]),
             $base.'/regions/040000000/cities-municipalities/' => Http::response([['code' => '042101000', 'name' => 'Bacoor', 'regionCode' => '040000000', 'provinceCode' => '042100000']])]);
-        $names = app(PhilippineLocations::class)->resolve(['scope' => 'city', 'region_code' => '040000000', 'city_code' => '042101000']);
+        $names = app(PhilippineLocations::class)->resolve(['scope' => 'city', 'region_name' => '040000000', 'city_name' => '042101000']);
         $this->assertSame('Cavite', $names['province_name']);
         $program = $this->program();
-        $program->locations()->create($names + ['scope' => 'city', 'region_code' => '040000000', 'city_code' => '042101000']);
+        $program->locations()->create($names + ['scope' => 'city', 'region_name' => '040000000', 'city_name' => '042101000']);
         $this->get('/scholarships?location=Cavite')->assertInertia(fn (Assert $page) => $page->where('scholarships.total', 1));
     }
 

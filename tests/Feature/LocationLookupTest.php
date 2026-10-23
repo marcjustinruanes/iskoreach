@@ -39,7 +39,7 @@ class LocationLookupTest extends TestCase
 
     private function payload(array $location): array
     {
-        return ['title' => 'Test location scholarship', 'description' => 'Accurate scholarship location scope.', 'scholarship_type' => 'Merit', 'currency' => 'PHP', 'accepts_existing_scholars' => false, 'locations' => [$location], 'requirements' => []];
+        return ['title' => 'Test location scholarship', 'description' => 'Accurate scholarship location scope.', 'academic_year' => '2026-2027', 'scholarship_type' => 'Merit', 'currency' => 'PHP', 'accepts_existing_scholars' => false, 'locations' => [$location], 'requirements' => []];
     }
 
     public function test_public_endpoints_normalize_options_and_cache_upstream_requests(): void
@@ -97,17 +97,17 @@ class LocationLookupTest extends TestCase
         $this->fake();
         $provider = ProviderProfile::factory()->create(['verification_status' => 'approved']);
         $this->actingAs($provider->user);
-        $data = $this->payload(['scope' => 'city', 'region_code' => '130000000', 'city_code' => '137404000']);
+        $data = $this->payload(['scope' => 'city', 'region_name' => '130000000', 'city_name' => '137404000']);
         $this->post('/provider/scholarships', $data)->assertSessionHasNoErrors();
         $record = Scholarship::firstOrFail()->locations()->firstOrFail();
         $this->assertSame('NCR', $record->region_name);
         $this->assertSame('Quezon City', $record->city_name);
         $bad = $data;
-        $bad['locations'][0]['city_code'] = '049999999';
-        $this->post('/provider/scholarships', $bad)->assertSessionHasErrors('locations.0.region_code');
+        $bad['locations'][0]['city_name'] = '049999999';
+        $this->post('/provider/scholarships', $bad)->assertSessionHasErrors('locations.0.region_name');
         $bad = $data;
         $bad['locations'][0]['region_name'] = 'Invented region';
-        $this->post('/provider/scholarships', $bad)->assertSessionHasErrors('locations.0');
+        $this->post('/provider/scholarships', $bad)->assertSessionHasErrors('locations.0.region_name');
         $this->assertDatabaseCount('scholarships', 1);
     }
 
@@ -118,7 +118,7 @@ class LocationLookupTest extends TestCase
         Http::assertNothingSent();
         $this->resetHttp();
         Http::fake(['*' => Http::response([], 503)]);
-        $this->post('/provider/scholarships', $this->payload(['scope' => 'region', 'region_code' => '130000000']))->assertSessionHasErrors('locations.0.region_code');
+        $this->post('/provider/scholarships', $this->payload(['scope' => 'region', 'region_name' => '130000000']))->assertSessionHasErrors('locations.0.region_name');
         $this->assertDatabaseCount('scholarships', 1);
     }
 
@@ -126,7 +126,7 @@ class LocationLookupTest extends TestCase
     {
         $provider = ProviderProfile::factory()->create(['verification_status' => 'approved']);
         $scholarship = Scholarship::factory()->create(['provider_id' => $provider->id, 'status' => 'published', 'published_at' => now()]);
-        $scholarship->locations()->create(['scope' => 'city', 'region_code' => '130000000', 'city_code' => '137404000', 'region_name' => 'NCR', 'city_name' => 'Quezon City']);
+        $scholarship->locations()->create(['scope' => 'city', 'region_name' => '130000000', 'city_name' => '137404000', 'region_name' => 'NCR', 'city_name' => 'Quezon City']);
         $this->get('/scholarships?location=Quezon')->assertInertia(fn (Assert $page) => $page->where('scholarships.total', 1)->where('scholarships.data.0.locations.0.city_name', 'Quezon City'));
         $this->get('/scholarships?location=Otherplace')->assertInertia(fn (Assert $page) => $page->where('scholarships.total', 0));
         Http::assertNothingSent();

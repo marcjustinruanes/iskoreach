@@ -37,7 +37,7 @@ class StudentRegistrationTest extends TestCase
             'campus' => '  Main Campus  ', 'date_of_birth' => '2003-08-09', 'contact_number' => '+63 (917) 123-4567', 'sex' => 'female', 'street_address' => '  42 Example Street ',
             'email' => '  ANA@Gmail.com  ', 'password' => $password, 'password_confirmation' => $password,
             'name' => 'Injected display name', 'role' => 'admin', 'email_verified_at' => now(), 'requires_email_verification' => false,
-        ]))->assertSessionHasNoErrors()->assertRedirect('/dashboard');
+        ]))->assertSessionHasNoErrors()->assertRedirect('/login');
         $user = User::firstOrFail();
         $this->assertSame(UserRole::Student, $user->role);
         $this->assertSame("Ana-Maria Jose Dela Cru\u{00f1}z III", $user->name);
@@ -52,7 +52,7 @@ class StudentRegistrationTest extends TestCase
         $this->assertSame('42 Example Street', $profile->street_address);
         $this->assertSame('2026-001', $profile->student_number);
         $this->assertSame('Test University', $profile->school);
-        $this->assertSame('Test City, Test Province', $profile->campus);
+        $this->assertSame('Test City', $profile->campus_city_name);
         $this->assertSame('college', $profile->education_level);
         $this->assertSame('BS Computer Science', $profile->course);
         $this->assertSame(2, $profile->year_level);
@@ -67,7 +67,7 @@ class StudentRegistrationTest extends TestCase
     public function test_student_registration_rejects_missing_fields_and_never_falls_back_to_full_name(): void
     {
         $this->post('/register', ['name' => 'Legacy full name', 'email' => 'new@gmail.com', 'password' => 'student-password', 'password_confirmation' => 'student-password'])
-            ->assertSessionHasErrors(['first_name', 'surname', 'middle_name', 'date_of_birth', 'contact_number', 'student_number', 'school', 'education_level', 'course', 'year_level', 'region_code', 'province_code', 'city_code', 'barangay_code', 'terms_accepted', 'privacy_accepted']);
+            ->assertSessionHasErrors(['first_name', 'surname', 'middle_name', 'date_of_birth', 'contact_number', 'student_number', 'school', 'education_level', 'course', 'year_level', 'region_name', 'province_name', 'city_name', 'barangay_name', 'terms_accepted', 'privacy_accepted']);
         $this->assertDatabaseCount('accounts', 0);
         $this->assertDatabaseCount('student_profiles', 0);
     }
@@ -89,12 +89,13 @@ class StudentRegistrationTest extends TestCase
     public function test_address_hierarchy_is_validated_and_supplied_names_are_not_trusted(): void
     {
         $this->fakeRegistrationLocations();
-        foreach (['region_code' => '990000000', 'province_code' => '990010000', 'city_code' => '990010100', 'barangay_code' => '990010101'] as $field => $value) {
+        foreach (['region_name' => '990000000', 'province_name' => '990010000', 'city_name' => '990010100', 'barangay_name' => '990010101'] as $field => $value) {
             $this->post('/register', $this->studentRegistrationData([$field => $value]))->assertSessionHasErrors($field);
         }
-        $this->post('/register', $this->studentRegistrationData(['province_code' => 'none']))->assertSessionHasErrors('province_code');
+        $this->post('/register', $this->studentRegistrationData(['province_name' => 'none']))->assertSessionHasErrors('province_name');
         $this->assertDatabaseCount('accounts', 0);
-        $this->post('/register', $this->studentRegistrationData(['region_name' => 'Forged Region', 'barangay_name' => 'Forged Barangay']))->assertSessionHasNoErrors();
+        $this->post('/register', $this->studentRegistrationData(['region_name' => 'Forged Region', 'barangay_name' => 'Forged Barangay']))->assertSessionHasErrors('region_name');
+        $this->post('/register', $this->studentRegistrationData(['region_name' => 'Test Region', 'province_name' => 'Test Province', 'city_name' => 'Test City', 'barangay_name' => 'Test Barangay']))->assertSessionHasNoErrors();
         $this->assertSame('Test Region', User::firstOrFail()->studentProfile->region_name);
         $this->assertSame('Test Barangay', User::firstOrFail()->studentProfile->barangay_name);
     }
@@ -103,9 +104,8 @@ class StudentRegistrationTest extends TestCase
     {
         $this->fakeRegistrationLocations();
         $this->getJson('/locations/regions/130000000/provinces')->assertOk()->assertJsonPath('data', []);
-        $this->post('/register', $this->studentRegistrationData(['region_code' => '130000000', 'province_code' => 'none', 'city_code' => '130010000', 'barangay_code' => '130010001']))->assertSessionHasNoErrors();
+        $this->post('/register', $this->studentRegistrationData(['region_name' => '130000000', 'province_name' => 'none', 'city_name' => '130010000', 'barangay_name' => '130010001']))->assertSessionHasNoErrors();
         $profile = User::firstOrFail()->studentProfile;
-        $this->assertSame('none', $profile->province_code);
         $this->assertSame('Not applicable (independent city)', $profile->province_name);
         $this->assertSame('Maria', $profile->middle_name);
         $this->assertNull($profile->suffix);
@@ -138,7 +138,7 @@ class StudentRegistrationTest extends TestCase
     {
         Http::preventStrayRequests();
         Http::fake([rtrim(config('services.psgc.url'), '/').'/regions/' => Http::response([], 503)]);
-        $this->post('/register', $this->studentRegistrationData())->assertSessionHasErrors('region_code');
+        $this->post('/register', $this->studentRegistrationData())->assertSessionHasErrors('region_name');
         $this->assertDatabaseCount('accounts', 0);
         $this->assertDatabaseCount('student_profiles', 0);
     }
@@ -149,6 +149,8 @@ class StudentRegistrationTest extends TestCase
         Notification::fake();
         $this->post('/register', $this->studentRegistrationData())->assertSessionHasNoErrors();
         $student = User::firstOrFail();
+        $this->assertGuest();
+        $this->post('/login', ['email' => $student->email, 'password' => 'student-password'])->assertRedirect();
         $this->get('/dashboard')->assertRedirect('/student/registration-status');
         $student->studentProfile()->update(['registration_status' => 'approved']);
         $this->actingAs($student->fresh());
@@ -168,6 +170,8 @@ class StudentRegistrationTest extends TestCase
         $this->assertSame(UserRole::Provider, $provider->role);
         $this->assertNull($provider->studentProfile);
         $this->assertSame('pending', $provider->providerProfile->verification_status->value);
+        $this->assertGuest();
+        $this->post('/login', ['email' => $provider->email, 'password' => 'provider-password'])->assertRedirect();
         $this->get('/dashboard')->assertRedirect('/provider/status');
         Notification::assertNothingSent();
     }
