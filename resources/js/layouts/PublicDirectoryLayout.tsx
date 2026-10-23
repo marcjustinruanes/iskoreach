@@ -11,7 +11,7 @@ export default function PublicDirectoryLayout({ title, description, children, st
     if (auth.user?.role === 'provider') return <ProviderLayout title={title} description={description}>{children}</ProviderLayout>;
     if (auth.user?.role === 'admin') return <AdminLayout title={title} description={description}>{children}</AdminLayout>;
     if (studentWorkspace || auth.user?.role === 'student') return <StudentLayout title={title} description={description}>{children}</StudentLayout>;
-    return <PublicLayout><Head title={title} /><main id="main-content" className={publicPageContainer}>
+    return <PublicLayout><Head title={title} /><main id="main-content" className={publicPageContainer + (title === 'Find a scholarship' ? ' scholarship-discovery-page' : '')}>
         <PublicPageHeading title={title} description={description} />
         {children}
     </main></PublicLayout>;

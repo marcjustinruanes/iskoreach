@@ -84,8 +84,8 @@ export function Avatar({ name, src }: { name: string; src?: string }) {
 export function Skeleton({ className = '' }: { className?: string }) {
     return <div aria-hidden="true" className={'animate-pulse rounded-lg bg-neutral-200 motion-reduce:animate-none ' + className} />;
 }
-export function EmptyState({ title, description, action }: { title: string; description: string; action?: ReactNode }) {
-    return <div className="rounded-lg border border-dashed border-civic-border bg-civic-canvas/50 px-4 py-5 text-center">
+export function EmptyState({ title, description, action, className = '' }: { title: string; description: string; action?: ReactNode; className?: string }) {
+    return <div className={'rounded-lg border border-dashed border-civic-border bg-civic-canvas/50 px-4 py-5 text-center ' + className}>
         <span className="mx-auto mb-2 flex size-9 items-center justify-center rounded-full bg-civic-panel"><SearchX aria-hidden="true" className="size-5 text-civic-teal" /></span>
         <h3 className="text-base font-semibold text-civic-navy">{title}</h3><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-civic-muted">{description}</p>{action && <div className="mt-5">{action}</div>}
     </div>;
